@@ -17,7 +17,28 @@ export async function generateDeeplink(
     // Read configuration
     const config = vscode.workspace.getConfiguration('cursorDeeplink');
     const linkType = config.get<string>('linkType', 'deeplink');
+    const customBaseUrl = config.get<string>('customBaseUrl', '');
     const allowedExtensions = config.get<string[]>('allowedExtensions', ['md']);
+
+    // Validate custom URL if custom type is selected
+    if (linkType === 'custom') {
+      if (!customBaseUrl || customBaseUrl.trim() === '') {
+        vscode.window.showErrorMessage('Custom base URL is required when linkType is set to "custom". Please configure cursorDeeplink.customBaseUrl in settings.');
+        return null;
+      }
+      // Validate URL format
+      try {
+        const testUrl = customBaseUrl.trim();
+        // Check if it's a valid URL format (http/https or custom protocol)
+        if (!testUrl.match(/^https?:\/\//) && !testUrl.match(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//)) {
+          vscode.window.showErrorMessage('Invalid custom base URL format. Must start with http://, https://, or a custom protocol (e.g., custom://).');
+          return null;
+        }
+      } catch {
+        vscode.window.showErrorMessage('Invalid custom base URL. Please check your configuration.');
+        return null;
+      }
+    }
 
     // Check if file exists
     const uri = vscode.Uri.file(filePath);
@@ -45,7 +66,7 @@ export async function generateDeeplink(
     const content = document.getText();
 
     // Generate deeplink
-    const deeplink = buildDeeplink(fileType, filePath, content, linkType);
+    const deeplink = buildDeeplink(fileType, filePath, content, linkType, customBaseUrl);
 
     // Validate size
     if (!validateUrlLength(deeplink)) {
@@ -69,11 +90,21 @@ function buildDeeplink(
   fileType: 'command' | 'rule' | 'prompt',
   filePath: string,
   content: string,
-  linkType: string
+  linkType: string,
+  customBaseUrl?: string
 ): string {
-  const baseUrl = linkType === 'web' 
-    ? 'https://cursor.com/link/' 
-    : 'cursor://anysphere.cursor-deeplink/';
+  let baseUrl: string;
+  
+  if (linkType === 'web') {
+    baseUrl = 'https://cursor.com/link/';
+  } else if (linkType === 'custom' && customBaseUrl) {
+    // Ensure custom URL ends with / if it doesn't already
+    baseUrl = customBaseUrl.trim().endsWith('/') 
+      ? customBaseUrl.trim() 
+      : customBaseUrl.trim() + '/';
+  } else {
+    baseUrl = 'cursor://anysphere.cursor-deeplink/';
+  }
 
   const encodedContent = encodeURIComponent(content);
 

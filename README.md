@@ -1,273 +1,151 @@
-# Cursor Deeplink Extension
+# Cursor Deeplink Extension 🔗 Share Your Configurations
 
-A VS Code/Cursor extension that enables easy generation and import of deeplinks for Cursor commands, rules, and prompts. Share your custom instructions, commands, and rules with your team through shareable deeplinks.
+A VS Code/Cursor extension designed to **simplify and accelerate the sharing** of your custom Cursor configurations (commands, rules, and prompts) through easy-to-generate and easy-to-import deeplinks.
 
-## Purpose
+**Share your custom instructions, commands, and rules with your team or community in seconds\!**
 
-This extension simplifies the creation and sharing of Cursor configuration files (commands, rules, and prompts) by:
+## Purpose: Simplified Collaboration and Sharing
 
-- **Generating deeplinks** from your existing files with a single click
-- **Importing deeplinks** to automatically create files in the correct directories
-- **Supporting both deeplink and web link formats** for maximum compatibility
-- **Providing CodeLens integration** for quick access directly in your files
+This extension turns your Cursor configuration files into sharable assets, greatly enhancing **collaboration** and **knowledge replication**. It achieves this by:
 
-Deeplinks allow you to share instructions and commands with others, enabling collaboration and knowledge sharing across teams and communities.
+  * **Generating Sharable Deeplinks:** Create a deeplink from your existing files with a single click, ready for distribution.
+  * **Instant Import:** Paste a deeplink to **automatically create** the corresponding file in the correct directory (`.cursor/commands/`, `.cursor/rules/`, or `.cursor/prompts/`) on any machine.
+  * **Maximum Compatibility:** Support for both deeplink formats (`cursor://`) and web link formats (`https://cursor.com/link/`) for various distribution methods.
+  * **Direct Access:** CodeLens integration for quick link generation directly at the top of your files.
 
-## Features
+Deeplinks are the ideal tool to ensure everyone on your team uses the exact same AI commands, rules, and prompts, promoting **consistency** and **knowledge sharing**.
 
-- 🚀 **Generate Deeplinks**: Right-click on files in `.cursor/commands/`, `.cursor/rules/`, or `.cursor/prompts/` to generate deeplinks
-- 📥 **Import Deeplinks**: Import deeplinks to automatically create files in the appropriate directories
-- 🔗 **Multiple Link Formats**: Support for both `cursor://` deeplinks and `https://cursor.com/link/` web links
-- 👁️ **CodeLens Integration**: Clickable links at the top of files for quick deeplink generation
-- ⚙️ **Configurable**: Customize allowed file extensions and link types
-- 📝 **File Type Detection**: Automatically detects file type based on directory structure
-- ✅ **Validation**: Validates file extensions and URL length (8000 character limit)
+## Key Sharing Features
+
+  * **Generate Share Links**: Right-click on any file within `.cursor/` to generate the deeplink (command, rule, or prompt) **copied directly to your clipboard**.
+  * **Import for Replication**: Use the shortcut or command palette to instantly import a deeplink, **recreating the file for immediate use**.
+  * **Flexible Formats**: Choose between the native `cursor://` format or the `https://cursor.com/link/` web-redirect format.
+  * **CodeLens for Quick Share**: Click the CodeLens link at the top of your file to quickly copy the share link.
+  * **Size Validation**: Ensures your content fits within the 8,000 character URL limit after encoding, preventing sharing failures.
 
 ## Installation
 
-1. Clone or download this repository
-2. Open the project in VS Code or Cursor
-3. Run `npm install` to install dependencies
-4. Press `F5` to launch the extension in a new window, or package it for distribution
+### Install via Store (Recommended)
 
-## Usage
+- **VS Code Marketplace**: [Install from Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Godrix.cursor-deeplink)
+- **Open VSX (Cursor/other editors)**: [Install via Open VSX Registry](https://open-vsx.org/extension/godrix/cursor-deeplink)
+- **Cursor Store**: Search for "Cursor Deeplink" directly inside Cursor's extension store
 
-### Generating Deeplinks
+### Manual Install via VSIX
 
-#### Method 1: Context Menu (Recommended)
+1. Go to the **[GitHub Releases page](https://github.com/godrix/cursor-deeplink/releases)** for this repository.
+2. Download the latest `.vsix` file.
+3. In VS Code or Cursor, open the Command Palette with `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac).
+4. Run **"Extensions: Install from VSIX..."** and select the downloaded file.
+5. The extension will install and be ready to use.
 
-1. Navigate to a file in one of these directories:
-   - `.cursor/commands/` for commands
-   - `.cursor/rules/` for rules
-   - `.cursor/prompts/` for prompts
+## 🤝 Usage: Share and Import
 
-2. Right-click on the file
+### Generating Share Links
 
-3. You'll see context-specific options:
-   - **"Generate Cursor Deeplink Command"** (for files in `commands/`)
-   - **"Generate Cursor Deeplink Rule"** (for files in `rules/`)
-   - **"Generate Cursor Deeplink Prompt"** (for files in `prompts/`)
+#### Method 1: Context Menu (Recommended for Quick Generation)
 
-4. You'll also see a generic **"Generate Cursor Deeplink"** option that opens a selector to choose the type
+1.  Navigate to the configuration file you wish to share:
+      * `.cursor/commands/` (for Commands)
+      * `.cursor/rules/` (for Rules)
+      * `.cursor/prompts/` (for Prompts)
+2.  **Right-click** the file and select the specific **"Generate Cursor Deeplink..."** option (e.g., "Generate Cursor Deeplink Command").
+3.  The share link will be **automatically copied to your clipboard**.
 
-5. Click your preferred option - the deeplink will be copied to your clipboard
+#### Method 2: CodeLens (Direct In-File Access)
 
-#### Method 2: CodeLens
+1.  Open any file in `.cursor/commands/`, `.cursor/rules/`, or `.cursor/prompts/`.
+2.  Click the CodeLens link displayed at the top of the file.
+3.  The deeplink will be generated and copied.
 
-1. Open any file in `.cursor/commands/`, `.cursor/rules/`, or `.cursor/prompts/`
-2. Look for a clickable link at the top of the file (CodeLens)
-3. Click the link to generate and copy the deeplink
-
-#### Method 3: Command Palette
-
-1. Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
-2. Type "Generate Cursor Deeplink"
-3. Select the appropriate command:
-   - `Generate Cursor Deeplink` - Opens a type selector
-   - `Generate Cursor Deeplink Command` - Generates command deeplink
-   - `Generate Cursor Deeplink Rule` - Generates rule deeplink
-   - `Generate Cursor Deeplink Prompt` - Generates prompt deeplink
-
-### Importing Deeplinks
+### Importing Shared Links
 
 #### Method 1: Keyboard Shortcut
 
-1. Press `Ctrl+Shift+I` (Windows/Linux) or `Cmd+Shift+I` (Mac)
-2. Paste the deeplink in the input box
-3. The file will be created in the appropriate directory
+1.  Press **`Ctrl+Shift+I`** (Windows/Linux) or **`Cmd+Shift+I`** (Mac).
+2.  Paste the deeplink into the input box.
+3.  The file will be **automatically created and imported** into the appropriate directory.
 
 #### Method 2: Command Palette
 
-1. Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
-2. Type "Import Cursor Deeplink"
-3. Paste the deeplink
-4. The file will be created automatically
+1.  Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux).
+2.  Type **"Import Cursor Deeplink"**.
+3.  Paste the deeplink, and the file will be created.
 
-#### Method 3: Native Cursor Deeplink Support
+## 📐 Link Formats for Distribution
 
-Cursor has built-in support for deeplinks. You can also use the native deeplink handler:
+You can configure the extension to generate the format that best suits your distribution needs:
 
-1. Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
-2. Type "Cursor deeplink debug trigger" or search for deeplink-related commands
-3. This will open Cursor's native deeplink handler
-
-**Note**: The native handler is useful for testing and debugging deeplinks directly in Cursor.
-
-### Deeplink Formats
-
-The extension supports two link formats:
-
-#### Deeplink Format (Default)
-```
-cursor://anysphere.cursor-deeplink/prompt?text=Hello%20world
-cursor://anysphere.cursor-deeplink/command?name=run_test&text=Run%20tests
-cursor://anysphere.cursor-deeplink/rule?name=always_test&text=Always%20run%20tests
-```
-
-#### Web Link Format
-```
-https://cursor.com/link/prompt?text=Hello%20world
-https://cursor.com/link/command?name=run_test&text=Run%20tests
-https://cursor.com/link/rule?name=always_test&text=Always%20run%20tests
-```
-
-Web links redirect users to cursor.com where they can open the deeplink in their browser or copy it to use in Cursor.
+| Format | Example (for sharing) | Ideal Use Case |
+| :--- | :--- | :--- |
+| **Deeplink (Default)** | `cursor://anysphere.cursor-deeplink/prompt?text=...` | Direct sharing in communication tools that support native links. |
+| **Web Link** | `https://cursor.com/link/prompt?text=...` | Distribution on blogs, forums, or platforms requiring a web redirect. |
+| **Custom** | `https://example.com/link/prompt?text=...` | Use your own base URL for custom distribution or internal systems. |
 
 ## Configuration
 
-### Settings
+Adjust settings to control the sharing format and allowed file types.
 
-Open Settings (`Cmd+,` on Mac, `Ctrl+,` on Windows/Linux) and search for "Cursor Deeplink":
+  * **`cursorDeeplink.linkType`**: Defines whether to generate a `deeplink`, `web`, or `custom` link for sharing. (Default: `"deeplink"`)
+  * **`cursorDeeplink.customBaseUrl`**: Custom base URL for deeplinks (only used when `linkType` is `"custom"`). Must be a valid URL starting with `http://`, `https://`, or a custom protocol. (Default: `""`)
+  * **`cursorDeeplink.allowedExtensions`**: Allowed file extensions for link processing. (Default: `["md", "mdc"]`)
 
-#### `cursorDeeplink.linkType`
+### Example Configurations
 
-- **Type**: `string`
-- **Options**: `"deeplink"` | `"web"`
-- **Default**: `"deeplink"`
-- **Description**: Choose whether to generate `cursor://` deeplinks or `https://cursor.com/link/` web links
-
-#### `cursorDeeplink.allowedExtensions`
-
-- **Type**: `array<string>`
-- **Default**: `["md", "mdc"]`
-- **Description**: File extensions allowed for processing (without the dot, e.g., `"md"`, `"mdc"`, `"txt"`)
-
-**Note**: For rules, `.mdc` is recommended to support MDC format with metadata (frontmatter). The extension will prefer `.mdc` for rules if it's in the allowed extensions list.
-
-### Example Configuration
-
+#### Using Web Links
 ```json
 {
-  "cursorDeeplink.linkType": "web",
-  "cursorDeeplink.allowedExtensions": ["md", "mdc", "txt"]
+  "cursorDeeplink.linkType": "web"
 }
 ```
 
-## File Structure
-
-The extension works with the following directory structure:
-
-```
-.cursor/
-├── commands/     # Command files (.md)
-├── rules/         # Rule files (.md or .mdc for MDC format)
-└── prompts/       # Prompt files (.md)
+#### Using Custom Base URL
+```json
+{
+  "cursorDeeplink.linkType": "custom",
+  "cursorDeeplink.customBaseUrl": "https://example.com/link/"
+}
 ```
 
-### Rule Files with MDC Format
+## Examples of Sharing in Action
 
-Rules can use the MDC (Markdown with Content) format to include metadata:
+### Example 1: Share a Custom Command
 
-```markdown
----
-description: RPC Service boilerplate
-globs:
-alwaysApply: false
----
+1.  Create the file `.cursor/commands/run-tests.md`.
+2.  Generate and copy the deeplink (Method 1 or 2).
+3.  **Share the link:** `cursor://anysphere.cursor-deeplink/command?name=run_tests&text=Run%20the%20tests%20in%20package.json`
 
-- Use our internal RPC pattern when defining services
-- Always use snake_case for service names.
-```
+### Example 2: Import a Shared Prompt
 
-The extension supports both `.md` and `.mdc` formats for rules.
+1.  A teammate shares a prompt deeplink.
+2.  You press `Cmd+Shift+I` and paste the link.
+3.  The prompt file is **automatically created** in `.cursor/prompts/`, ready for use.
 
-## Limitations
+### Example 3: Share a Rule with the Team
 
-- **URL Length**: Deeplink URLs have a maximum length of 8,000 characters. The extension will warn you if your content exceeds this limit when URL-encoded.
-- **File Extensions**: Only files with allowed extensions (configured in settings) will be processed.
-- **File Location**: Files must be in `.cursor/commands/`, `.cursor/rules/`, or `.cursor/prompts/` directories.
+1.  Create the rule `.cursor/rules/code-review.mdc`.
+2.  Generate the deeplink (in `web` format for maximum compatibility).
+3.  **Share the web link** in a team channel.
+
+-----
+
+## Limitations (Relevant Sharing Information)
+
+  * **Maximum URL Length**: The file content cannot exceed 8,000 characters (after URL-encoding) when converted into a link. The system will warn you if this limit is reached.
+  * **File Location**: Only files within the `.cursor/commands/`, `.cursor/rules/`, or `.cursor/prompts/` folders can be converted into share links.
 
 ## Commands
 
-| Command | Description | Keyboard Shortcut |
-|---------|------------|-------------------|
-| `cursor-deeplink.generate` | Generate deeplink (opens type selector) | - |
-| `cursor-deeplink.generate-command` | Generate command deeplink | - |
-| `cursor-deeplink.generate-rule` | Generate rule deeplink | - |
-| `cursor-deeplink.generate-prompt` | Generate prompt deeplink | - |
-| `cursor-deeplink.import` | Import deeplink | `Ctrl+Shift+I` / `Cmd+Shift+I` |
+| Command | Description (Focus on Sharing) | Shortcut |
+| :--- | :--- | :--- |
+| `cursor-deeplink.generate` | Generate share link (opens type selector) | - |
+| `cursor-deeplink.generate-command` | Generate command share link | - |
+| `cursor-deeplink.import` | **Import** share link to create file | `Ctrl+Shift+I` / `Cmd+Shift+I` |
 
-## Examples
+-----
 
-### Example 1: Generate a Command Deeplink
+## Contributing and License
 
-1. Create a file `.cursor/commands/run-tests.md`:
-   ```markdown
-   Run the tests in package.json
-   ```
+Contributions are welcome\! Please feel free to submit a Pull Request.
 
-2. Right-click the file and select "Generate Cursor Deeplink Command"
-
-3. The deeplink is copied to clipboard:
-   ```
-   cursor://anysphere.cursor-deeplink/command?name=run_tests&text=Run%20the%20tests%20in%20package.json
-   ```
-
-### Example 2: Import a Prompt Deeplink
-
-1. Press `Cmd+Shift+I` (or `Ctrl+Shift+I`)
-
-2. Paste the deeplink:
-   ```
-   cursor://anysphere.cursor-deeplink/prompt?text=Exemplo+de+um+prompt+com+link+para+o+cursor
-   ```
-
-3. A file is created in `.cursor/prompts/` with the content decoded
-
-### Example 3: Share a Rule with Team
-
-1. Create `.cursor/rules/code-review.mdc`:
-   ```markdown
-   ---
-   description: Code review guidelines
-   alwaysApply: false
-   ---
-   
-   Always run tests before committing code.
-   ```
-
-2. Generate the deeplink and share it with your team
-
-3. Team members can import it using the extension
-
-## Development
-
-### Building
-
-```bash
-npm install
-npm run compile
-```
-
-### Debugging
-
-1. Open the project in VS Code/Cursor
-2. Press `F5` to launch the extension in a new window
-3. The extension will be loaded in the new window for testing
-
-### Project Structure
-
-```
-.
-├── src/
-│   ├── extension.ts          # Main extension entry point
-│   ├── deeplinkGenerator.ts   # Deeplink generation logic
-│   ├── deeplinkImporter.ts    # Deeplink import logic
-│   ├── codelensProvider.ts    # CodeLens provider
-│   └── utils.ts               # Utility functions
-├── out/                        # Compiled JavaScript
-├── package.json               # Extension manifest
-└── tsconfig.json              # TypeScript configuration
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This extension is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
-## Support
-
-For issues, feature requests, or questions, please open an issue on the repository.
+This project is licensed under the MIT License.

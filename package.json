@@ -2,7 +2,7 @@
   "name": "cursor-deeplink",
   "displayName": "Cursor Deeplink",
   "description": "Generate and import deeplinks for Cursor commands, rules, and prompts files",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -95,14 +95,23 @@
           "type": "string",
           "enum": [
             "deeplink",
-            "web"
+            "web",
+            "custom"
           ],
           "enumDescriptions": [
             "Use cursor:// protocol (deeplink)",
-            "Use web URL https://cursor.com/link/"
+            "Use web URL https://cursor.com/link/",
+            "Use a custom base URL (configure in cursorDeeplink.customBaseUrl)"
           ],
           "default": "deeplink",
           "description": "Type of link to generate"
+        },
+        "cursorDeeplink.customBaseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Custom base URL for deeplinks (only used when linkType is 'custom'). Example: https://example.com/link/ or custom://protocol/",
+          "pattern": "^https?://|^[a-zA-Z][a-zA-Z0-9+.-]*://",
+          "patternErrorMessage": "Must be a valid URL starting with http://, https://, or a custom protocol (e.g., custom://)"
         },
         "cursorDeeplink.allowedExtensions": {
           "type": "array",
