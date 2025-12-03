@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { generateDeeplink } from './deeplinkGenerator';
 import { importDeeplink } from './deeplinkImporter';
-import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { UserCommandsTreeProvider, CommandFileItem } from './userCommandsTreeProvider';
 
@@ -339,7 +339,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  // Command to reveal user command in explorer
+  // Command to reveal user command in folder
   const revealUserCommand = vscode.commands.registerCommand(
     'cursor-deeplink.revealUserCommand',
     async (arg?: CommandFileItem | vscode.Uri) => {
@@ -349,7 +349,7 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
       try {
-        await vscode.commands.executeCommand('revealInExplorer', uri);
+        await vscode.commands.executeCommand('revealFileInOS', uri);
       } catch (error) {
         vscode.window.showErrorMessage(`Error revealing file: ${error}`);
       }
@@ -445,31 +445,54 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  // File system watcher to update tree when files change
-  const userCommandsPath = getCommandsPath(undefined, true);
-  const userCommandsFolderUri = vscode.Uri.file(userCommandsPath);
-  const userCommandsWatcher = vscode.workspace.createFileSystemWatcher(
-    new vscode.RelativePattern(userCommandsFolderUri, '**/*')
-  );
+  // File system watchers to update tree when files change
+  // Create watchers for all folders that might be watched
+  const createWatchers = (): vscode.FileSystemWatcher[] => {
+    const watchers: vscode.FileSystemWatcher[] = [];
+    const folderPaths = getPersonalCommandsPaths();
+    
+    for (const folderPath of folderPaths) {
+      const folderUri = vscode.Uri.file(folderPath);
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(folderUri, '**/*')
+      );
 
-  userCommandsWatcher.onDidCreate(() => {
-    userCommandsTreeProvider.refresh();
-  });
+      watcher.onDidCreate(() => {
+        userCommandsTreeProvider.refresh();
+      });
 
-  userCommandsWatcher.onDidDelete(() => {
-    userCommandsTreeProvider.refresh();
-  });
+      watcher.onDidDelete(() => {
+        userCommandsTreeProvider.refresh();
+      });
 
-  userCommandsWatcher.onDidChange(() => {
-    // Optionally refresh on file changes (not just create/delete)
-    // userCommandsTreeProvider.refresh();
-  });
+      watcher.onDidChange(() => {
+        // Optionally refresh on file changes (not just create/delete)
+        // userCommandsTreeProvider.refresh();
+      });
+
+      watchers.push(watcher);
+    }
+    
+    return watchers;
+  };
+
+  let userCommandsWatchers = createWatchers();
 
   // Watch for configuration changes
   const configWatcher = vscode.workspace.onDidChangeConfiguration((e) => {
-    if (e.affectsConfiguration('cursorDeeplink.commandsFolder')) {
+    if (e.affectsConfiguration('cursorDeeplink.commandsFolder') || 
+        e.affectsConfiguration('cursorDeeplink.personalCommandsView')) {
+      // Dispose old watchers
+      userCommandsWatchers.forEach(watcher => watcher.dispose());
+      // Create new watchers based on updated configuration
+      userCommandsWatchers = createWatchers();
       userCommandsTreeProvider.refresh();
     }
+  });
+
+  // Add all watchers to subscriptions
+  userCommandsWatchers.forEach(watcher => {
+    context.subscriptions.push(watcher);
   });
 
   context.subscriptions.push(
@@ -487,7 +510,6 @@ export function activate(context: vscode.ExtensionContext) {
     revealUserCommand,
     renameUserCommand,
     refreshUserCommands,
-    userCommandsWatcher,
     configWatcher
   );
 }

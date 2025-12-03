@@ -2,7 +2,7 @@
   "name": "cursor-deeplink",
   "displayName": "Cursor Commands Share",
   "description": "Generate and import deeplinks for Cursor commands, rules, and prompts files",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -84,7 +84,7 @@
       },
       {
         "command": "cursor-deeplink.revealUserCommand",
-        "title": "Reveal in Explorer"
+        "title": "Reveal in Folder"
       },
       {
         "command": "cursor-deeplink.renameUserCommand",
@@ -197,9 +197,7 @@
         "cursorDeeplink.customBaseUrl": {
           "type": "string",
           "default": "",
-          "description": "Custom base URL for deeplinks (only used when linkType is 'custom'). Example: https://example.com/link/ or custom://protocol/",
-          "pattern": "^https?://|^[a-zA-Z][a-zA-Z0-9+.-]*://",
-          "patternErrorMessage": "Must be a valid URL starting with http://, https://, or a custom protocol (e.g., custom://)"
+          "description": "Custom base URL for deeplinks (only used when linkType is 'custom'). Example: https://example.com/link/ or custom://protocol/"
         },
         "cursorDeeplink.allowedExtensions": {
           "type": "array",
@@ -223,7 +221,22 @@
             "Use .claude/commands folder"
           ],
           "default": "cursor",
-          "description": "Pasta para salvar comandos: 'cursor' para .cursor/commands ou 'claude' para .claude/commands. Apenas a pasta commands é configurável; rules e prompts sempre usam .cursor"
+          "description": "Folder to save commands: 'cursor' for .cursor/commands or 'claude' for .claude/commands. Only the commands folder is configurable; rules and prompts always use .cursor"
+        },
+        "cursorDeeplink.personalCommandsView": {
+          "type": "string",
+          "enum": [
+            "both",
+            "cursor",
+            "claude"
+          ],
+          "enumDescriptions": [
+            "Show commands from both .cursor and .claude folders",
+            "Show commands from .cursor folder only",
+            "Show commands from .claude folder only"
+          ],
+          "default": "both",
+          "description": "Which command folders to show in Personal Commands view: 'both' for .cursor and .claude, 'cursor' for .cursor only, or 'claude' for .claude only"
         }
       }
     },

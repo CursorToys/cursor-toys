@@ -115,3 +115,25 @@ export function getCommandsPath(workspacePath?: string, isUser: boolean = false)
   return path.join(workspacePath, `.${folderName}`, 'commands');
 }
 
+/**
+ * Gets the paths to the command folders to show in Personal Commands view
+ * @returns Array of folder paths based on personalCommandsView configuration
+ */
+export function getPersonalCommandsPaths(): string[] {
+  const config = vscode.workspace.getConfiguration('cursorDeeplink');
+  const viewMode = config.get<string>('personalCommandsView', 'both');
+  const homePath = getUserHomePath();
+  
+  const paths: string[] = [];
+  
+  if (viewMode === 'both' || viewMode === 'cursor') {
+    paths.push(path.join(homePath, '.cursor', 'commands'));
+  }
+  
+  if (viewMode === 'both' || viewMode === 'claude') {
+    paths.push(path.join(homePath, '.claude', 'commands'));
+  }
+  
+  return paths;
+}
+

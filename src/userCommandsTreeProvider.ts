@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { getCommandsPath, isAllowedExtension } from './utils';
+import { getCommandsPath, isAllowedExtension, getPersonalCommandsPaths } from './utils';
 
 /**
  * Represents a command file in the tree view
@@ -102,34 +102,65 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
     }
 
     try {
-      // Get user commands folder path
-      const userCommandsPath = getCommandsPath(undefined, true);
-      const folderUri = vscode.Uri.file(userCommandsPath);
-
-      // Check if folder exists, create if it doesn't
-      try {
-        await vscode.workspace.fs.stat(folderUri);
-      } catch {
-        // Folder doesn't exist, create it
-        await vscode.workspace.fs.createDirectory(folderUri);
-        return [];
-      }
-
       // Get allowed extensions from configuration
       const config = vscode.workspace.getConfiguration('cursorDeeplink');
       const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+      const viewMode = config.get<string>('personalCommandsView', 'both');
 
-      // Recursively read all command files
-      const commandFiles = await this.readDirectoryRecursive(
-        userCommandsPath,
-        userCommandsPath,
-        allowedExtensions
-      );
+      // Get paths to folders to read from
+      const folderPaths = getPersonalCommandsPaths();
+      const allCommandFiles: CommandFileItem[] = [];
+      const filesByFolder: { folderName: string; files: CommandFileItem[] }[] = [];
+
+      // Read from each folder
+      for (const folderPath of folderPaths) {
+        const folderUri = vscode.Uri.file(folderPath);
+
+        // Check if folder exists
+        try {
+          await vscode.workspace.fs.stat(folderUri);
+        } catch {
+          // Folder doesn't exist, skip it (don't create, as user might not want both folders)
+          continue;
+        }
+
+        // Recursively read all command files from this folder
+        const commandFiles = await this.readDirectoryRecursive(
+          folderPath,
+          folderPath,
+          allowedExtensions
+        );
+
+        const folderName = folderPath.includes('.cursor') ? 'cursor' : 'claude';
+        filesByFolder.push({ folderName, files: commandFiles });
+        allCommandFiles.push(...commandFiles);
+      }
+
+      // Add prefix to distinguish files from different folders when showing both
+      if (viewMode === 'both' && filesByFolder.length > 1) {
+        // Create a map of file names (basename) to count occurrences
+        const fileNameCounts = new Map<string, number>();
+        for (const file of allCommandFiles) {
+          const fileName = path.basename(file.fileName);
+          fileNameCounts.set(fileName, (fileNameCounts.get(fileName) || 0) + 1);
+        }
+
+        // Add prefix to files that have duplicates or to all files if we have multiple folders
+        for (const { folderName, files } of filesByFolder) {
+          for (const file of files) {
+            const fileName = path.basename(file.fileName);
+            // Add prefix if there are duplicates or if we want to show folder origin for clarity
+            if (fileNameCounts.get(fileName)! > 1 || filesByFolder.length > 1) {
+              file.fileName = `[${folderName}] ${file.fileName}`;
+            }
+          }
+        }
+      }
 
       // Sort files alphabetically by relative path
-      commandFiles.sort((a, b) => a.fileName.localeCompare(b.fileName));
+      allCommandFiles.sort((a, b) => a.fileName.localeCompare(b.fileName));
 
-      return commandFiles;
+      return allCommandFiles;
     } catch (error) {
       // Handle errors (folder doesn't exist, permission denied, etc.)
       console.error('Error reading user commands folder:', error);
