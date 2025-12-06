@@ -59,7 +59,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Generic command to generate deeplink (opens selector)
   const generateCommand = vscode.commands.registerCommand(
-    'cursor-toys.generate',
+    'cursor-commands-toys.generate',
     async (uri?: vscode.Uri) => {
       const fileType = await vscode.window.showQuickPick(
         [
@@ -80,7 +80,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Specific command to generate command deeplink
   const generateCommandSpecific = vscode.commands.registerCommand(
-    'cursor-toys.generate-command',
+    'cursor-commands-toys.generate-command',
     async (uri?: vscode.Uri) => {
       await generateDeeplinkWithValidation(uri, 'command');
     }
@@ -88,7 +88,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Specific command to generate rule deeplink
   const generateRuleSpecific = vscode.commands.registerCommand(
-    'cursor-toys.generate-rule',
+    'cursor-commands-toys.generate-rule',
     async (uri?: vscode.Uri) => {
       await generateDeeplinkWithValidation(uri, 'rule');
     }
@@ -96,7 +96,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Specific command to generate prompt deeplink
   const generatePromptSpecific = vscode.commands.registerCommand(
-    'cursor-toys.generate-prompt',
+    'cursor-commands-toys.generate-prompt',
     async (uri?: vscode.Uri) => {
       await generateDeeplinkWithValidation(uri, 'prompt');
     }
@@ -104,7 +104,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Command to import deeplink
   const importCommand = vscode.commands.registerCommand(
-    'cursor-toys.import',
+    'cursor-commands-toys.import',
     async () => {
       const url = await vscode.window.showInputBox({
         prompt: 'Paste the Cursor deeplink',
@@ -128,7 +128,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Command to save command file as user command (in ~/.cursor/commands)
   const saveAsUserCommand = vscode.commands.registerCommand(
-    'cursor-toys.save-as-user-command',
+    'cursor-commands-toys.save-as-user-command',
     async (uri?: vscode.Uri) => {
       try {
         // Get file URI
@@ -284,7 +284,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Command to open user command file
   const openUserCommand = vscode.commands.registerCommand(
-    'cursor-toys.openUserCommand',
+    'cursor-commands-toys.openUserCommand',
     async (arg?: CommandFileItem | vscode.Uri) => {
       const uri = getUriFromArgument(arg);
       if (!uri) {
@@ -302,7 +302,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Command to generate deeplink for user command
   const generateUserCommandDeeplink = vscode.commands.registerCommand(
-    'cursor-toys.generateUserCommandDeeplink',
+    'cursor-commands-toys.generateUserCommandDeeplink',
     async (arg?: CommandFileItem | vscode.Uri) => {
       const uri = getUriFromArgument(arg);
       if (!uri) {
@@ -315,7 +315,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Command to delete user command
   const deleteUserCommand = vscode.commands.registerCommand(
-    'cursor-toys.deleteUserCommand',
+    'cursor-commands-toys.deleteUserCommand',
     async (arg?: CommandFileItem | vscode.Uri) => {
       const uri = getUriFromArgument(arg);
       if (!uri) {
@@ -343,7 +343,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Command to reveal user command in folder
   const revealUserCommand = vscode.commands.registerCommand(
-    'cursor-toys.revealUserCommand',
+    'cursor-commands-toys.revealUserCommand',
     async (arg?: CommandFileItem | vscode.Uri) => {
       const uri = getUriFromArgument(arg);
       if (!uri) {
@@ -360,7 +360,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Command to rename user command
   const renameUserCommand = vscode.commands.registerCommand(
-    'cursor-toys.renameUserCommand',
+    'cursor-commands-toys.renameUserCommand',
     async (arg?: CommandFileItem | vscode.Uri) => {
       const uri = getUriFromArgument(arg);
       if (!uri) {
@@ -441,7 +441,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Command to refresh user commands tree
   const refreshUserCommands = vscode.commands.registerCommand(
-    'cursor-toys.refreshUserCommands',
+    'cursor-commands-toys.refreshUserCommands',
     () => {
       userCommandsTreeProvider.refresh();
     }
@@ -449,7 +449,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Command to send text to chat
   const sendToChatCommand = vscode.commands.registerCommand(
-    'cursor-toys.sendToChat',
+    'cursor-commands-toys.sendToChat',
     async () => {
       const text = await vscode.window.showInputBox({
         prompt: 'Digite o texto para enviar ao chat do Cursor',
@@ -464,7 +464,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Command to send selection to chat
   const sendSelectionToChatCommand = vscode.commands.registerCommand(
-    'cursor-toys.sendSelectionToChat',
+    'cursor-commands-toys.sendSelectionToChat',
     async () => {
       await sendSelectionToChat();
     }
@@ -472,7 +472,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Command to copy selection as prompt deeplink
   const copySelectionAsPromptCommand = vscode.commands.registerCommand(
-    'cursor-toys.copySelectionAsPrompt',
+    'cursor-commands-toys.copySelectionAsPrompt',
     async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) {

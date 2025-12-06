@@ -6,9 +6,9 @@ All notable changes to the "Cursor Toys" extension will be documented in this fi
 
 ### Added
 - **Chat Integration**: New commands to send code and text directly to Cursor chat
-  - `cursor-toys.sendToChat`: Send custom text to Cursor chat
-  - `cursor-toys.sendSelectionToChat`: Send selected code to Cursor chat with context
-  - `cursor-toys.copySelectionAsPrompt`: Copy selected code as prompt deeplink with file context
+  - `cursor-commands-toys.sendToChat`: Send custom text to Cursor chat
+  - `cursor-commands-toys.sendSelectionToChat`: Send selected code to Cursor chat with context
+  - `cursor-commands-toys.copySelectionAsPrompt`: Copy selected code as prompt deeplink with file context
 - **Annotation Panel**: New Webview Panel that opens via deeplinks (similar to Datadog extension)
   - Opens via `cursor://godrix.cursor-deeplink/annotation?...` or `vscode://godrix.cursor-deeplink/annotation?...` deeplinks
   - Displays code, errors, and context in a formatted view
@@ -21,7 +21,7 @@ All notable changes to the "Cursor Toys" extension will be documented in this fi
 
 ### Changed
 - **Extension Rebranding**: Renamed extension from "Cursor Commands Share" to "Cursor Sidekick", and later to "Cursor Toys"
-- **Command IDs**: All command IDs updated from `cursor-sidekick.*` to `cursor-toys.*` for consistency
+- **Command IDs**: All command IDs updated from `cursor-sidekick.*` to `cursor-commands-toys.*` for consistency
 - Updated all user-facing text, command titles, and documentation to reflect the new name "Cursor Toys"
 - Removed "Send to Chat" command from Command Palette (now only available via context menu)
 - CodeLens labels updated to show "Generate Cursor Toys" instead of "Generate Cursor Sidekick"

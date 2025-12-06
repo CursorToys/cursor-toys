@@ -41,15 +41,15 @@ export class DeeplinkCodeLensProvider implements vscode.CodeLensProvider {
 
     switch (fileType) {
       case 'command':
-        command = 'cursor-toys.generate-command';
+        command = 'cursor-commands-toys.generate-command';
         label = 'Generate Cursor Toys Command';
         break;
       case 'rule':
-        command = 'cursor-toys.generate-rule';
+        command = 'cursor-commands-toys.generate-rule';
         label = 'Generate Cursor Toys Rule';
         break;
       case 'prompt':
-        command = 'cursor-toys.generate-prompt';
+        command = 'cursor-commands-toys.generate-prompt';
         label = 'Generate Cursor Toys Prompt';
         break;
     }

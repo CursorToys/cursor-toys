@@ -1,4 +1,4 @@
-# Cursor Toys Extension 🤖 Your AI Coding Assistant
+# Cursor Command Toys 🤖 Your AI Coding Assistant
 
 A VS Code/Cursor extension designed to **simplify and accelerate the sharing** of your custom Cursor configurations (commands, rules, and prompts) through easy-to-generate and easy-to-import deeplinks.
 
@@ -65,7 +65,7 @@ Deeplinks are the ideal tool to ensure everyone on your team uses the exact same
 
 - **VS Code Marketplace**: [Install from Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Godrix.cursor-deeplink)
 - **Open VSX (Cursor/other editors)**: [Install via Open VSX Registry](https://open-vsx.org/extension/godrix/cursor-deeplink)
-- **Cursor Store**: Search for "Cursor Toys" directly inside Cursor's extension store
+- **Cursor Store**: Search for "Cursor Command Toys" directly inside Cursor's extension store
 
 ### Manual Install via VSIX
 
@@ -201,14 +201,14 @@ This will make the extension save imported commands to `.claude/commands/` inste
 
 | Command | Description (Focus on Sharing) | Shortcut |
 | :--- | :--- | :--- |
-| `cursor-toys.generate` | Generate share link (opens type selector) | - |
-| `cursor-toys.generate-command` | Generate command share link | - |
-| `cursor-toys.generate-rule` | Generate rule share link | - |
-| `cursor-toys.generate-prompt` | Generate prompt share link | - |
-| `cursor-toys.import` | **Import** share link to create file | `Ctrl+Shift+I` / `Cmd+Shift+I` |
-| `cursor-toys.save-as-user-command` | Save project command as user command (available in all projects) | - |
-| `cursor-toys.sendToChat` | Send custom text to Cursor chat | - |
-| `cursor-toys.sendSelectionToChat` | Send selected code to Cursor chat | - |
+| `cursor-commands-toys.generate` | Generate share link (opens type selector) | - |
+| `cursor-commands-toys.generate-command` | Generate command share link | - |
+| `cursor-commands-toys.generate-rule` | Generate rule share link | - |
+| `cursor-commands-toys.generate-prompt` | Generate prompt share link | - |
+| `cursor-commands-toys.import` | **Import** share link to create file | `Ctrl+Shift+I` / `Cmd+Shift+I` |
+| `cursor-commands-toys.save-as-user-command` | Save project command as user command (available in all projects) | - |
+| `cursor-commands-toys.sendToChat` | Send custom text to Cursor chat | - |
+| `cursor-commands-toys.sendSelectionToChat` | Send selected code to Cursor chat | - |
 
 -----
 

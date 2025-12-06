@@ -1,7 +1,7 @@
 {
   "name": "cursor-deeplink",
-  "displayName": "Cursor Toys",
-  "description": "Your AI coding assistant - Generate and import deeplinks for Cursor commands, rules, and prompts files, send code to chat, and more",
+  "displayName": "Cursor Commands Toys",
+  "description": "Cursor Commands Toys - Your AI coding assistant toolkit. Generate and import deeplinks for Cursor commands, rules, and prompts files, send code to chat, and more",
   "version": "0.6.0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
@@ -35,82 +35,82 @@
   "activationEvents": [
     "onLanguage",
     "onUri",
-    "onCommand:cursor-toys.generate",
-    "onCommand:cursor-toys.generate-command",
-    "onCommand:cursor-toys.generate-rule",
-    "onCommand:cursor-toys.generate-prompt",
-    "onCommand:cursor-toys.import",
-    "onCommand:cursor-toys.save-as-user-command",
+    "onCommand:cursor-commands-toys.generate",
+    "onCommand:cursor-commands-toys.generate-command",
+    "onCommand:cursor-commands-toys.generate-rule",
+    "onCommand:cursor-commands-toys.generate-prompt",
+    "onCommand:cursor-commands-toys.import",
+    "onCommand:cursor-commands-toys.save-as-user-command",
     "onView:cursor-deeplink.userCommands",
-    "onCommand:cursor-toys.sendToChat",
-    "onCommand:cursor-toys.sendSelectionToChat",
-    "onCommand:cursor-toys.copySelectionAsPrompt"
+    "onCommand:cursor-commands-toys.sendToChat",
+    "onCommand:cursor-commands-toys.sendSelectionToChat",
+    "onCommand:cursor-commands-toys.copySelectionAsPrompt"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "cursor-toys.generate",
+        "command": "cursor-commands-toys.generate",
         "title": "Generate Cursor Toys"
       },
       {
-        "command": "cursor-toys.generate-command",
+        "command": "cursor-commands-toys.generate-command",
         "title": "Generate Cursor Toys Command"
       },
       {
-        "command": "cursor-toys.generate-rule",
+        "command": "cursor-commands-toys.generate-rule",
         "title": "Generate Cursor Toys Rule"
       },
       {
-        "command": "cursor-toys.generate-prompt",
+        "command": "cursor-commands-toys.generate-prompt",
         "title": "Generate Cursor Toys Prompt"
       },
       {
-        "command": "cursor-toys.import",
+        "command": "cursor-commands-toys.import",
         "title": "Import Cursor Toys"
       },
       {
-        "command": "cursor-toys.save-as-user-command",
+        "command": "cursor-commands-toys.save-as-user-command",
         "title": "Save as User Command"
       },
       {
-        "command": "cursor-toys.openUserCommand",
+        "command": "cursor-commands-toys.openUserCommand",
         "title": "Open Command",
         "icon": "$(file)"
       },
       {
-        "command": "cursor-toys.generateUserCommandDeeplink",
+        "command": "cursor-commands-toys.generateUserCommandDeeplink",
         "title": "Generate Deeplink"
       },
       {
-        "command": "cursor-toys.deleteUserCommand",
+        "command": "cursor-commands-toys.deleteUserCommand",
         "title": "Delete Command"
       },
       {
-        "command": "cursor-toys.revealUserCommand",
+        "command": "cursor-commands-toys.revealUserCommand",
         "title": "Reveal in Folder"
       },
       {
-        "command": "cursor-toys.renameUserCommand",
+        "command": "cursor-commands-toys.renameUserCommand",
         "title": "Rename Command"
       },
       {
-        "command": "cursor-toys.refreshUserCommands",
+        "command": "cursor-commands-toys.refreshUserCommands",
         "title": "Refresh",
         "icon": "$(refresh)"
       },
       {
-        "command": "cursor-toys.sendToChat",
+        "command": "cursor-commands-toys.sendToChat",
         "title": "Send to Chat",
         "icon": "$(comment-discussion)"
       },
       {
-        "command": "cursor-toys.sendSelectionToChat",
+        "command": "cursor-commands-toys.sendSelectionToChat",
         "title": "Send Selection to Chat",
         "icon": "$(send)"
       },
       {
-        "command": "cursor-toys.copySelectionAsPrompt",
+        "command": "cursor-commands-toys.copySelectionAsPrompt",
         "title": "Copy as Prompt Deeplink",
         "icon": "$(copy)"
       }
@@ -121,7 +121,7 @@
         "label": "Cursor Toys"
       },
       {
-        "id": "cursor-toys-selection",
+        "id": "cursor-commands-toys-selection",
         "label": "Cursor Toys"
       }
     ],
@@ -144,80 +144,80 @@
       ],
       "view/title": [
         {
-          "command": "cursor-toys.refreshUserCommands",
+          "command": "cursor-commands-toys.refreshUserCommands",
           "when": "view == cursor-deeplink.userCommands",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "cursor-toys.openUserCommand",
+          "command": "cursor-commands-toys.openUserCommand",
           "when": "view == cursor-deeplink.userCommands && viewItem == userCommandFile",
           "group": "inline"
         },
         {
-          "command": "cursor-toys.generateUserCommandDeeplink",
+          "command": "cursor-commands-toys.generateUserCommandDeeplink",
           "when": "view == cursor-deeplink.userCommands && viewItem == userCommandFile",
           "group": "1_actions"
         },
         {
-          "command": "cursor-toys.renameUserCommand",
+          "command": "cursor-commands-toys.renameUserCommand",
           "when": "view == cursor-deeplink.userCommands && viewItem == userCommandFile",
           "group": "1_actions"
         },
         {
-          "command": "cursor-toys.revealUserCommand",
+          "command": "cursor-commands-toys.revealUserCommand",
           "when": "view == cursor-deeplink.userCommands && viewItem == userCommandFile",
           "group": "1_actions"
         },
         {
-          "command": "cursor-toys.deleteUserCommand",
+          "command": "cursor-commands-toys.deleteUserCommand",
           "when": "view == cursor-deeplink.userCommands && viewItem == userCommandFile",
           "group": "2_actions"
         }
       ],
       "cursor-deeplink": [
         {
-          "command": "cursor-toys.generate-command",
+          "command": "cursor-commands-toys.generate-command",
           "when": "resourcePath =~ /\\.(cursor|claude)\\/commands\\//"
         },
         {
-          "command": "cursor-toys.generate-rule",
+          "command": "cursor-commands-toys.generate-rule",
           "when": "resourcePath =~ /\\.cursor\\/rules\\//"
         },
         {
-          "command": "cursor-toys.generate-prompt",
+          "command": "cursor-commands-toys.generate-prompt",
           "when": "resourcePath =~ /\\.cursor\\/prompts\\//"
         },
         {
-          "command": "cursor-toys.generate",
+          "command": "cursor-commands-toys.generate",
           "when": "resourcePath =~ /(\\.(cursor|claude)\\/(commands|rules|prompts)\\/)/"
         },
         {
-          "command": "cursor-toys.save-as-user-command",
+          "command": "cursor-commands-toys.save-as-user-command",
           "when": "resourcePath =~ /\\.(cursor|claude)\\/commands\\//"
         }
       ],
       "editor/context": [
         {
-          "submenu": "cursor-toys-selection",
+          "submenu": "cursor-commands-toys-selection",
           "when": "editorHasSelection",
           "group": "navigation"
         }
       ],
-      "cursor-toys-selection": [
+      "cursor-commands-toys-selection": [
         {
-          "command": "cursor-toys.sendSelectionToChat",
+          "command": "cursor-commands-toys.sendSelectionToChat",
           "when": "editorHasSelection"
         },
         {
-          "command": "cursor-toys.copySelectionAsPrompt",
+          "command": "cursor-commands-toys.copySelectionAsPrompt",
           "when": "editorHasSelection"
         }
       ],
       "commandPalette": [
         {
-          "command": "cursor-toys.sendSelectionToChat",
+          "command": "cursor-commands-toys.sendSelectionToChat",
           "when": "editorHasSelection"
         }
       ]
@@ -288,7 +288,7 @@
     },
     "keybindings": [
       {
-        "command": "cursor-toys.import",
+        "command": "cursor-commands-toys.import",
         "key": "ctrl+shift+i",
         "mac": "cmd+shift+i"
       }

@@ -32,7 +32,7 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
     const treeItem = new vscode.TreeItem(element.fileName, vscode.TreeItemCollapsibleState.None);
     treeItem.resourceUri = element.uri;
     treeItem.command = {
-      command: 'cursor-toys.openUserCommand',
+      command: 'cursor-commands-toys.openUserCommand',
       title: 'Open Command',
       arguments: [element.uri]
     };
