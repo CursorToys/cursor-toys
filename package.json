@@ -2,7 +2,7 @@
   "name": "cursor-deeplink",
   "displayName": "Cursor Commands Toys",
   "description": "Cursor Commands Toys - Your AI coding assistant toolkit. Generate and import deeplinks for Cursor commands, rules, and prompts files, send code to chat, and more",
-  "version": "0.7.0",
+  "version": "0.8.4",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {

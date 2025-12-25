@@ -2,6 +2,68 @@
 
 All notable changes to the "Cursor Toys" extension will be documented in this file.
 
+## [0.8.4] - 2025-12-25
+
+### Added
+- **Drag and Drop Support**: Personal Commands tree view now supports drag and drop functionality
+  - Drag files between folders within the same source (.cursor or .claude)
+  - Drag files between different sources (.cursor and .claude)
+  - Confirmation prompt before overwriting existing files
+  - Automatic tree view refresh after moving files
+- **Hierarchical Folder Structure**: Tree view now displays folders and subfolders in a hierarchical structure
+  - Collapsible folders with proper folder icons
+  - Files grouped by their parent folders
+  - Source categories (.cursor and .claude) when viewing both
+  - Alphabetical sorting of folders and files
+- **Improved Tree View Organization**: Better visual organization of personal commands
+  - Root files displayed directly under source category
+  - Subfolder files grouped under their respective folders
+  - Clear separation between .cursor and .claude commands when viewing both
+
+### Changed
+- **Tree View Structure**: Refactored tree view to support hierarchical folder display instead of flat list
+- **Drag and Drop Controller**: Implemented `TreeDragAndDropController` interface for file management
+- **Item Types**: Added folder and file type distinction in tree view items
+
+### Technical Details
+- **Enhanced Files**:
+  - `src/userCommandsTreeProvider.ts`: Complete refactor to support hierarchical structure and drag-and-drop
+  - `src/extension.ts`: Added `dragAndDropController` to tree view registration
+- **New Features**:
+  - `handleDrag()`: Manages drag operation initialization
+  - `handleDrop()`: Handles file moving and folder operations
+  - `groupFilesByFolder()`: Creates hierarchical folder structure
+  - `createSourceCategory()`: Creates top-level source categories (.cursor/.claude)
+  - `getBasePath()`: Helper to determine source folder from file path
+
+## [0.8.3] - 2025-12-25
+
+### Changed
+- **Build Configuration**: Updated `.gitignore` and `.vscodeignore` for better package management
+  - Exclude internal documentation files from extension package
+  - Add analytics local files to .gitignore
+  - Reorganize .vscodeignore entries for clarity
+
+### Documentation
+- **AGENTS.md**: Added comprehensive telemetry documentation
+  - Document telemetry system architecture
+  - Add activation event clarification (onStartupFinished)
+  - Add code examples for TelemetryManager usage
+  - Add reference to ANALYTICS.md
+
+## [0.8.2] - 2025-12-25
+
+### Changed
+- **Version Bump**: Updated extension version to 0.8.2 for maintenance release
+
+## [0.8.1] - 2025-12-25
+
+### Fixed
+- **Extension Activation**: Fixed issue where commands were not being found after installing the VSIX
+  - Changed activation event from individual `onCommand` to `onStartupFinished` 
+  - Ensures extension is fully loaded before commands are executed
+  - Resolves "command not found" errors for all commands
+
 ## [0.7.0] - 2025-12-25
 
 ### Added
