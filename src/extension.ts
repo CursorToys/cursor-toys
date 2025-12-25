@@ -296,7 +296,8 @@ export function activate(context: vscode.ExtensionContext) {
   const userCommandsTreeProvider = new UserCommandsTreeProvider();
   const userCommandsTreeView = vscode.window.createTreeView('cursor-deeplink.userCommands', {
     treeDataProvider: userCommandsTreeProvider,
-    showCollapseAll: false
+    showCollapseAll: false,
+    dragAndDropController: userCommandsTreeProvider
   });
 
   /**
