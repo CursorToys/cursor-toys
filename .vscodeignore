@@ -1,13 +1,35 @@
 .vscode/**
 .vscode-test/**
+out/test/**
 src/**
 .gitignore
-tsconfig.json
+*.vsix
+**/.eslintrc.json
 **/*.map
 **/*.ts
 !out/**/*.js
+tsconfig.json
 node_modules/**
-*.vsix
+
+# Documentation - Internal only (not for extension users)
+AGENTS.md
+PUBLISHING.md
+ANALYTICS.md
+ANALYTICS-LOCAL.md
+ANALYTICS-PRODUCTION.md
+ANALYTICS-PRODUCTION-README.md
+ANALYTICS-SUMMARY.md
+QUICK-START-ANALYTICS.md
+
+# Git files
+.git/**
+.github/**
+
+# Cursor folder
+.cursor/**
+
+# Misc
+.yarnrc
+vsc-extension-quickstart.md
 .DS_Store
 *.log
-

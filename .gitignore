@@ -6,4 +6,14 @@ node_modules
 *.log
 
 .cursor
-PUBLISHING.md
+
+# Ignorar todos os arquivos .md
+*.md
+# Exceto estes específicos
+!AGENTS.md
+!README.md
+!CHANGELOG.md
+
+# Analytics local (desenvolvimento)
+analytics-local.json
+analytics-export-*.json
