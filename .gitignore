@@ -10,9 +10,9 @@ node_modules
 # Ignorar todos os arquivos .md
 *.md
 # Exceto estes específicos
-!AGENTS.md
 !README.md
 !CHANGELOG.md
+!LICENSE
 
 # Analytics local (desenvolvimento)
 analytics-local.json

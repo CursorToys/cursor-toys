@@ -11,15 +11,12 @@ src/**
 tsconfig.json
 node_modules/**
 
-# Documentation - Internal only (not for extension users)
-AGENTS.md
-PUBLISHING.md
-ANALYTICS.md
-ANALYTICS-LOCAL.md
-ANALYTICS-PRODUCTION.md
-ANALYTICS-PRODUCTION-README.md
-ANALYTICS-SUMMARY.md
-QUICK-START-ANALYTICS.md
+# Ignorar todos os arquivos .md
+*.md
+# Exceto estes específicos
+!README.md
+!CHANGELOG.md
+!LICENSE
 
 # Git files
 .git/**
