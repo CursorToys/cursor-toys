@@ -197,7 +197,7 @@ function getDestinationPath(
   isPersonal: boolean = false
 ): { folderPath: string; fileName: string } {
   // Get allowed extensions configuration
-  const config = vscode.workspace.getConfiguration('cursorDeeplink');
+  const config = vscode.workspace.getConfiguration('cursorToys');
   const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
   const defaultExtension = allowedExtensions[0] || 'md';
 

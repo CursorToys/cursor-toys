@@ -28,7 +28,7 @@ export class DeeplinkCodeLensProvider implements vscode.CodeLensProvider {
     }
 
     // Validate extension
-    const config = vscode.workspace.getConfiguration('cursorDeeplink');
+    const config = vscode.workspace.getConfiguration('cursorToys');
     const allowedExtensions = config.get<string[]>('allowedExtensions', ['md']);
     
     if (!isAllowedExtension(filePath, allowedExtensions)) {
@@ -41,15 +41,15 @@ export class DeeplinkCodeLensProvider implements vscode.CodeLensProvider {
 
     switch (fileType) {
       case 'command':
-        command = 'cursor-commands-toys.generate-command';
+        command = 'cursor-toys.generate-command';
         label = 'Generate Cursor Toys Command';
         break;
       case 'rule':
-        command = 'cursor-commands-toys.generate-rule';
+        command = 'cursor-toys.generate-rule';
         label = 'Generate Cursor Toys Rule';
         break;
       case 'prompt':
-        command = 'cursor-commands-toys.generate-prompt';
+        command = 'cursor-toys.generate-prompt';
         label = 'Generate Cursor Toys Prompt';
         break;
     }

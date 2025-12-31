@@ -3,6 +3,7 @@ import * as child_process from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import { getHttpResponsePath } from './utils';
+import { EnvironmentManager } from './environmentManager';
 
 // Store execution times for response files
 const executionTimes: Map<string, string> = new Map();
@@ -605,6 +606,57 @@ function extractCurlFromSection(
 }
 
 /**
+ * Detects the environment decorator for a section
+ * Searches backwards from startLine to find # @env {name}
+ * @param document The document to search
+ * @param startLine Start line of the section (0-based)
+ * @returns Environment name or null if not found
+ */
+function getEnvironmentForSection(
+  document: vscode.TextDocument,
+  startLine: number
+): string | null {
+  // First, find the section header (##) at or before startLine
+  let sectionHeaderLine = startLine;
+  for (let i = startLine; i >= 0; i--) {
+    const line = document.lineAt(i).text.trim();
+    if (line.startsWith('##')) {
+      sectionHeaderLine = i;
+      break;
+    }
+  }
+  
+  // Now search backwards from section header for # @env decorator
+  // Stop when we find another section header or reach the top
+  for (let i = sectionHeaderLine - 1; i >= 0; i--) {
+    const line = document.lineAt(i).text.trim();
+    
+    // Skip empty lines and regular comments
+    if (!line || (line.startsWith('#') && !line.match(/^#\s*@env/i))) {
+      continue;
+    }
+    
+    // Match: # @env qa  or  #@env qa
+    const match = line.match(/^#\s*@env\s+(\w+)/i);
+    if (match) {
+      return match[1];
+    }
+    
+    // Stop if we find another section header
+    if (line.startsWith('##')) {
+      break;
+    }
+    
+    // Stop if we find a non-comment, non-empty line (like a curl command)
+    if (!line.startsWith('#')) {
+      break;
+    }
+  }
+  
+  return null;
+}
+
+/**
  * Executes HTTP request from file and saves response
  * @param requestUri The URI of the request file
  * @param startLine Optional start line for section-based execution
@@ -653,6 +705,37 @@ export async function executeHttpRequestFromFile(
       responsePath = baseResponsePath;
     }
     
+    // Detect environment decorator for this section
+    let envName: string | null = null;
+    let envUsed = false;
+    
+    if (startLine !== undefined) {
+      envName = getEnvironmentForSection(document, startLine);
+    } else {
+      // For full file execution, check from the beginning
+      envName = getEnvironmentForSection(document, 0);
+    }
+    
+    // If environment decorator is present, process variables
+    if (envName) {
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (workspaceFolders && workspaceFolders.length > 0) {
+        const workspacePath = workspaceFolders[0].uri.fsPath;
+        const envManager = EnvironmentManager.getInstance();
+        
+        // Validate variables
+        const unresolvedVars = envManager.validateVariables(content, envName, workspacePath);
+        if (unresolvedVars.length > 0) {
+          const message = `Unresolved variables in environment '${envName}': ${unresolvedVars.join(', ')}`;
+          vscode.window.showWarningMessage(message);
+        }
+        
+        // Replace variables
+        content = envManager.replaceVariables(content, envName, workspacePath);
+        envUsed = true;
+      }
+    }
+    
     // Parse request
     const config = parseHttpRequest(content);
     if (!config) {
@@ -661,7 +744,7 @@ export async function executeHttpRequestFromFile(
     }
     
     // Get timeout and save file settings from configuration
-    const timeoutConfig = vscode.workspace.getConfiguration('cursorDeeplink');
+    const timeoutConfig = vscode.workspace.getConfiguration('cursorToys');
     const timeout = timeoutConfig.get<number>('httpRequestTimeout', 10);
     const saveFile = timeoutConfig.get<boolean>('httpRequestSaveFile', true);
     
@@ -775,9 +858,15 @@ export async function executeHttpRequestFromFile(
           });
         }
         
-        const message = saveFile 
-          ? `HTTP request executed successfully. Status: ${result.statusCode} (${executionTimeSeconds}s)`
-          : `HTTP request executed successfully. Status: ${result.statusCode} (${executionTimeSeconds}s) - Preview mode`;
+        // Build success message
+        let message = `HTTP request executed successfully. Status: ${result.statusCode} (${executionTimeSeconds}s)`;
+        if (envUsed && envName) {
+          message += ` [${envName}]`;
+        }
+        if (!saveFile) {
+          message += ' - Preview mode';
+        }
+        
         vscode.window.showInformationMessage(message);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -791,3 +880,69 @@ export async function executeHttpRequestFromFile(
   }
 }
 
+/**
+ * Copies the curl command to clipboard with variables replaced
+ * @param requestUri The URI of the request file
+ * @param startLine Optional start line for section-based execution
+ * @param endLine Optional end line for section-based execution
+ * @returns Promise that resolves when copied
+ */
+export async function copyCurlCommand(
+  requestUri: vscode.Uri,
+  startLine?: number,
+  endLine?: number
+): Promise<void> {
+  try {
+    // Read request file
+    const document = await vscode.workspace.openTextDocument(requestUri);
+    
+    let content: string;
+    
+    // If section is specified, extract only that section
+    if (startLine !== undefined && endLine !== undefined) {
+      const curlCommand = extractCurlFromSection(document, startLine, endLine);
+      if (!curlCommand) {
+        vscode.window.showErrorMessage('No curl command found in the selected section.');
+        return;
+      }
+      content = curlCommand;
+    } else {
+      // Use entire file content
+      content = document.getText();
+    }
+    
+    // Detect environment decorator for this section
+    let envName: string | null = null;
+    
+    if (startLine !== undefined) {
+      envName = getEnvironmentForSection(document, startLine);
+    } else {
+      // For full file execution, check from the beginning
+      envName = getEnvironmentForSection(document, 0);
+    }
+    
+    // If environment decorator is present, process variables
+    if (envName) {
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (workspaceFolders && workspaceFolders.length > 0) {
+        const workspacePath = workspaceFolders[0].uri.fsPath;
+        const envManager = EnvironmentManager.getInstance();
+        
+        // Replace variables
+        content = envManager.replaceVariables(content, envName, workspacePath);
+      }
+    }
+    
+    // Copy to clipboard
+    await vscode.env.clipboard.writeText(content);
+    
+    let message = 'cURL command copied to clipboard';
+    if (envName) {
+      message += ` (with ${envName} environment variables)`;
+    }
+    vscode.window.showInformationMessage(message);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    vscode.window.showErrorMessage(`Error copying cURL command: ${errorMessage}`);
+  }
+}

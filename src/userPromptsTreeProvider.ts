@@ -55,7 +55,7 @@ export class UserPromptsTreeProvider implements vscode.TreeDataProvider<PromptFi
       const treeItem = new vscode.TreeItem(element.fileName, vscode.TreeItemCollapsibleState.None);
       treeItem.resourceUri = element.uri;
       treeItem.command = {
-        command: 'cursor-commands-toys.openUserPrompt',
+        command: 'cursor-toys.openUserPrompt',
         title: 'Open Prompt',
         arguments: [element.uri]
       };
@@ -191,7 +191,7 @@ export class UserPromptsTreeProvider implements vscode.TreeDataProvider<PromptFi
     // Root level - get all folders and files
     try {
       // Get allowed extensions from configuration
-      const config = vscode.workspace.getConfiguration('cursorDeeplink');
+      const config = vscode.workspace.getConfiguration('cursorToys');
       const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
 
       // Get paths to folders to read from

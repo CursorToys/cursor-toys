@@ -15,7 +15,7 @@ export async function generateDeeplink(
 ): Promise<string | null> {
   try {
     // Read configuration
-    const config = vscode.workspace.getConfiguration('cursorDeeplink');
+    const config = vscode.workspace.getConfiguration('cursorToys');
     const linkType = config.get<string>('linkType', 'deeplink');
     const customBaseUrl = config.get<string>('customBaseUrl', '');
     const allowedExtensions = config.get<string[]>('allowedExtensions', ['md']);
@@ -23,7 +23,7 @@ export async function generateDeeplink(
     // Validate custom URL if custom type is selected
     if (linkType === 'custom') {
       if (!customBaseUrl || customBaseUrl.trim() === '') {
-        vscode.window.showErrorMessage('Custom base URL is required when linkType is set to "custom". Please configure cursorDeeplink.customBaseUrl in settings.');
+        vscode.window.showErrorMessage('Custom base URL is required when linkType is set to "custom". Please configure cursorToys.customBaseUrl in settings.');
         return null;
       }
       // Validate URL format

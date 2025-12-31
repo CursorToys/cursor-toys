@@ -55,7 +55,7 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
       const treeItem = new vscode.TreeItem(element.fileName, vscode.TreeItemCollapsibleState.None);
       treeItem.resourceUri = element.uri;
       treeItem.command = {
-        command: 'cursor-commands-toys.openUserCommand',
+        command: 'cursor-toys.openUserCommand',
         title: 'Open Command',
         arguments: [element.uri]
       };
@@ -208,7 +208,7 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
     // Root level - get all folders and files
     try {
       // Get allowed extensions from configuration
-      const config = vscode.workspace.getConfiguration('cursorDeeplink');
+      const config = vscode.workspace.getConfiguration('cursorToys');
       const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
       const viewMode = config.get<string>('personalCommandsView', 'both');
 
