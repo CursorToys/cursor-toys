@@ -1,115 +1,232 @@
-# Cursor Command Toys 🚀 Supercharge Your Cursor Development Experience
+<div align="center">
 
-A powerful VS Code/Cursor extension that **enhances your development workflow** by making Cursor's AI capabilities more accessible, shareable, and efficient. Transform your coding experience with seamless command management, instant HTTP request testing, and effortless team collaboration.
+# 🎮 CursorToys
 
-**Build faster, collaborate better, and unlock the full potential of Cursor AI.**
+### The Ultimate Productivity Toolkit for Cursor AI
 
-## 🎬 Visual Demo
+**Supercharge your workflow** • **Test APIs in-editor** • **Share instantly** • **Collaborate effortlessly**
 
-### Share Commands and Generate Deeplinks
-![Share Command and Generate Deeplink](.github/assets/share-command-and-generate-deeplink.gif)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://marketplace.visualstudio.com/items?itemName=Godrix.cursor-toys)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/d/Godrix.cursor-toys.svg)](https://marketplace.visualstudio.com/items?itemName=Godrix.cursor-toys)
+[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/godrix/cursor-toys?label=Open%20VSX%20downloads)](https://open-vsx.org/extension/godrix/cursor-toys)
 
-### Import Commands, Rules, and Prompts
-![Import Commands, Rules, and Prompts](.github/assets/import-commands-rules-prompts.gif)
+[Installation](#-quick-start) • [Features](#-features) • [Configuration](#-configuration) • [Support](#-support)
 
-### Personal Commands Tree View
-![Personal Commands Tree View](.github/assets/personal-commands-view-tree.gif)
+</div>
 
-## 🎯 Why Cursor Command Toys?
+---
 
-**Cursor is powerful, but managing AI commands, testing APIs, and sharing configurations shouldn't slow you down.** This extension bridges the gap between Cursor's capabilities and your workflow, providing:
+## 🎯 What is CursorToys?
 
-### ⚡ **Faster Development**
-- **One-Click Command Execution**: Execute HTTP requests directly from your workspace without leaving your editor
-- **Instant Command Access**: Visual tree view for all your personal commands, accessible across all projects
-- **Smart CodeLens Integration**: Generate share links and execute requests directly from your files
+**CursorToys** transforms Cursor AI into a **collaborative powerhouse**. Share AI configurations instantly, test APIs without leaving your editor, optimize files and clipboard content, and build reusable command libraries that work across all your projects.
 
-### 🤝 **Better Collaboration**
-- **Share AI Configurations Instantly**: Turn your commands, rules, and prompts into shareable links with one click
-- **Team Consistency**: Ensure everyone uses the same AI instructions and best practices
-- **Knowledge Replication**: Import team configurations in seconds, not minutes
+> **Stop context-switching.** Everything you need to maximize Cursor AI productivity, in one extension.
 
-### 🛠️ **Enhanced Workflow**
-- **HTTP Request Testing**: Test APIs directly in your editor with syntax highlighting and automatic response formatting
-- **Personal Command Library**: Build a reusable library of commands that work across all your projects
-- **Seamless Integration**: Works naturally with Cursor's existing features, no workflow disruption
+### Why Developers Love It
 
-### 📦 **Developer-First Features**
-- **Multiple Request Management**: Organize and execute multiple HTTP requests in a single file
-- **Execution Time Tracking**: Monitor API performance directly in your editor
-- **Flexible Formats**: Support for curl commands, JSON, and structured request formats
+```
+✨ One-click sharing     → No more copy-pasting commands
+🚀 In-editor API testing → Zero external tools, environment variables support
+📚 Personal libraries    → Reusable across all projects
+👥 Team collaboration    → Sync AI configs instantly
+🗜️ File optimization    → Minify JSON, HTML, CSS, JS instantly
+📋 Smart clipboard      → Auto-detect and optimize clipboard content
+```
 
-## ✨ What's New
+---
 
-### HTTP Request Execution (Latest)
+## 🎬 See It In Action
 
-- **Execute HTTP Requests Directly from Files**: Create `.req` or `.request` files in `.cursor/http/` folder with curl commands or JSON format and execute them with a single click
-- **CodeLens Integration**: Click "Send Request" links directly in your HTTP request files to execute requests
-- **Multiple Requests Support**: Organize multiple requests in a single file using markdown sections (## Section Title)
-- **Automatic Response Handling**: Responses are automatically saved to `.res` or `.response` files (or shown in preview mode)
-- **Syntax Highlighting**: Full syntax highlighting for both HTTP request (`.req`, `.request`) and response (`.res`, `.response`) files
-- **Execution Time Tracking**: See how long each request took to execute
-- **Flexible Formats**: Supports both curl commands and structured JSON format
-- **Smart Response Formatting**: Automatically formats JSON and XML responses for better readability
+<table>
+<tr>
+<td width="50%">
 
-### Personal Commands Management (v0.4.0)
+### 🔗 Share Commands Instantly
+![Share Commands](.github/assets/share-command-and-generate-deeplink.gif)
+*Generate shareable links with one click*
 
-![Personal Commands Tree View](.github/assets/personal-commands-view-tree.gif)
+</td>
+<td width="50%">
 
-- **Tree View Interface**: New "Personal Commands" sidebar view to browse and manage your user commands from `~/.cursor/commands/` or `~/.claude/commands/`
-- **Visual Command Management**: Manage personal commands directly from the tree view with actions to:
-  - Open command files
-  - Generate deeplinks for sharing
-  - Rename commands
-  - Delete commands
-  - Reveal commands in Explorer
-  - Refresh the tree view
-- **Automatic Folder Creation**: Tree view automatically creates user commands folder if it doesn't exist
-- **Smart Filtering**: Tree view filters files by allowed extensions from configuration
-- **Alphabetical Sorting**: Commands are automatically sorted alphabetically for easy navigation
+### 📥 Import Configurations
+![Import Commands](.github/assets/import-commands-rules-prompts.gif)
+*Import team configs in seconds*
 
-### Enhanced User Experience
-- **Improved Organization**: Enhanced user commands management with visual tree view interface
-- **Better Accessibility**: Dedicated sidebar view for personal commands makes them easily accessible across all projects
+</td>
+</tr>
+<tr>
+<td colspan="2">
 
-## 🚀 Core Features
+### 📚 Personal Command Library
+![Personal Commands](.github/assets/personal-commands-view-tree.gif)
+*Visual tree view for all your commands and prompts*
 
-### 📋 **Command & Configuration Management**
+</td>
+</tr>
+</table>
 
-**Personal Commands Library**
-- Visual tree view sidebar for all your personal commands
-- Access commands across all projects from one place
-- Organize, rename, and manage commands with ease
-- Automatic folder creation and smart filtering
+---
 
-**Instant Sharing & Import**
-- Generate shareable deeplinks with one click
-- Import team configurations instantly via keyboard shortcut (`Cmd+Shift+I`)
-- Support for both `.cursor/` and `.claude/` command folders
-- Multiple link formats (deeplink, web, custom) for any distribution method
+## ✨ Features
 
-**Smart CodeLens Integration**
-- Click-to-share links directly in your files
-- No context menu navigation needed
-- Works seamlessly with your existing workflow
+### 🔗 Instant Sharing & Collaboration
 
-### 🌐 **HTTP Request Testing**
+**Share AI configurations in one click** — No more screenshots or copy-pasting.
 
-**In-Editor API Testing**
-- Execute HTTP requests directly from `.req` or `.request` files
-- Support for curl commands and structured JSON format
-- Syntax highlighting for both requests and responses
-- Automatic JSON/XML response formatting
+- 🎯 **One-Click Share Links** — Convert commands, rules, and prompts to shareable deeplinks
+- ⌨️ **Fast Import** — `Cmd+Shift+I` to import from any link
+- 🔄 **Multiple Formats** — Deeplink, web URL, or custom protocols
+- 👥 **Team Sync** — Everyone uses the same AI instructions
 
-**Advanced Request Management**
-- Multiple requests in one file using markdown sections
-- Individual execution per section via CodeLens
-- Execution time tracking for performance monitoring
-- Flexible response handling (save to file or preview mode)
+### 🌐 In-Editor API Testing
 
-### 💬 **Enhanced Chat Integration**
+**Test APIs without leaving Cursor** — Full REST client built-in.
 
-**Direct Code Interaction**
+- 🚀 **Execute Requests** — Run HTTP requests from `.req` files with CodeLens
+- 📝 **Multiple Formats** — cURL commands or structured JSON
+- ⚡ **Performance Tracking** — See execution time for each request
+- 🎨 **Syntax Highlighting** — Beautiful highlighting for requests and responses
+- 🌍 **Environment Variables** — Use `{{variableName}}` for dynamic values
+- 🔧 **Multiple Environments** — Switch between dev, staging, prod instantly
+- 💾 **Auto-Save Responses** — Or preview-only mode for quick tests
+
+### 📚 Personal Command Libraries
+
+**Build reusable libraries** — Commands that work across all projects.
+
+- 🗂️ **Visual Tree View** — Browse all personal commands and prompts in Explorer sidebar
+- 🏠 **Personal + Project** — Separate libraries for personal and project-specific
+- ✏️ **Easy Management** — Rename, delete, reveal in folder
+- 🔍 **Smart Filtering** — Filter by file extensions
+- 📂 **Hierarchical Folders** — Organize in subfolders with drag-and-drop
+- 🎯 **Drag & Drop** — Move commands/prompts between folders easily
+
+### 🗜️ File Minification & Optimization
+
+**Optimize files and clipboard content** — Reduce file sizes instantly.
+
+- 📦 **Minify Files** — One-click minification for JSON, HTML, XML, CSS, SVG, JS, TS
+- 📋 **Clipboard Minification** — Minify clipboard content with auto-detection
+- 📊 **Statistics** — See original size, minified size, and savings percentage
+- ⚙️ **Configurable** — Customize output suffix and behavior
+- 🎯 **Context Menu** — Right-click any supported file → Minify File
+
+### 💬 Chat Integration
+
+**Send code to Cursor AI faster** — No manual copy-paste.
+
+- ✂️ **Send Selection** — Right-click → Send to Chat
+- 🔗 **Prompt Deeplinks** — Generate shareable prompt links from selected code
+- 📝 **Custom Text** — Send any text directly to chat
+- 📍 **Context Included** — File path, language, and line numbers auto-added
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+
+**Option 1: VS Code Marketplace** (Recommended)
+- [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Godrix.cursor-toys)
+- [Open VSX Registry](https://open-vsx.org/extension/godrix/cursor-toys) (for Cursor and other editors)
+
+**Option 2: Manual Installation**
+1. Download the latest `.vsix` from [GitHub Releases](https://github.com/godrix/cursor-toys/releases)
+2. Open Cursor/VS Code
+3. Go to Extensions (`Cmd+Shift+X`)
+4. Click `...` → `Install from VSIX...`
+5. Select the downloaded file
+
+### First Steps
+
+1. **Open Command Palette** (`Cmd+Shift+P`)
+2. Type **"CursorToys"** to see all available commands
+3. Try **"CursorToys: Generate Share Link"** on a command file
+4. Press **`Cmd+Shift+I`** to import a shared link
+
+---
+
+## 📖 Usage Examples
+
+### 🔗 Sharing Commands
+
+**Right-click any command file** → `CursorToys: Generate Command Share Link`
+
+```bash
+# Share link copied to clipboard!
+cursor://godrix.cursor-toys/command?text=...
+
+# Or web format
+https://cursor.com/link/command?text=...
+```
+
+**Send to team** → They press `Cmd+Shift+I` → Command imported ✨
+
+### 🌐 HTTP Request Testing
+
+**Create a `.req` file** in `.cursor/http/`:
+
+```http
+## Get Users
+GET {{BASE_URL}}/api/users
+Authorization: Bearer {{API_TOKEN}}
+
+## Create User  
+POST {{BASE_URL}}/api/users
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com"
+}
+```
+
+**Set up environment variables** in `.cursor/http/environments/.env.dev`:
+
+```env
+BASE_URL=http://localhost:3000
+API_TOKEN=your-dev-token-here
+```
+
+**Click CodeLens "Send Request"** → Variables replaced → Response appears instantly! ⚡
+
+### 🗜️ Minify Files
+
+**Optimize any file with one click:**
+
+```bash
+# Right-click any JSON, HTML, XML, CSS, SVG, JS, or TS file
+→ "Minify File"
+→ Creates file.min.ext with optimized content
+```
+
+**Or minify clipboard content:**
+
+```bash
+# Copy large JSON/HTML/CSS to clipboard
+Cmd+Shift+P → "Trim & Minify Clipboard"
+→ Clipboard optimized automatically!
+```
+
+**Statistics shown:** `Savings: 15.3KB (68.2%) | Original: 22.4KB → Minified: 7.1KB`
+
+### 📚 Personal Commands
+
+Your personal commands in `~/.cursor/commands/` appear in the sidebar:
+
+```
+📁 Personal Commands
+  ├─ 📄 code-review.md
+  ├─ 📄 refactor-helper.md
+  └─ 📄 bug-analyzer.md
+```
+
+**Right-click** → Generate link, rename, delete, or reveal in folder.
+
+---
+
+## ⚙️ Configuration
 - Send selected code directly to Cursor chat
 - Custom text injection for faster context building
 - Streamlined AI interaction workflow
@@ -124,12 +241,12 @@ A powerful VS Code/Cursor extension that **enhances your development workflow** 
 - Click Install
 
 **Direct Links:**
-- [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Godrix.cursor-deeplink)
-- [Open VSX Registry](https://open-vsx.org/extension/godrix/cursor-deeplink) (for Cursor and other editors)
+- [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Godrix.cursor-toys)
+- [Open VSX Registry](https://open-vsx.org/extension/godrix/cursor-toys) (for Cursor and other editors)
 
 ### Manual Install
 
-1. Download the latest `.vsix` from [GitHub Releases](https://github.com/godrix/cursor-deeplink/releases)
+1. Download the latest `.vsix` from [GitHub Releases](https://github.com/godrix/cursor-toys/releases)
 2. Open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
 3. Run **"Extensions: Install from VSIX..."**
 4. Select the downloaded file
@@ -336,17 +453,270 @@ Configure HTTP request behavior in your settings:
 
 ```json
 {
-  "cursorDeeplink.httpRequestTimeout": 10,
-  "cursorDeeplink.httpRequestSaveFile": false
+  "cursorToys.httpRequestTimeout": 10,
+  "cursorToys.httpRequestSaveFile": false
 }
 ```
 
-- **`cursorDeeplink.httpRequestTimeout`**: Timeout in seconds for HTTP requests (default: 10 seconds)
-- **`cursorDeeplink.httpRequestSaveFile`**: Save HTTP response to file. If `false`, only shows preview without saving (default: `false`)
+- **`cursorToys.httpRequestTimeout`**: Timeout in seconds for HTTP requests (default: 10 seconds)
+- **`cursorToys.httpRequestSaveFile`**: Save HTTP response to file. If `false`, only shows preview without saving (default: `false`)
 
 ### Requirements
 
 - **curl**: The extension uses `curl` command-line tool to execute requests. Make sure `curl` is installed and available in your system PATH.
+
+### HTTP Environment Variables
+
+**Manage environment-specific configurations** for your API requests.
+
+#### Setting Up Environments
+
+1. **Initialize Environments Folder**:
+   - Navigate to `.cursor/http/` folder in your workspace
+   - Right-click → "CursorToys: Create Environments Folder"
+   - Or use Command Palette → "CursorToys: Create Environments Folder"
+
+2. **Environment Files Structure**:
+   ```
+   .cursor/http/
+     environments/
+       .env              # Default environment
+       .env.dev          # Development environment
+       .env.staging      # Staging environment
+       .env.prod         # Production environment
+       .env.example      # Template with documentation
+       .gitignore        # Protects sensitive data
+   ```
+
+3. **Create Environment Variables**:
+   ```env
+   # .cursor/http/environments/.env.dev
+   BASE_URL=http://localhost:3000
+   API_KEY=your-dev-api-key
+   AUTH_TOKEN=dev-token-123
+   TIMEOUT=10000
+   API_VERSION=v1
+   ```
+
+#### Using Variables in Requests
+
+Use `{{variableName}}` syntax in your `.req` files:
+
+```http
+## Get User Profile
+GET {{BASE_URL}}/api/{{API_VERSION}}/users/me
+Authorization: Bearer {{AUTH_TOKEN}}
+Content-Type: application/json
+
+## Update User
+PUT {{BASE_URL}}/api/{{API_VERSION}}/users/123
+Authorization: Bearer {{AUTH_TOKEN}}
+Content-Type: application/json
+
+{
+  "name": "Updated Name"
+}
+```
+
+#### Switching Environments
+
+**Method 1: Command Palette**
+1. Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
+2. Type "CursorToys: Select HTTP Environment"
+3. Choose environment from list (dev, staging, prod, etc.)
+
+**Method 2: Status Bar**
+- Click environment name in status bar (bottom right)
+- Select new environment from quick pick
+
+**Method 3: Configuration**
+```json
+{
+  "cursorToys.httpDefaultEnvironment": "dev"
+}
+```
+
+#### Environment Management Commands
+
+| Command | Description |
+|:--------|:------------|
+| `cursor-toys.selectEnvironment` | Switch between environments |
+| `cursor-toys.openEnvironments` | Open environments folder |
+| `cursor-toys.createEnvironment` | Create new environment file |
+| `cursor-toys.initializeEnvironments` | Create default structure |
+
+#### Features
+
+- ✅ **Case-Insensitive**: Variables match regardless of case
+- ✅ **Validation**: Warns about unresolved variables before sending
+- ✅ **Caching**: Fast variable lookup with automatic cache management
+- ✅ **Git Safe**: Includes `.gitignore` to protect sensitive data
+- ✅ **Multiple Formats**: Supports quoted and unquoted values
+
+#### Variable File Format
+
+```env
+# Comments start with #
+KEY=value
+KEY_WITH_QUOTES="value with spaces"
+KEY_WITH_SINGLE='single quotes also work'
+
+# Empty lines are ignored
+
+# No spaces around = sign (best practice)
+CORRECT=value
+# INCORRECT = value  # spaces cause issues
+```
+
+## 🗜️ File Minification & Clipboard Optimization
+
+**Optimize your files and clipboard content to reduce size and improve performance.**
+
+### Minifying Files
+
+**Supported File Types:**
+- 📄 **JSON** — Remove whitespace, compact structure
+- 🌐 **HTML** — Remove comments, excess whitespace, line breaks
+- 📋 **XML** — Remove comments, whitespace
+- 🎨 **CSS** — Remove comments, whitespace, unnecessary semicolons
+- 🖼️ **SVG** — Remove metadata, comments, optimize structure
+- 💻 **JavaScript** — Remove comments and excess whitespace
+- 📘 **TypeScript** — Remove comments and excess whitespace
+
+#### Method 1: Context Menu (Recommended)
+
+1. Right-click any supported file in Explorer or editor
+2. Select **"CursorToys: Minify File"**
+3. Minified file created with configurable suffix (default: `.min`)
+4. Statistics shown: `Savings: 15.3KB (68.2%) | Original: 22.4KB → Minified: 7.1KB`
+
+#### Method 2: Editor Title
+
+1. Open any supported file
+2. Click minify icon (📦) in editor title bar
+3. Minified file created automatically
+
+#### Method 3: Command Palette
+
+1. Open file to minify
+2. Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
+3. Type "CursorToys: Minify File"
+4. Minified file created
+
+### Minifying Clipboard Content
+
+**Perfect for optimizing large JSON responses, HTML snippets, or CSS before pasting into chat.**
+
+#### Auto-Detection Mode (Recommended)
+
+1. Copy content to clipboard
+2. Press `Cmd+Shift+P` → "CursorToys: Trim & Minify Clipboard"
+3. Content type auto-detected and minified
+4. Optimized content replaces clipboard
+5. Statistics shown
+
+#### Manual Type Selection
+
+1. Copy content to clipboard
+2. Press `Cmd+Shift+P` → "CursorToys: Trim & Minify Clipboard (Select Type)"
+3. Choose content type from list
+4. Content minified based on selected type
+5. Statistics shown
+
+### Minification Examples
+
+#### JSON Minification
+
+**Before (234 bytes):**
+```json
+{
+  "user": {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "age": 30
+  }
+}
+```
+
+**After (71 bytes, 69.7% savings):**
+```json
+{"user":{"name":"John Doe","email":"john@example.com","age":30}}
+```
+
+#### HTML Minification
+
+**Before (312 bytes):**
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Page Title</title>
+  </head>
+  <body>
+    <!-- Comment -->
+    <h1>Hello World</h1>
+  </body>
+</html>
+```
+
+**After (89 bytes, 71.5% savings):**
+```html
+<!DOCTYPE html><html><head><title>Page Title</title></head><body><h1>Hello World</h1></body></html>
+```
+
+### Configuration
+
+```json
+{
+  // Suffix for minified files (e.g., .min creates file.min.js)
+  "cursorToys.minify.outputSuffix": ".min",
+  
+  // Preserve comments (future feature)
+  "cursorToys.minify.preserveComments": false
+}
+```
+
+### Use Cases
+
+#### Use Case 1: Optimize API Responses for Chat
+**Problem:** Large JSON responses exceed chat context limits.
+
+**Solution:**
+1. Copy JSON response to clipboard
+2. Run "Trim & Minify Clipboard"
+3. Paste optimized JSON into chat
+4. **Result:** More context available for AI
+
+#### Use Case 2: Reduce Build Output Size
+**Problem:** Production files too large.
+
+**Solution:**
+1. Right-click CSS/JS files → "Minify File"
+2. Deploy `.min` versions
+3. **Result:** Faster load times, reduced bandwidth
+
+#### Use Case 3: Clean HTML Templates
+**Problem:** HTML templates with excessive whitespace and comments.
+
+**Solution:**
+1. Open template file
+2. Click minify icon in title bar
+3. Use minified version in production
+4. **Result:** Cleaner, smaller HTML files
+
+### Minification Statistics
+
+After minification, you'll see detailed statistics:
+
+```
+✅ Clipboard minified! 
+Savings: 15.3KB (68.2%) | Original: 22.4KB → Minified: 7.1KB
+```
+
+- **Savings**: Amount of space saved (in KB)
+- **Percentage**: Reduction percentage
+- **Original**: Original file/clipboard size
+- **Minified**: Final size after minification
 
 ## 🔗 Link Formats & Distribution
 
@@ -354,7 +724,7 @@ Choose the link format that works best for your sharing needs:
 
 | Format | Example | Best For |
 | :--- | :--- | :--- |
-| **Deeplink** | `cursor://anysphere.cursor-deeplink/prompt?text=...` | Direct sharing in Slack, Discord, or other tools that support native links |
+| **Deeplink** | `cursor://godrix.cursor-toys/prompt?text=...` | Direct sharing in Slack, Discord, or other tools that support native links |
 | **Web Link** | `https://cursor.com/link/prompt?text=...` | Blogs, documentation, forums, or any platform requiring HTTP links |
 | **Custom** | `https://example.com/link/prompt?text=...` | Internal systems, custom distribution channels, or branded sharing |
 
@@ -362,13 +732,80 @@ Choose the link format that works best for your sharing needs:
 
 | Setting | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `cursorDeeplink.linkType` | `string` | `"deeplink"` | Link format: `"deeplink"`, `"web"`, or `"custom"` |
-| `cursorDeeplink.customBaseUrl` | `string` | `""` | Custom base URL (only used when `linkType` is `"custom"`) |
-| `cursorDeeplink.allowedExtensions` | `string[]` | `["md", "mdc"]` | File extensions allowed for link processing |
-| `cursorDeeplink.commandsFolder` | `string` | `"cursor"` | Commands folder: `"cursor"` or `"claude"` |
-| `cursorDeeplink.personalCommandsView` | `string` | `"both"` | Personal commands view: `"both"`, `"cursor"`, or `"claude"` |
-| `cursorDeeplink.httpRequestTimeout` | `number` | `10` | HTTP request timeout in seconds |
-| `cursorDeeplink.httpRequestSaveFile` | `boolean` | `false` | Save HTTP responses to file (vs preview only) |
+| **Link Generation** |
+| `cursorToys.linkType` | `string` | `"deeplink"` | Link format: `"deeplink"`, `"web"`, or `"custom"` |
+| `cursorToys.customBaseUrl` | `string` | `""` | Custom base URL (only used when `linkType` is `"custom"`) |
+| `cursorToys.allowedExtensions` | `string[]` | `["md", "mdc"]` | File extensions allowed for link processing |
+| **Folder Configuration** |
+| `cursorToys.baseFolder` | `string` | `"cursor"` | Base folder for commands and HTTP files (e.g., `"cursor"`, `"vscode"`, `"ai"`) |
+| `cursorToys.commandsFolder` | `string` | `"cursor"` | Commands folder: `"cursor"` or `"claude"` |
+| `cursorToys.personalCommandsView` | `string` | `"both"` | Personal commands view: `"both"`, `"cursor"`, or `"claude"` |
+| **HTTP Requests** |
+| `cursorToys.httpRequestTimeout` | `number` | `10` | HTTP request timeout in seconds |
+| `cursorToys.httpRequestSaveFile` | `boolean` | `false` | Save HTTP responses to file (vs preview only) |
+| `cursorToys.httpDefaultEnvironment` | `string` | `"dev"` | Default HTTP environment name |
+| **Minification** |
+| `cursorToys.minify.outputSuffix` | `string` | `".min"` | Suffix for minified files (e.g., `.min` creates `file.min.js`) |
+| `cursorToys.minify.preserveComments` | `boolean` | `false` | Preserve comments when minifying (future feature) |
+
+## 🔄 VS Code Compatibility
+
+CursorToys is fully compatible with VS Code, but some Cursor-specific features have limitations:
+
+### ✅ Features That Work Fully in VS Code
+
+- **Personal Commands/Prompts Management** — Full library management with tree view
+- **In-Editor API Testing** — Complete HTTP request testing with environment variables
+- **File Minification** — All minification features work identically
+- **Clipboard Processing** — Smart clipboard optimization
+- **Web-Based Sharing Links** — Use `https://cursor.com/link/` format
+- **Custom Base Folder** — Configure any folder name (e.g., `.vscode`, `.ai`)
+
+### ⚠️ Features With Limitations in VS Code
+
+#### Deeplinks (`cursor://`)
+**Limitation:** Native `cursor://` protocol links only work in Cursor IDE.
+
+**Workaround:** Configure link type to web:
+```json
+{
+  "cursorToys.linkType": "web"
+}
+```
+
+#### Send to Chat
+**Limitation:** Commands that send text to Cursor's AI chat won't work (no chat in VS Code).
+
+**Workaround:** Manually copy the generated deeplink and use it in a compatible chat interface or AI tool.
+
+#### Import from Deeplinks
+**Limitation:** Importing via `cursor://` deeplinks requires Cursor IDE.
+
+**Workaround:** Share files directly or use web links for distribution.
+
+#### Rules and Prompts
+**Limitation:** Rules and prompts are Cursor-specific features that may not work in VS Code.
+
+**Note:** These features use the configured base folder, but their functionality depends on Cursor AI's architecture. They work for organization and sharing, but won't have the same behavior in VS Code as in Cursor IDE.
+
+### 🚀 Using CursorToys with VS Code
+
+1. **Install the extension** normally from VS Code Marketplace
+2. **Configure base folder** in settings:
+   ```json
+   {
+     "cursorToys.baseFolder": "vscode"
+   }
+   ```
+3. **Set link type** to web:
+   ```json
+   {
+     "cursorToys.linkType": "web"
+   }
+   ```
+4. **All file management and API testing features work perfectly!**
+
+> **Note:** The `baseFolder` setting applies to all resources (commands, rules, prompts, HTTP). Rules and prompts are Cursor AI-specific features - they'll be stored in your configured folder but may not have full functionality outside of Cursor IDE.
 
 ## 💡 Real-World Use Cases
 
@@ -388,13 +825,26 @@ Choose the link format that works best for your sharing needs:
 
 **Solution**:
 1. Create `.req` files in `.cursor/http/` folder (or subfolders)
-2. Write requests in curl or JSON format
-3. Execute directly from editor with CodeLens
-4. View formatted responses with execution times
+2. Set up environment variables in `.cursor/http/environments/`
+3. Use `{{VARIABLE}}` syntax for dynamic values
+4. Execute directly from editor with CodeLens
+5. Switch environments via status bar or command palette
+6. View formatted responses with execution times
 
-**Result**: Faster iteration, better context, no context switching.
+**Result**: Faster iteration, better context, no context switching. Environment-specific testing without manual value changes.
 
-### Use Case 3: Personal Productivity
+### Use Case 3: Optimizing Large API Responses
+**Problem**: Large JSON responses from APIs take up too much space in chat context.
+
+**Solution**:
+1. Copy API response to clipboard
+2. Run "Trim & Minify Clipboard" command
+3. Paste optimized JSON into Cursor chat
+4. More room for actual code and questions
+
+**Result**: Better use of chat context limits, faster AI responses, cleaner conversations.
+
+### Use Case 4: Personal Productivity
 **Problem**: Recreating the same commands in every new project.
 
 **Solution**:
@@ -405,7 +855,7 @@ Choose the link format that works best for your sharing needs:
 
 **Result**: Your best AI workflows available everywhere, instantly.
 
-### Use Case 4: Knowledge Sharing
+### Use Case 5: Knowledge Sharing
 **Problem**: Great AI prompts and commands get lost in Slack/Discord history.
 
 **Solution**:
@@ -432,15 +882,19 @@ Configure the extension at both workspace and user levels:
 ```json
 {
   // Use web links for maximum compatibility
-  "cursorDeeplink.linkType": "web",
+  "cursorToys.linkType": "web",
   
   // Save HTTP responses for API testing workflow
-  "cursorDeeplink.httpRequestSaveFile": true,
-  "cursorDeeplink.httpRequestTimeout": 30,
+  "cursorToys.httpRequestSaveFile": true,
+  "cursorToys.httpRequestTimeout": 30,
+  "cursorToys.httpDefaultEnvironment": "dev",
   
   // Support both .cursor and .claude folders
-  "cursorDeeplink.commandsFolder": "cursor",
-  "cursorDeeplink.personalCommandsView": "both"
+  "cursorToys.commandsFolder": "cursor",
+  "cursorToys.personalCommandsView": "both",
+  
+  // Minification settings
+  "cursorToys.minify.outputSuffix": ".min"
 }
 ```
 
@@ -455,15 +909,29 @@ Configure the extension at both workspace and user levels:
 
 | Command | Description | Shortcut |
 | :--- | :--- | :--- |
-| `cursor-commands-toys.generate` | Generate share link (opens type selector) | - |
-| `cursor-commands-toys.generate-command` | Generate command share link | - |
-| `cursor-commands-toys.generate-rule` | Generate rule share link | - |
-| `cursor-commands-toys.generate-prompt` | Generate prompt share link | - |
-| `cursor-commands-toys.import` | Import share link to create file | `Ctrl+Shift+I` / `Cmd+Shift+I` |
-| `cursor-commands-toys.save-as-user-command` | Save project command as personal command | - |
-| `cursor-commands-toys.sendHttpRequest` | Execute HTTP request from file | - |
-| `cursor-commands-toys.sendToChat` | Send custom text to Cursor chat | - |
-| `cursor-commands-toys.sendSelectionToChat` | Send selected code to Cursor chat | - |
+| **Sharing & Import** |
+| `cursor-toys.generate` | Generate share link (opens type selector) | - |
+| `cursor-toys.generate-command` | Generate command share link | - |
+| `cursor-toys.generate-rule` | Generate rule share link | - |
+| `cursor-toys.generate-prompt` | Generate prompt share link | - |
+| `cursor-toys.import` | Import share link to create file | `Ctrl+Shift+I` / `Cmd+Shift+I` |
+| `cursor-toys.save-as-user-command` | Save project command as personal command | - |
+| `cursor-toys.save-as-user-prompt` | Save project prompt as personal prompt | - |
+| **HTTP Requests** |
+| `cursor-toys.sendHttpRequest` | Execute HTTP request from file | - |
+| `cursor-toys.copyCurlCommand` | Copy request as cURL command | - |
+| `cursor-toys.selectEnvironment` | Switch HTTP environment | - |
+| `cursor-toys.openEnvironments` | Open environments folder | - |
+| `cursor-toys.createEnvironment` | Create new environment file | - |
+| `cursor-toys.initializeEnvironments` | Create environments folder structure | - |
+| **Minification** |
+| `cursor-toys.minifyFile` | Minify current file | - |
+| `cursor-toys.trimClipboard` | Auto-detect and minify clipboard | - |
+| `cursor-toys.trimClipboardWithPrompt` | Select type and minify clipboard | - |
+| **Chat Integration** |
+| `cursor-toys.sendToChat` | Send custom text to Cursor chat | - |
+| `cursor-toys.sendSelectionToChat` | Send selected code to Cursor chat | - |
+| `cursor-toys.copySelectionAsPrompt` | Copy selection as prompt link | - |
 
 **Pro Tip**: Most commands are accessible via CodeLens (clickable links in your files) or context menu (right-click), so you rarely need to remember command names!
 
@@ -499,7 +967,7 @@ We welcome contributions! Whether it's:
 - 📝 Documentation improvements
 - 🔧 Code contributions
 
-Please feel free to [open an issue](https://github.com/godrix/cursor-deeplink/issues) or submit a Pull Request.
+Please feel free to [open an issue](https://github.com/godrix/cursor-toys/issues) or submit a Pull Request.
 
 ## 📄 License
 

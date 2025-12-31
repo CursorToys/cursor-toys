@@ -1,6 +1,249 @@
 # Change Log
 
-All notable changes to the "Cursor Toys" extension will be documented in this file.
+All notable changes to the "CursorToys" extension will be documented in this file.
+
+## [Unreleased]
+
+### Added
+- New configuration `cursorToys.baseFolder` to customize base folder name for all resources
+  - Applies to commands, rules, prompts, and HTTP files
+  - Allows using `.vscode`, `.ai`, or any custom folder name instead of `.cursor`
+  - Default remains `cursor` for backward compatibility
+  - Enables better VS Code integration and organizational flexibility
+- VS Code compatibility documentation in README
+  - Detailed feature compatibility matrix
+  - Workarounds for Cursor-specific features
+  - Setup guide for VS Code users
+  - Clarification about rules and prompts being Cursor-specific
+- Support for custom folder names in menu contexts and CodeLens
+  - Updated regex patterns to accept multiple folder names
+  - Supports `.cursor`, `.claude`, `.vscode`, `.ai` and other custom names
+- Backward compatibility for prompts folder
+  - Shows both configured folder and `.cursor` folder if different
+  - Ensures users can access legacy prompts after changing base folder
+
+### Changed
+- `baseFolder` configuration now affects ALL resources consistently
+  - Commands, rules, prompts, and HTTP all respect the same base folder
+  - More intuitive and predictable behavior
+  - Rules and prompts remain Cursor-specific features (may not work in VS Code)
+- Menu contexts now support multiple folder names dynamically
+- All path handling updated to use helper functions from `utils.ts`
+  - `getBaseFolderName()`: Get configured base folder
+  - `getRulesPath()`: Get rules folder path (uses base folder)
+  - `getPromptsPath()`: Get prompts folder path (uses base folder)
+  - `getHttpPath()`: Get HTTP folder path
+  - `getEnvironmentsPath()`: Get environments folder path
+- Updated development guidelines in AGENTS.md
+  - Added documentation about folder customization
+  - Emphasized using helper functions instead of hardcoded paths
+  - Clarified that rules/prompts are Cursor-specific but use base folder
+
+### Documentation
+- Added comprehensive VS Code compatibility section to README
+- Updated AGENTS.md with base folder configuration guidelines
+- Clarified which features work in VS Code vs Cursor
+- Added note that rules and prompts use base folder but are Cursor-specific features
+
+## [1.0.0] - 2025-12-31
+
+### 🎉 Major Release: Complete Productivity Toolkit
+
+**⚠️ BREAKING CHANGES**: This is a major version update with breaking changes. Users will need to:
+- Uninstall `cursor-deeplink` and install `cursor-toys`
+- Update configuration keys from `cursorDeeplink.*` to `cursorToys.*`
+- Update any custom keybindings from `cursor-deeplink.*` to `cursor-toys.*`
+
+### Added
+
+#### 🗜️ **File Minification System**
+- **Minify Files**: New command to minify files directly in the editor
+  - Support for multiple file types: JSON, HTML, XML, CSS, SVG, JavaScript, TypeScript
+  - One-click minification via context menu or editor title
+  - Automatic detection of file type by extension
+  - Creates minified versions with configurable suffix (default: `.min`)
+  - Shows detailed statistics: original size, minified size, and savings percentage
+- **Clipboard Minification**: New commands to minify clipboard content
+  - `cursor-toys.trimClipboard`: Auto-detect and minify clipboard content
+  - `cursor-toys.trimClipboardWithPrompt`: Select content type manually before minifying
+  - Smart content type detection (JSON, HTML, XML, CSS, SVG, JavaScript, TypeScript, Text)
+  - Shows savings statistics after minification
+  - Preserves clipboard history
+- **Minification Features**:
+  - JSON: Remove whitespace, compact structure
+  - HTML/XML: Remove comments, excess whitespace, and line breaks
+  - CSS: Remove comments, whitespace, and unnecessary semicolons
+  - SVG: Remove metadata, comments, and optimize structure
+  - JavaScript/TypeScript: Remove comments and excess whitespace (basic minification)
+  - Text: Normalize whitespace and remove excessive line breaks
+- **Configuration Options**:
+  - `cursorToys.minify.preserveComments`: Preserve comments when minifying (future feature)
+  - `cursorToys.minify.outputSuffix`: Customize minified file suffix (default: `.min`)
+
+#### 🌍 **HTTP Environment Variables**
+- **Environment Management**: Complete system for managing HTTP request environments
+  - Store environment variables in `.cursor/http/environments/` folder
+  - Support for multiple environments: `.env`, `.env.dev`, `.env.staging`, `.env.prod`, etc.
+  - Variable substitution using `{{variableName}}` syntax in request files
+  - Case-insensitive variable matching
+- **Environment Commands**:
+  - `cursor-toys.selectEnvironment`: Switch between available environments
+  - `cursor-toys.openEnvironments`: Open environments folder in file explorer
+  - `cursor-toys.createEnvironment`: Create new environment with template
+  - `cursor-toys.initializeEnvironments`: Create default environment structure
+- **Environment Features**:
+  - Automatic environment detection from file structure
+  - Real-time variable substitution in HTTP requests
+  - Validation of unresolved variables before request execution
+  - Environment caching for better performance
+  - Support for default environment (`.env` file)
+- **Environment File Format**:
+  ```env
+  # Comment
+  BASE_URL=http://localhost:3000
+  API_KEY=your-api-key-here
+  TIMEOUT=10000
+  ```
+- **Usage in Requests**:
+  ```http
+  ## Get Users
+  GET {{BASE_URL}}/api/users
+  Authorization: Bearer {{API_KEY}}
+  ```
+- **Automatic Initialization**:
+  - Creates `.cursor/http/environments/` folder on first use
+  - Generates `.env` (default environment)
+  - Creates `.env.example` with documentation and examples
+  - Adds `.gitignore` to protect sensitive data
+- **Environment Status Bar**: Shows current active environment in status bar
+- **Configuration**:
+  - `cursorToys.httpDefaultEnvironment`: Set default environment name (default: `dev`)
+
+#### 📝 **Clipboard Processing System**
+- **Smart Content Detection**: Automatically detects content type from clipboard
+  - Recognizes JSON, HTML, XML, CSS, SVG, and other formats
+  - Suggests detected type with option to override
+- **Content Normalization**: Intelligent whitespace and formatting cleanup
+  - Preserves code structure while removing excess whitespace
+  - Removes duplicate line breaks (maintains maximum of one blank line)
+  - Trims leading/trailing whitespace from lines
+- **Minification Statistics**: Detailed feedback on processing results
+  - Shows original and final sizes in KB
+  - Displays savings in bytes and percentage
+  - Warns if no savings detected with option to continue
+- **Clipboard Utilities**:
+  - `readClipboard()`: Read clipboard content safely
+  - `writeClipboard()`: Write to clipboard with error handling
+  - `getClipboardStats()`: Get clipboard statistics without modifying
+  - `copyToClipboard()`: Copy with confirmation message
+
+### Changed
+- **Package Name**: `cursor-deeplink` → `cursor-toys`
+- **Display Name**: "Cursor Commands Toys" → "CursorToys"
+- **Command Namespace**: `cursor-deeplink.*` → `cursor-toys.*`
+- **Configuration Namespace**: `cursorDeeplink.*` → `cursorToys.*`
+- **View IDs**: `cursor-deeplink.*` → `cursor-toys.*`
+- **URI Handlers**: `godrix.cursor-deeplink` → `godrix.cursor-toys`
+- **Repository**: GitHub repository updated to `cursor-toys`
+- **HTTP Request Execution**: Enhanced with environment variable support
+  - Requests now support `{{variableName}}` variable substitution
+  - Environment variables loaded from `.cursor/http/environments/` folder
+  - Active environment can be switched via command palette
+  - Unresolved variables are validated before execution
+- **Editor Context Menu**: Added minify command for supported file types
+- **Editor Title Menu**: Added minify icon for quick access
+
+### Migration Guide
+
+If you're upgrading from `cursor-deeplink`:
+
+1. **Uninstall old extension**: Remove `cursor-deeplink` from VS Code
+2. **Install new extension**: Install `cursor-toys`
+3. **Update settings** (in `.vscode/settings.json` or user settings):
+   ```json
+   // Old
+   "cursorDeeplink.linkType": "web"
+   
+   // New
+   "cursorToys.linkType": "web"
+   ```
+4. **Update keybindings** (if customized):
+   ```json
+   // Old
+   "cursor-deeplink.import"
+   
+   // New
+   "cursor-toys.import"
+   ```
+
+### Technical Details
+
+#### New Files
+- **`src/minifier.ts`**: Complete minification system
+  - File type detection by extension and content
+  - Specialized minification functions for each supported type
+  - Size calculation and statistics generation
+  - Result formatting utilities
+- **`src/clipboardProcessor.ts`**: Clipboard processing utilities
+  - Read/write clipboard with error handling
+  - Content type detection from clipboard
+  - Whitespace normalization
+  - Minification with user prompts
+  - Statistics generation
+- **`src/environmentManager.ts`**: Environment variable management
+  - Singleton pattern for global access
+  - Environment file parsing (.env format)
+  - Variable substitution with `{{variable}}` syntax
+  - Cache management for performance
+  - Validation of unresolved variables
+  - Environment creation and initialization
+- **`src/httpEnvironmentProviders.ts`**: Environment UI providers
+  - Status bar item showing active environment
+  - Quick pick menu for environment selection
+  - Environment folder management
+
+#### Enhanced Files
+- **`src/extension.ts`**: 
+  - Registered minification commands
+  - Registered clipboard processing commands
+  - Registered environment management commands
+  - Added minify context menu items
+  - Integrated environment manager with HTTP requests
+  - Added status bar integration for environment display
+- **`src/httpRequestExecutor.ts`**:
+  - Enhanced with environment variable substitution
+  - Added validation for unresolved variables
+  - Improved error messages for missing variables
+- **`src/utils.ts`**:
+  - Added file type detection utilities
+  - Added minification helper functions
+- **`package.json`**:
+  - Added minification commands
+  - Added clipboard processing commands
+  - Added environment management commands
+  - Added minify configuration options
+  - Added context menu contributions
+  - Added activation events for new commands
+
+#### New Commands
+- `cursor-toys.minifyFile`: Minify current file and save with suffix
+- `cursor-toys.trimClipboard`: Auto-detect and minify clipboard
+- `cursor-toys.trimClipboardWithPrompt`: Select type and minify clipboard
+- `cursor-toys.selectEnvironment`: Switch HTTP environment
+- `cursor-toys.openEnvironments`: Open environments folder
+- `cursor-toys.createEnvironment`: Create new environment file
+- `cursor-toys.initializeEnvironments`: Initialize environment structure
+
+#### Configuration Options Added
+- `cursorToys.minify.preserveComments`: Preserve comments (default: `false`)
+- `cursorToys.minify.outputSuffix`: Minified file suffix (default: `.min`)
+- `cursorToys.httpDefaultEnvironment`: Default environment name (default: `dev`)
+
+### Keywords Added
+- `cursor-toys`, `rest`, `minify`, `clipboard`, `environment`, `variables` for better discoverability
+- Enhanced description highlighting productivity features
+
+---
 
 ## [0.9.0] - 2025-12-27
 
@@ -45,15 +288,15 @@ All notable changes to the "Cursor Toys" extension will be documented in this fi
   - `src/extension.ts`: Added all prompt management commands, tree view, and file watchers
   - `package.json`: Added personal prompts view, commands, menus, and activation events
 - **New Commands**:
-  - `cursor-commands-toys.save-as-user-prompt`: Save workspace prompt as personal prompt
-  - `cursor-commands-toys.openUserPrompt`: Open personal prompt file
-  - `cursor-commands-toys.generateUserPromptDeeplink`: Generate deeplink for personal prompt
-  - `cursor-commands-toys.deleteUserPrompt`: Delete personal prompt
-  - `cursor-commands-toys.revealUserPrompt`: Reveal personal prompt in file system
-  - `cursor-commands-toys.renameUserPrompt`: Rename personal prompt
-  - `cursor-commands-toys.refreshUserPrompts`: Refresh personal prompts tree view
+  - `cursor-toys.save-as-user-prompt`: Save workspace prompt as personal prompt
+  - `cursor-toys.openUserPrompt`: Open personal prompt file
+  - `cursor-toys.generateUserPromptDeeplink`: Generate deeplink for personal prompt
+  - `cursor-toys.deleteUserPrompt`: Delete personal prompt
+  - `cursor-toys.revealUserPrompt`: Reveal personal prompt in file system
+  - `cursor-toys.renameUserPrompt`: Rename personal prompt
+  - `cursor-toys.refreshUserPrompts`: Refresh personal prompts tree view
 - **New View**:
-  - `cursor-deeplink.userPrompts`: Personal Prompts tree view in Explorer sidebar
+  - `cursor-toys.userPrompts`: Personal Prompts tree view in Explorer sidebar
 - **File System Watchers**: Added automatic monitoring of `~/.cursor/prompts/` for real-time updates
 
 ### Architecture
@@ -140,13 +383,13 @@ All notable changes to the "Cursor Toys" extension will be documented in this fi
   - Flexible request formats: curl commands and structured JSON
   - Smart response formatting: automatically formats JSON and XML responses
 - **HTTP Request Configuration**: New settings for HTTP request behavior
-  - `cursorDeeplink.httpRequestTimeout`: Timeout in seconds for HTTP requests (default: 10)
-  - `cursorDeeplink.httpRequestSaveFile`: Save HTTP response to file or show preview only (default: false)
+  - `cursorToys.httpRequestTimeout`: Timeout in seconds for HTTP requests (default: 10)
+  - `cursorToys.httpRequestSaveFile`: Save HTTP response to file or show preview only (default: false)
 - **Language Support**: New language definitions and syntax highlighting
   - `http-request` language for `.req` and `.request` files
   - `http-response` language for `.res` and `.response` files
   - TextMate grammar files for proper syntax highlighting
-- **New Command**: `cursor-commands-toys.sendHttpRequest` to execute HTTP requests from files
+- **New Command**: `cursor-toys.sendHttpRequest` to execute HTTP requests from files
 - **HTTP CodeLens Provider**: Dedicated CodeLens provider for HTTP request files
   - Shows "Send Request" links at the top of request files
   - Shows "Send Request: [Section Title]" links for each markdown section in multi-request files
@@ -155,7 +398,7 @@ All notable changes to the "Cursor Toys" extension will be documented in this fi
 
 ### Changed
 - **Version**: Bumped to 0.7.0 to reflect major new feature addition
-- **Activation Events**: Added `onCommand:cursor-commands-toys.sendHttpRequest` activation event
+- **Activation Events**: Added `onCommand:cursor-toys.sendHttpRequest` activation event
 - **README**: Extensive documentation updates
   - Added "What's New" section highlighting HTTP Request Execution feature
   - Added comprehensive HTTP Request Execution section with examples and usage instructions
@@ -185,14 +428,14 @@ All notable changes to the "Cursor Toys" extension will be documented in this fi
 
 ### Added
 - **Chat Integration**: New commands to send code and text directly to Cursor chat
-  - `cursor-commands-toys.sendToChat`: Send custom text to Cursor chat
-  - `cursor-commands-toys.sendSelectionToChat`: Send selected code to Cursor chat with context
-  - `cursor-commands-toys.copySelectionAsPrompt`: Copy selected code as prompt deeplink with file context
+  - `cursor-toys.sendToChat`: Send custom text to Cursor chat
+  - `cursor-toys.sendSelectionToChat`: Send selected code to Cursor chat with context
+  - `cursor-toys.copySelectionAsPrompt`: Copy selected code as prompt deeplink with file context
 - **Annotation Panel**: New Webview Panel that opens via deeplinks (similar to Datadog extension)
-  - Opens via `cursor://godrix.cursor-deeplink/annotation?...` or `vscode://godrix.cursor-deeplink/annotation?...` deeplinks
+  - Opens via `cursor://godrix.cursor-toys/annotation?...` or `vscode://godrix.cursor-toys/annotation?...` deeplinks
   - Displays code, errors, and context in a formatted view
   - "Fix in Chat" button to send content directly to Cursor chat
-- **URI Handler**: Registered custom protocol handler for `cursor://godrix.cursor-deeplink/*` and `vscode://godrix.cursor-deeplink/*`
+- **URI Handler**: Registered custom protocol handler for `cursor://godrix.cursor-toys/*` and `vscode://godrix.cursor-toys/*`
 - **Editor Context Menu**: New submenu "Cursor Toys" when text is selected with options:
   - Send Selection to Chat
   - Copy as Prompt Deeplink (includes file path, language, and line numbers in context)
@@ -200,7 +443,7 @@ All notable changes to the "Cursor Toys" extension will be documented in this fi
 
 ### Changed
 - **Extension Rebranding**: Renamed extension from "Cursor Commands Share" to "Cursor Sidekick", and later to "Cursor Toys"
-- **Command IDs**: All command IDs updated from `cursor-sidekick.*` to `cursor-commands-toys.*` for consistency
+- **Command IDs**: All command IDs updated from `cursor-sidekick.*` to `cursor-toys.*` for consistency
 - Updated all user-facing text, command titles, and documentation to reflect the new name "Cursor Toys"
 - Removed "Send to Chat" command from Command Palette (now only available via context menu)
 - CodeLens labels updated to show "Generate Cursor Toys" instead of "Generate Cursor Sidekick"
@@ -209,7 +452,7 @@ All notable changes to the "Cursor Toys" extension will be documented in this fi
 ## [0.5.1] - 2025-12-02
 
 ### Added
-- **Configurable Personal Commands View**: New `cursorDeeplink.personalCommandsView` setting to choose which command folders to display in the Personal Commands tree view
+- **Configurable Personal Commands View**: New `cursorToys.personalCommandsView` setting to choose which command folders to display in the Personal Commands tree view
   - `both`: Show commands from both `.cursor/commands/` and `.claude/commands/` folders (default)
   - `cursor`: Show commands from `.cursor/commands/` folder only
   - `claude`: Show commands from `.claude/commands/` folder only
@@ -254,7 +497,7 @@ All notable changes to the "Cursor Toys" extension will be documented in this fi
 - **Save as User Command**: New command to move existing project commands to personal commands folder via context menu
 - **Organized Context Menu**: All Cursor Commands Share commands are now organized in a submenu for better user experience
 - **Claude Commands Compatibility**: Support for `.claude/commands/` folder in addition to `.cursor/commands/`
-- **Configurable Commands Folder**: New `cursorDeeplink.commandsFolder` setting to choose between `cursor` (default) or `claude` for where to save imported commands
+- **Configurable Commands Folder**: New `cursorToys.commandsFolder` setting to choose between `cursor` (default) or `claude` for where to save imported commands
 - Context menu and CodeLens now work for both `.cursor/commands/` and `.claude/commands/` folders
 - Generate deeplinks from files in either `.cursor/commands/` or `.claude/commands/` folders
 
@@ -273,8 +516,8 @@ All notable changes to the "Cursor Toys" extension will be documented in this fi
 ## [0.2.0] - 2025-11-25
 
 ### Added
-- **Custom Base URL Support**: Added `"custom"` option to `cursorDeeplink.linkType` configuration
-- **Custom URL Configuration**: New `cursorDeeplink.customBaseUrl` setting to specify your own base URL for deeplinks
+- **Custom Base URL Support**: Added `"custom"` option to `cursorToys.linkType` configuration
+- **Custom URL Configuration**: New `cursorToys.customBaseUrl` setting to specify your own base URL for deeplinks
 - URL validation for custom base URLs (supports http://, https://, and custom protocols)
 - Automatic trailing slash handling for custom URLs
 
