@@ -24,16 +24,22 @@ export function validateUrlLength(url: string): boolean {
  */
 export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'prompt' | null {
   const normalizedPath = filePath.replace(/\\/g, '/');
+  const baseFolderName = getBaseFolderName();
   
-  // Commands can be in either .cursor/commands/ or .claude/commands/
-  if (normalizedPath.includes('/.cursor/commands/') || normalizedPath.includes('/.claude/commands/')) {
+  // Commands can be in .cursor/commands/, .claude/commands/, or custom base folder
+  if (normalizedPath.includes('/.cursor/commands/') || 
+      normalizedPath.includes('/.claude/commands/') ||
+      normalizedPath.includes(`/.${baseFolderName}/commands/`)) {
     return 'command';
   }
-  if (normalizedPath.includes('/.cursor/rules/')) {
+  // Rules can use custom base folder or legacy .cursor
+  if (normalizedPath.includes(`/.${baseFolderName}/rules/`) || 
+      normalizedPath.includes('/.cursor/rules/')) {
     return 'rule';
   }
-  // Prompts can be in workspace or user home directory
-  if (normalizedPath.includes('/.cursor/prompts/')) {
+  // Prompts can use custom base folder or legacy .cursor
+  if (normalizedPath.includes(`/.${baseFolderName}/prompts/`) || 
+      normalizedPath.includes('/.cursor/prompts/')) {
     return 'prompt';
   }
   
@@ -93,10 +99,20 @@ export function getUserHomePath(): string {
 }
 
 /**
+ * Gets the base folder name based on configuration
+ * @returns Base folder name (e.g., 'cursor', 'vscode', 'ai')
+ */
+export function getBaseFolderName(): string {
+  const config = vscode.workspace.getConfiguration('cursorToys');
+  const folderName = config.get<string>('baseFolder', 'cursor');
+  return folderName.toLowerCase();
+}
+
+/**
  * Gets the commands folder name based on configuration ('cursor' or 'claude')
  */
 export function getCommandsFolderName(): 'cursor' | 'claude' {
-  const config = vscode.workspace.getConfiguration('cursorDeeplink');
+  const config = vscode.workspace.getConfiguration('cursorToys');
   const folderName = config.get<string>('commandsFolder', 'cursor');
   return folderName === 'claude' ? 'claude' : 'cursor';
 }
@@ -113,7 +129,9 @@ export function getCommandsPath(workspacePath?: string, isUser: boolean = false)
     return path.join(getUserHomePath(), `.${folderName}`, 'commands');
   }
   
-  return path.join(workspacePath, `.${folderName}`, 'commands');
+  // For workspace commands, use baseFolder if configured
+  const baseFolderName = getBaseFolderName();
+  return path.join(workspacePath, `.${baseFolderName}`, 'commands');
 }
 
 /**
@@ -121,7 +139,7 @@ export function getCommandsPath(workspacePath?: string, isUser: boolean = false)
  * @returns Array of folder paths based on personalCommandsView configuration
  */
 export function getPersonalCommandsPaths(): string[] {
-  const config = vscode.workspace.getConfiguration('cursorDeeplink');
+  const config = vscode.workspace.getConfiguration('cursorToys');
   const viewMode = config.get<string>('personalCommandsView', 'both');
   const homePath = getUserHomePath();
   
@@ -139,42 +157,67 @@ export function getPersonalCommandsPaths(): string[] {
 }
 
 /**
+ * Gets the full path to the rules folder
+ * @param workspacePath Optional workspace path (if not provided, returns user home path)
+ * @param isUser If true, returns path in user home directory; if false, returns workspace path
+ */
+export function getRulesPath(workspacePath?: string, isUser: boolean = false): string {
+  const baseFolderName = getBaseFolderName();
+  
+  if (isUser || !workspacePath) {
+    return path.join(getUserHomePath(), `.${baseFolderName}`, 'rules');
+  }
+  
+  return path.join(workspacePath, `.${baseFolderName}`, 'rules');
+}
+
+/**
  * Gets the full path to the prompts folder
  * @param workspacePath Optional workspace path (if not provided, returns user home path)
  * @param isUser If true, returns path in user home directory; if false, returns workspace path
  */
 export function getPromptsPath(workspacePath?: string, isUser: boolean = false): string {
+  const baseFolderName = getBaseFolderName();
+  
   if (isUser || !workspacePath) {
-    return path.join(getUserHomePath(), '.cursor', 'prompts');
+    return path.join(getUserHomePath(), `.${baseFolderName}`, 'prompts');
   }
   
-  return path.join(workspacePath, '.cursor', 'prompts');
+  return path.join(workspacePath, `.${baseFolderName}`, 'prompts');
 }
 
 /**
  * Gets the paths to the prompt folders to show in Personal Prompts view
- * @returns Array of folder paths (currently only .cursor/prompts)
+ * @returns Array of folder paths based on baseFolder configuration
  */
 export function getPersonalPromptsPaths(): string[] {
   const homePath = getUserHomePath();
+  const baseFolderName = getBaseFolderName();
   const paths: string[] = [];
   
-  // For now, only support .cursor/prompts (not .claude)
-  paths.push(path.join(homePath, '.cursor', 'prompts'));
+  // Use configured base folder
+  paths.push(path.join(homePath, `.${baseFolderName}`, 'prompts'));
+  
+  // Also include .cursor if different (for backward compatibility)
+  if (baseFolderName !== 'cursor') {
+    paths.push(path.join(homePath, '.cursor', 'prompts'));
+  }
   
   return paths;
 }
 
 /**
- * Checks if a file is an HTTP request file (.req or .request) in .cursor/http/ folder
+ * Checks if a file is an HTTP request file (.req or .request) in .{baseFolder}/http/ folder
  * @param filePath The file path to check
  * @returns true if the file is an HTTP request file
  */
 export function isHttpRequestFile(filePath: string): boolean {
   const normalizedPath = filePath.replace(/\\/g, '/');
   
-  // Check if file is in .cursor/http/ folder (with support for subfolders)
-  if (!normalizedPath.includes('/.cursor/http/')) {
+  // Check if file is in any base folder's http/ directory
+  const baseFolderName = getBaseFolderName();
+  if (!normalizedPath.includes(`/.${baseFolderName}/http/`) && 
+      !normalizedPath.includes('/.cursor/http/')) {
     return false;
   }
   
@@ -197,5 +240,35 @@ export function getHttpResponsePath(requestPath: string): string {
   // .res naturally sorts after .req alphabetically
   const responseExt = ext === 'req' ? 'res' : 'response';
   return path.join(dir, `${baseName}.${responseExt}`);
+}
+
+/**
+ * Gets the path to the environments folder
+ * @param workspacePath Workspace path
+ * @returns Path to .{baseFolder}/http/environments/
+ */
+export function getEnvironmentsPath(workspacePath: string): string {
+  const baseFolderName = getBaseFolderName();
+  return path.join(workspacePath, `.${baseFolderName}`, 'http', 'environments');
+}
+
+/**
+ * Gets the path to the HTTP folder
+ * @param workspacePath Workspace path
+ * @returns Path to .{baseFolder}/http/
+ */
+export function getHttpPath(workspacePath: string): string {
+  const baseFolderName = getBaseFolderName();
+  return path.join(workspacePath, `.${baseFolderName}`, 'http');
+}
+
+/**
+ * Checks if a file is an environment file (.env*)
+ * @param filePath The file path to check
+ * @returns true if the file is an environment file
+ */
+export function isEnvironmentFile(filePath: string): boolean {
+  const fileName = path.basename(filePath);
+  return fileName.startsWith('.env');
 }
 
