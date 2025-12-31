@@ -391,7 +391,7 @@ curl -X POST https://api.example.com/users \
 #### Method 2: Command Palette
 1. Open any `.req` or `.request` file in `.cursor/http/` folder
 2. Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
-3. Type **"Send HTTP Request"** and select it
+3. Type **"CursorToys: Send HTTP Request"** and select it
 4. The request will be executed
 
 **Note**: Files must be in `.cursor/http/` (or subfolders) to be recognized. The extension will not show CodeLens links for `.req` files outside this folder.
@@ -525,11 +525,7 @@ Content-Type: application/json
 2. Type "CursorToys: Select HTTP Environment"
 3. Choose environment from list (dev, staging, prod, etc.)
 
-**Method 2: Status Bar**
-- Click environment name in status bar (bottom right)
-- Select new environment from quick pick
-
-**Method 3: Configuration**
+**Method 2: Configuration**
 ```json
 {
   "cursorToys.httpDefaultEnvironment": "dev"
@@ -540,10 +536,10 @@ Content-Type: application/json
 
 | Command | Description |
 |:--------|:------------|
-| `cursor-toys.selectEnvironment` | Switch between environments |
-| `cursor-toys.openEnvironments` | Open environments folder |
-| `cursor-toys.createEnvironment` | Create new environment file |
-| `cursor-toys.initializeEnvironments` | Create default structure |
+| CursorToys: Select HTTP Environment | Switch between environments |
+| CursorToys: Open Environments Folder | Open environments folder |
+| CursorToys: Create Environment | Create new environment file |
+| CursorToys: Create Environments Folder | Create default structure |
 
 #### Features
 
@@ -764,9 +760,16 @@ CursorToys is fully compatible with VS Code, but some Cursor-specific features h
 ### ⚠️ Features With Limitations in VS Code
 
 #### Deeplinks (`cursor://`)
-**Limitation:** Native `cursor://` protocol links only work in Cursor IDE.
+**Limitation:** Native `cursor://` protocol links do not open automatically in VS Code (clicking won't trigger the extension).
 
-**Workaround:** Configure link type to web:
+**Workaround:** Deeplinks still work, but require manual import:
+1. Copy the `cursor://` deeplink
+2. Open Command Palette (`Cmd+Shift+P` or `Ctrl+Shift+P`)
+3. Run **"CursorToys: Import Share Link"** (or use shortcut `Cmd+Shift+I` / `Ctrl+Shift+I`)
+4. Paste the deeplink when prompted
+5. File will be created successfully
+
+**Alternative:** Configure link type to web for better sharing:
 ```json
 {
   "cursorToys.linkType": "web"
@@ -776,12 +779,7 @@ CursorToys is fully compatible with VS Code, but some Cursor-specific features h
 #### Send to Chat
 **Limitation:** Commands that send text to Cursor's AI chat won't work (no chat in VS Code).
 
-**Workaround:** Manually copy the generated deeplink and use it in a compatible chat interface or AI tool.
-
-#### Import from Deeplinks
-**Limitation:** Importing via `cursor://` deeplinks requires Cursor IDE.
-
-**Workaround:** Share files directly or use web links for distribution.
+**Workaround:** Manually copy the generated content and use it in a compatible chat interface or AI tool.
 
 #### Rules and Prompts
 **Limitation:** Rules and prompts are Cursor-specific features that may not work in VS Code.
@@ -910,28 +908,27 @@ Configure the extension at both workspace and user levels:
 | Command | Description | Shortcut |
 | :--- | :--- | :--- |
 | **Sharing & Import** |
-| `cursor-toys.generate` | Generate share link (opens type selector) | - |
-| `cursor-toys.generate-command` | Generate command share link | - |
-| `cursor-toys.generate-rule` | Generate rule share link | - |
-| `cursor-toys.generate-prompt` | Generate prompt share link | - |
-| `cursor-toys.import` | Import share link to create file | `Ctrl+Shift+I` / `Cmd+Shift+I` |
-| `cursor-toys.save-as-user-command` | Save project command as personal command | - |
-| `cursor-toys.save-as-user-prompt` | Save project prompt as personal prompt | - |
+| CursorToys: Generate Share Link | Generate share link (opens type selector) | - |
+| CursorToys: Generate Command Share Link | Generate command share link | - |
+| CursorToys: Generate Rule Share Link | Generate rule share link | - |
+| CursorToys: Generate Prompt Share Link | Generate prompt share link | - |
+| CursorToys: Import Share Link | Import share link to create file | `Ctrl+Shift+I` / `Cmd+Shift+I` |
+| CursorToys: Save as User Command | Save project command as personal command | - |
+| CursorToys: Save as User Prompt | Save project prompt as personal prompt | - |
 | **HTTP Requests** |
-| `cursor-toys.sendHttpRequest` | Execute HTTP request from file | - |
-| `cursor-toys.copyCurlCommand` | Copy request as cURL command | - |
-| `cursor-toys.selectEnvironment` | Switch HTTP environment | - |
-| `cursor-toys.openEnvironments` | Open environments folder | - |
-| `cursor-toys.createEnvironment` | Create new environment file | - |
-| `cursor-toys.initializeEnvironments` | Create environments folder structure | - |
+| CursorToys: Send HTTP Request | Execute HTTP request from file | - |
+| CursorToys: Select HTTP Environment | Switch HTTP environment | - |
+| CursorToys: Open Environments Folder | Open environments folder | - |
+| CursorToys: Create Environment | Create new environment file | - |
+| CursorToys: Create Environments Folder | Create environments folder structure | - |
 | **Minification** |
-| `cursor-toys.minifyFile` | Minify current file | - |
-| `cursor-toys.trimClipboard` | Auto-detect and minify clipboard | - |
-| `cursor-toys.trimClipboardWithPrompt` | Select type and minify clipboard | - |
+| CursorToys: Minify File | Minify current file | - |
+| CursorToys: Trim & Minify Clipboard | Auto-detect and minify clipboard | - |
+| CursorToys: Trim & Minify Clipboard (Select Type) | Select type and minify clipboard | - |
 | **Chat Integration** |
-| `cursor-toys.sendToChat` | Send custom text to Cursor chat | - |
-| `cursor-toys.sendSelectionToChat` | Send selected code to Cursor chat | - |
-| `cursor-toys.copySelectionAsPrompt` | Copy selection as prompt link | - |
+| CursorToys: Send to Chat | Send custom text to Cursor chat | - |
+| CursorToys: Send Selection to Chat | Send selected code to Cursor chat | - |
+| CursorToys: Copy Selection as Prompt | Copy selection as prompt link | - |
 
 **Pro Tip**: Most commands are accessible via CodeLens (clickable links in your files) or context menu (right-click), so you rarely need to remember command names!
 
