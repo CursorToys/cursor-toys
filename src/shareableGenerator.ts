@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import { getFileTypeFromPath, sanitizeFileName, isAllowedExtension } from './utils';
+import { getFileTypeFromPath, sanitizeFileName, isAllowedExtension, getBaseFolderName, getEnvironmentsFolderName } from './utils';
 
 const MAX_CONTENT_SIZE = 50 * 1024 * 1024; // 50MB limit for safety
 
@@ -13,20 +13,12 @@ const MAX_CONTENT_SIZE = 50 * 1024 * 1024; // 50MB limit for safety
  */
 export async function generateShareable(
   filePath: string,
-  forcedType?: 'command' | 'rule' | 'prompt'
+  forcedType?: 'command' | 'rule' | 'prompt' | 'http' | 'env'
 ): Promise<string | null> {
   try {
     // Read configuration
     const config = vscode.workspace.getConfiguration('cursorToys');
     const allowedExtensions = config.get<string[]>('allowedExtensions', ['md']);
-
-    // Validate file extension
-    if (!isAllowedExtension(filePath, allowedExtensions)) {
-      vscode.window.showErrorMessage(
-        `File extension is not in the allowed extensions list: ${allowedExtensions.join(', ')}`
-      );
-      return null;
-    }
 
     // Check if file exists
     const uri = vscode.Uri.file(filePath);
@@ -38,13 +30,36 @@ export async function generateShareable(
     }
 
     // Detect or use forced type
-    let fileType: 'command' | 'rule' | 'prompt' | null;
+    let fileType: 'command' | 'rule' | 'prompt' | 'http' | 'env' | null;
     if (forcedType) {
       fileType = forcedType;
     } else {
       fileType = getFileTypeFromPath(filePath);
       if (!fileType) {
-        vscode.window.showErrorMessage('File must be in commands/, rules/ or prompts/ folder');
+        vscode.window.showErrorMessage('File must be in commands/, rules/, prompts/, http/ or http/environments/ folder');
+        return null;
+      }
+    }
+
+    // Validate file extension based on type
+    if (fileType === 'http') {
+      const ext = path.extname(filePath).substring(1).toLowerCase();
+      if (ext !== 'req' && ext !== 'request') {
+        vscode.window.showErrorMessage('HTTP files must have .req or .request extension');
+        return null;
+      }
+    } else if (fileType === 'env') {
+      const fileName = path.basename(filePath);
+      if (!fileName.startsWith('.env')) {
+        vscode.window.showErrorMessage('Environment files must start with .env');
+        return null;
+      }
+    } else {
+      // For command, rule, prompt - validate extension
+      if (!isAllowedExtension(filePath, allowedExtensions)) {
+        vscode.window.showErrorMessage(
+          `File extension is not in the allowed extensions list: ${allowedExtensions.join(', ')}`
+        );
         return null;
       }
     }
@@ -104,13 +119,13 @@ export function compressAndEncode(content: string): string {
 
 /**
  * Builds the shareable URL
- * @param type File type (command, rule, or prompt)
+ * @param type File type (command, rule, prompt, http, or env)
  * @param fileName Sanitized file name
  * @param compressedData Compressed and encoded content
  * @returns Shareable URL
  */
 export function buildShareableUrl(
-  type: 'command' | 'rule' | 'prompt',
+  type: 'command' | 'rule' | 'prompt' | 'http' | 'env',
   fileName: string,
   compressedData: string
 ): string {
@@ -120,4 +135,836 @@ export function buildShareableUrl(
   // Build URL: cursortoys://TYPE:name:data
   return `cursortoys://${typeUpperCase}:${fileName}:${compressedData}`;
 }
+
+
+/**
+ * Generates a shareable link for the specified file with folder structure preservation
+ * @param filePath File path
+ * @param forcedType Forced type (optional). If provided, uses this type instead of detecting by folder
+ * @returns Shareable URL in format: cursortoys://TYPE_PATH:relativePath:name:compressedData
+ */
+export async function generateShareableWithPath(
+  filePath: string,
+  forcedType?: 'http' | 'env'
+): Promise<string | null> {
+  try {
+    // Check if file exists
+    const uri = vscode.Uri.file(filePath);
+    try {
+      await vscode.workspace.fs.stat(uri);
+    } catch {
+      vscode.window.showErrorMessage(`File not found: ${filePath}`);
+      return null;
+    }
+
+    // Detect or use forced type
+    let fileType: 'http' | 'env' | null;
+    if (forcedType) {
+      fileType = forcedType;
+    } else {
+      const detectedType = getFileTypeFromPath(filePath);
+      if (detectedType === 'http' || detectedType === 'env') {
+        fileType = detectedType;
+      } else {
+        fileType = null;
+      }
+      if (!fileType) {
+        vscode.window.showErrorMessage('File must be in http/ or http/environments/ folder');
+        return null;
+      }
+    }
+
+    // Validate file extension based on type
+    if (fileType === 'http') {
+      const ext = path.extname(filePath).substring(1).toLowerCase();
+      if (ext !== 'req' && ext !== 'request') {
+        vscode.window.showErrorMessage('HTTP files must have .req or .request extension');
+        return null;
+      }
+    } else if (fileType === 'env') {
+      const fileName = path.basename(filePath);
+      if (!fileName.startsWith('.env')) {
+        vscode.window.showErrorMessage('Environment files must start with .env');
+        return null;
+      }
+    }
+
+    // Read file content
+    const document = await vscode.workspace.openTextDocument(uri);
+    const content = document.getText();
+
+    // Validate content size
+    if (content.length > MAX_CONTENT_SIZE) {
+      vscode.window.showErrorMessage(
+        `File too large (${(content.length / 1024 / 1024).toFixed(2)} MB). Maximum size is 50 MB.`
+      );
+      return null;
+    }
+
+    // Extract relative path from http/ or http/{environmentsFolder}/
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    const baseFolderName = getBaseFolderName();
+    const environmentsFolderName = getEnvironmentsFolderName();
+    
+    let relativePath = '';
+    let fileName = path.basename(filePath);
+    
+    if (fileType === 'http') {
+      // Extract path after http/ folder
+      const httpFolderPattern = new RegExp(`\\.${baseFolderName}\\/http\\/(.+)$`);
+      const cursorHttpPattern = /\.cursor\/http\/(.+)$/;
+      
+      const httpMatch = normalizedPath.match(httpFolderPattern);
+      const cursorMatch = normalizedPath.match(cursorHttpPattern);
+      
+      if (httpMatch) {
+        relativePath = httpMatch[1];
+      } else if (cursorMatch) {
+        relativePath = cursorMatch[1];
+      } else {
+        relativePath = fileName;
+      }
+    } else if (fileType === 'env') {
+      // Extract path after http/{environmentsFolder}/ folder
+      const envFolderPattern = new RegExp(`\\.${baseFolderName}\\/http\\/${environmentsFolderName}\\/(.+)$`);
+      const cursorEnvPattern = new RegExp(`\\.cursor\\/http\\/${environmentsFolderName}\\/(.+)$`);
+      // Also support legacy 'environments' folder
+      const legacyEnvPattern = new RegExp(`\\.(${baseFolderName}|cursor)\\/http\\/environments\\/(.+)$`);
+      
+      const envMatch = normalizedPath.match(envFolderPattern);
+      const cursorMatch = normalizedPath.match(cursorEnvPattern);
+      const legacyMatch = normalizedPath.match(legacyEnvPattern);
+      
+      if (envMatch) {
+        relativePath = envMatch[1];
+      } else if (cursorMatch) {
+        relativePath = cursorMatch[1];
+      } else if (legacyMatch) {
+        relativePath = legacyMatch[2];
+      } else {
+        relativePath = fileName;
+      }
+    }
+
+    // Get file name without extension for display
+    const fileNameWithoutExt = path.parse(fileName).name;
+    const sanitizedName = sanitizeFileName(fileNameWithoutExt);
+
+    // Compress and encode content
+    const compressedData = compressAndEncode(content);
+
+    // Build shareable URL with path
+    const shareable = buildShareableUrlWithPath(fileType, relativePath, sanitizedName, compressedData);
+
+    return shareable;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error generating shareable with path: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Builds the shareable URL with folder structure
+ * @param type File type (http or env)
+ * @param relativePath Relative path from http/ or http/environments/
+ * @param fileName Sanitized file name
+ * @param compressedData Compressed and encoded content
+ * @returns Shareable URL
+ */
+export function buildShareableUrlWithPath(
+  type: 'http' | 'env',
+  relativePath: string,
+  fileName: string,
+  compressedData: string
+): string {
+  // Convert type to uppercase for protocol
+  const typeUpperCase = type.toUpperCase();
+  
+  // Encode relative path to be URL safe
+  const encodedPath = encodeURIComponent(relativePath);
+  
+  // Build URL: cursortoys://TYPE_PATH:relativePath:name:data
+  return `cursortoys://${typeUpperCase}_PATH:${encodedPath}:${fileName}:${compressedData}`;
+}
+
+/**
+ * Recursively collects all HTTP request files (.req, .request) from a folder
+ * @param folderPath Folder path to scan
+ * @returns Array of file paths
+ */
+async function collectHttpFilesFromFolder(folderPath: string): Promise<string[]> {
+  const files: string[] = [];
+  
+  try {
+    const folderUri = vscode.Uri.file(folderPath);
+    const entries = await vscode.workspace.fs.readDirectory(folderUri);
+    
+    for (const [name, type] of entries) {
+      const fullPath = path.join(folderPath, name);
+      
+      if (type === vscode.FileType.Directory) {
+        // Recursively scan subdirectories
+        const subFiles = await collectHttpFilesFromFolder(fullPath);
+        files.push(...subFiles);
+      } else if (type === vscode.FileType.File) {
+        // Check if file has .req or .request extension
+        const ext = path.extname(name).substring(1).toLowerCase();
+        if (ext === 'req' || ext === 'request') {
+          files.push(fullPath);
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Error reading folder ${folderPath}:`, error);
+  }
+  
+  return files;
+}
+
+/**
+ * Recursively collects all command/rule/prompt files from a folder
+ * @param folderPath Folder path to scan
+ * @param allowedExtensions Allowed file extensions
+ * @returns Array of file paths
+ */
+async function collectMarkdownFilesFromFolder(folderPath: string, allowedExtensions: string[]): Promise<string[]> {
+  const files: string[] = [];
+  
+  try {
+    const folderUri = vscode.Uri.file(folderPath);
+    const entries = await vscode.workspace.fs.readDirectory(folderUri);
+    
+    for (const [name, type] of entries) {
+      const fullPath = path.join(folderPath, name);
+      
+      if (type === vscode.FileType.Directory) {
+        // Recursively scan subdirectories
+        const subFiles = await collectMarkdownFilesFromFolder(fullPath, allowedExtensions);
+        files.push(...subFiles);
+      } else if (type === vscode.FileType.File) {
+        // Check if file has allowed extension
+        const ext = path.extname(name).substring(1).toLowerCase();
+        if (allowedExtensions.includes(ext)) {
+          files.push(fullPath);
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Error reading folder ${folderPath}:`, error);
+  }
+  
+  return files;
+}
+
+/**
+ * Recursively collects all environment files (.env*) from a folder
+ * @param folderPath Folder path to scan
+ * @returns Array of file paths
+ */
+async function collectEnvFilesFromFolder(folderPath: string): Promise<string[]> {
+  const files: string[] = [];
+  
+  try {
+    const folderUri = vscode.Uri.file(folderPath);
+    const entries = await vscode.workspace.fs.readDirectory(folderUri);
+    
+    for (const [name, type] of entries) {
+      const fullPath = path.join(folderPath, name);
+      
+      if (type === vscode.FileType.Directory) {
+        // Recursively scan subdirectories
+        const subFiles = await collectEnvFilesFromFolder(fullPath);
+        files.push(...subFiles);
+      } else if (type === vscode.FileType.File) {
+        // Check if file starts with .env
+        if (name.startsWith('.env')) {
+          files.push(fullPath);
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Error reading folder ${folderPath}:`, error);
+  }
+  
+  return files;
+}
+
+/**
+ * Generates shareable links for all HTTP files in a folder
+ * @param folderPath Folder path to share
+ * @returns Array of shareable URLs
+ */
+export async function generateShareableForHttpFolder(
+  folderPath: string
+): Promise<string[] | null> {
+  try {
+    // Check if folder exists
+    const folderUri = vscode.Uri.file(folderPath);
+    try {
+      const stat = await vscode.workspace.fs.stat(folderUri);
+      if (stat.type !== vscode.FileType.Directory) {
+        vscode.window.showErrorMessage('Selected path is not a folder');
+        return null;
+      }
+    } catch {
+      vscode.window.showErrorMessage(`Folder not found: ${folderPath}`);
+      return null;
+    }
+
+    // Collect all HTTP files
+    const files = await collectHttpFilesFromFolder(folderPath);
+    
+    if (files.length === 0) {
+      vscode.window.showWarningMessage('No HTTP request files (.req, .request) found in folder');
+      return null;
+    }
+
+    // Generate shareable for each file (with path preservation)
+    const shareables: string[] = [];
+    for (const filePath of files) {
+      const shareable = await generateShareableWithPath(filePath, 'http');
+      if (shareable) {
+        shareables.push(shareable);
+      }
+    }
+
+    if (shareables.length === 0) {
+      vscode.window.showErrorMessage('Failed to generate shareables for files');
+      return null;
+    }
+
+    return shareables;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error generating folder shareables: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Generates shareable links for all environment files in a folder
+ * @param folderPath Folder path to share
+ * @returns Array of shareable URLs
+ */
+export async function generateShareableForEnvFolder(
+  folderPath: string
+): Promise<string[] | null> {
+  try {
+    // Check if folder exists
+    const folderUri = vscode.Uri.file(folderPath);
+    try {
+      const stat = await vscode.workspace.fs.stat(folderUri);
+      if (stat.type !== vscode.FileType.Directory) {
+        vscode.window.showErrorMessage('Selected path is not a folder');
+        return null;
+      }
+    } catch {
+      vscode.window.showErrorMessage(`Folder not found: ${folderPath}`);
+      return null;
+    }
+
+    // Collect all environment files
+    const files = await collectEnvFilesFromFolder(folderPath);
+    
+    if (files.length === 0) {
+      vscode.window.showWarningMessage('No environment files (.env*) found in folder');
+      return null;
+    }
+
+    // Generate shareable for each file (with path preservation)
+    const shareables: string[] = [];
+    for (const filePath of files) {
+      const shareable = await generateShareableWithPath(filePath, 'env');
+      if (shareable) {
+        shareables.push(shareable);
+      }
+    }
+
+    if (shareables.length === 0) {
+      vscode.window.showErrorMessage('Failed to generate shareables for files');
+      return null;
+    }
+
+    return shareables;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error generating folder shareables: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Generates shareable links for all HTTP files and environment files in a folder
+ * @param httpFolderPath HTTP folder path to share
+ * @returns Single shareable URL containing all files as a bundle
+ */
+export async function generateShareableForHttpFolderWithEnv(
+  httpFolderPath: string
+): Promise<string | null> {
+  try {
+    // Check if folder exists
+    const folderUri = vscode.Uri.file(httpFolderPath);
+    try {
+      const stat = await vscode.workspace.fs.stat(folderUri);
+      if (stat.type !== vscode.FileType.Directory) {
+        vscode.window.showErrorMessage('Selected path is not a folder');
+        return null;
+      }
+    } catch {
+      vscode.window.showErrorMessage(`Folder not found: ${httpFolderPath}`);
+      return null;
+    }
+
+    const files: Array<{ type: 'http' | 'env', relativePath: string, content: string }> = [];
+    const baseFolderName = getBaseFolderName();
+
+    // Collect HTTP files
+    const httpFiles = await collectHttpFilesFromFolder(httpFolderPath);
+    
+    for (const filePath of httpFiles) {
+      // Read file content
+      const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+      const content = document.getText();
+      
+      // Extract relative path
+      const normalizedPath = filePath.replace(/\\/g, '/');
+      const httpFolderPattern = new RegExp(`\\.${baseFolderName}\\/http\\/(.+)$`);
+      const cursorHttpPattern = /\.cursor\/http\/(.+)$/;
+      
+      const httpMatch = normalizedPath.match(httpFolderPattern);
+      const cursorMatch = normalizedPath.match(cursorHttpPattern);
+      
+      let relativePath = '';
+      if (httpMatch) {
+        relativePath = httpMatch[1];
+      } else if (cursorMatch) {
+        relativePath = cursorMatch[1];
+      } else {
+        relativePath = path.basename(filePath);
+      }
+      
+      files.push({
+        type: 'http',
+        relativePath: relativePath,
+        content: content
+      });
+    }
+
+    // Check if environments folder exists (try configured name first, then legacy)
+    const environmentsFolderName = getEnvironmentsFolderName();
+    const environmentsPath = path.join(httpFolderPath, environmentsFolderName);
+    const legacyEnvironmentsPath = path.join(httpFolderPath, 'environments');
+    
+    // Try configured environments folder
+    try {
+      const envStat = await vscode.workspace.fs.stat(vscode.Uri.file(environmentsPath));
+      if (envStat.type === vscode.FileType.Directory) {
+        // Collect environment files
+        const envFiles = await collectEnvFilesFromFolder(environmentsPath);
+        
+        for (const filePath of envFiles) {
+          // Read file content
+          const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+          const content = document.getText();
+          
+          // Extract relative path
+          const normalizedPath = filePath.replace(/\\/g, '/');
+          const envFolderPattern = new RegExp(`\\.${baseFolderName}\\/http\\/${environmentsFolderName}\\/(.+)$`);
+          const cursorEnvPattern = new RegExp(`\\.cursor\\/http\\/${environmentsFolderName}\\/(.+)$`);
+          
+          const envMatch = normalizedPath.match(envFolderPattern);
+          const cursorMatch = normalizedPath.match(cursorEnvPattern);
+          
+          let relativePath = '';
+          if (envMatch) {
+            relativePath = `${environmentsFolderName}/${envMatch[1]}`;
+          } else if (cursorMatch) {
+            relativePath = `${environmentsFolderName}/${cursorMatch[1]}`;
+          } else {
+            relativePath = `${environmentsFolderName}/${path.basename(filePath)}`;
+          }
+          
+          files.push({
+            type: 'env',
+            relativePath: relativePath,
+            content: content
+          });
+        }
+      }
+    } catch {
+      // Configured folder doesn't exist, try legacy
+      try {
+        const legacyEnvStat = await vscode.workspace.fs.stat(vscode.Uri.file(legacyEnvironmentsPath));
+        if (legacyEnvStat.type === vscode.FileType.Directory && environmentsFolderName !== 'environments') {
+          // Collect environment files from legacy folder
+          const envFiles = await collectEnvFilesFromFolder(legacyEnvironmentsPath);
+          
+          for (const filePath of envFiles) {
+            // Read file content
+            const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+            const content = document.getText();
+            
+            // Extract relative path
+            const normalizedPath = filePath.replace(/\\/g, '/');
+            const legacyEnvPattern = new RegExp(`\\.(${baseFolderName}|cursor)\\/http\\/environments\\/(.+)$`);
+            const legacyMatch = normalizedPath.match(legacyEnvPattern);
+            
+            let relativePath = '';
+            if (legacyMatch) {
+              relativePath = `environments/${legacyMatch[2]}`;
+            } else {
+              relativePath = `environments/${path.basename(filePath)}`;
+            }
+            
+            files.push({
+              type: 'env',
+              relativePath: relativePath,
+              content: content
+            });
+          }
+        }
+      } catch {
+        // Neither folder exists, that's OK
+      }
+    }
+
+    if (files.length === 0) {
+      vscode.window.showWarningMessage('No HTTP request files or environment files found');
+      return null;
+    }
+
+    // Create bundle object
+    const bundle = {
+      files: files
+    };
+
+    // Compress and encode the entire bundle
+    const bundleJson = JSON.stringify(bundle);
+    const compressedData = compressAndEncode(bundleJson);
+
+    // Build shareable URL: cursortoys://HTTP_BUNDLE:data
+    return `cursortoys://HTTP_BUNDLE:${compressedData}`;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error generating folder shareables: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Generates shareable bundle for all command files in a folder
+ * @param folderPath Command folder path to share
+ * @returns Single shareable URL containing all command files as a bundle
+ */
+export async function generateShareableForCommandFolder(
+  folderPath: string
+): Promise<string | null> {
+  try {
+    // Check if folder exists
+    const folderUri = vscode.Uri.file(folderPath);
+    try {
+      const stat = await vscode.workspace.fs.stat(folderUri);
+      if (stat.type !== vscode.FileType.Directory) {
+        vscode.window.showErrorMessage('Selected path is not a folder');
+        return null;
+      }
+    } catch {
+      vscode.window.showErrorMessage(`Folder not found: ${folderPath}`);
+      return null;
+    }
+
+    // Get allowed extensions
+    const config = vscode.workspace.getConfiguration('cursorToys');
+    const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+
+    const files: Array<{ name: string, content: string }> = [];
+
+    // Collect command files
+    const commandFiles = await collectMarkdownFilesFromFolder(folderPath, allowedExtensions);
+    
+    if (commandFiles.length === 0) {
+      vscode.window.showWarningMessage('No command files found in folder');
+      return null;
+    }
+
+    for (const filePath of commandFiles) {
+      // Read file content
+      const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+      const content = document.getText();
+      
+      // Get file name without extension
+      const fileName = path.basename(filePath, path.extname(filePath));
+      
+      files.push({
+        name: fileName,
+        content: content
+      });
+    }
+
+    // Create bundle object
+    const bundle = { files };
+
+    // Compress and encode the entire bundle
+    const bundleJson = JSON.stringify(bundle);
+    const compressedData = compressAndEncode(bundleJson);
+
+    // Build shareable URL: cursortoys://COMMAND_BUNDLE:data
+    return `cursortoys://COMMAND_BUNDLE:${compressedData}`;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error generating command bundle: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Generates shareable bundle for all rule files in a folder
+ * @param folderPath Rule folder path to share
+ * @returns Single shareable URL containing all rule files as a bundle
+ */
+export async function generateShareableForRuleFolder(
+  folderPath: string
+): Promise<string | null> {
+  try {
+    // Check if folder exists
+    const folderUri = vscode.Uri.file(folderPath);
+    try {
+      const stat = await vscode.workspace.fs.stat(folderUri);
+      if (stat.type !== vscode.FileType.Directory) {
+        vscode.window.showErrorMessage('Selected path is not a folder');
+        return null;
+      }
+    } catch {
+      vscode.window.showErrorMessage(`Folder not found: ${folderPath}`);
+      return null;
+    }
+
+    // Get allowed extensions
+    const config = vscode.workspace.getConfiguration('cursorToys');
+    const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+
+    const files: Array<{ name: string, content: string }> = [];
+
+    // Collect rule files
+    const ruleFiles = await collectMarkdownFilesFromFolder(folderPath, allowedExtensions);
+    
+    if (ruleFiles.length === 0) {
+      vscode.window.showWarningMessage('No rule files found in folder');
+      return null;
+    }
+
+    for (const filePath of ruleFiles) {
+      // Read file content
+      const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+      const content = document.getText();
+      
+      // Get file name without extension
+      const fileName = path.basename(filePath, path.extname(filePath));
+      
+      files.push({
+        name: fileName,
+        content: content
+      });
+    }
+
+    // Create bundle object
+    const bundle = { files };
+
+    // Compress and encode the entire bundle
+    const bundleJson = JSON.stringify(bundle);
+    const compressedData = compressAndEncode(bundleJson);
+
+    // Build shareable URL: cursortoys://RULE_BUNDLE:data
+    return `cursortoys://RULE_BUNDLE:${compressedData}`;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error generating rule bundle: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Generates shareable bundle for all prompt files in a folder
+ * @param folderPath Prompt folder path to share
+ * @returns Single shareable URL containing all prompt files as a bundle
+ */
+export async function generateShareableForPromptFolder(
+  folderPath: string
+): Promise<string | null> {
+  try {
+    // Check if folder exists
+    const folderUri = vscode.Uri.file(folderPath);
+    try {
+      const stat = await vscode.workspace.fs.stat(folderUri);
+      if (stat.type !== vscode.FileType.Directory) {
+        vscode.window.showErrorMessage('Selected path is not a folder');
+        return null;
+      }
+    } catch {
+      vscode.window.showErrorMessage(`Folder not found: ${folderPath}`);
+      return null;
+    }
+
+    // Get allowed extensions
+    const config = vscode.workspace.getConfiguration('cursorToys');
+    const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+
+    const files: Array<{ name: string, content: string }> = [];
+
+    // Collect prompt files
+    const promptFiles = await collectMarkdownFilesFromFolder(folderPath, allowedExtensions);
+    
+    if (promptFiles.length === 0) {
+      vscode.window.showWarningMessage('No prompt files found in folder');
+      return null;
+    }
+
+    for (const filePath of promptFiles) {
+      // Read file content
+      const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+      const content = document.getText();
+      
+      // Get file name without extension
+      const fileName = path.basename(filePath, path.extname(filePath));
+      
+      files.push({
+        name: fileName,
+        content: content
+      });
+    }
+
+    // Create bundle object
+    const bundle = { files };
+
+    // Compress and encode the entire bundle
+    const bundleJson = JSON.stringify(bundle);
+    const compressedData = compressAndEncode(bundleJson);
+
+    // Build shareable URL: cursortoys://PROMPT_BUNDLE:data
+    return `cursortoys://PROMPT_BUNDLE:${compressedData}`;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error generating prompt bundle: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Generates shareable bundle for entire project (.cursor folder)
+ * @param cursorFolderPath Path to .cursor folder
+ * @returns Single shareable URL containing entire project as a bundle
+ */
+export async function generateShareableForProject(
+  cursorFolderPath: string
+): Promise<string | null> {
+  try {
+    // Check if folder exists
+    const folderUri = vscode.Uri.file(cursorFolderPath);
+    try {
+      const stat = await vscode.workspace.fs.stat(folderUri);
+      if (stat.type !== vscode.FileType.Directory) {
+        vscode.window.showErrorMessage('Selected path is not a folder');
+        return null;
+      }
+    } catch {
+      vscode.window.showErrorMessage(`Folder not found: ${cursorFolderPath}`);
+      return null;
+    }
+
+    // Get allowed extensions
+    const config = vscode.workspace.getConfiguration('cursorToys');
+    const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+    const baseFolderName = path.basename(cursorFolderPath);
+
+    const bundle: any = {
+      commands: [],
+      rules: [],
+      prompts: [],
+      http: []
+    };
+
+    // Collect commands
+    const commandsPath = path.join(cursorFolderPath, 'commands');
+    try {
+      const commandFiles = await collectMarkdownFilesFromFolder(commandsPath, allowedExtensions);
+      for (const filePath of commandFiles) {
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+        const fileName = path.basename(filePath, path.extname(filePath));
+        bundle.commands.push({ name: fileName, content: document.getText() });
+      }
+    } catch {}
+
+    // Collect rules
+    const rulesPath = path.join(cursorFolderPath, 'rules');
+    try {
+      const ruleFiles = await collectMarkdownFilesFromFolder(rulesPath, allowedExtensions);
+      for (const filePath of ruleFiles) {
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+        const fileName = path.basename(filePath, path.extname(filePath));
+        bundle.rules.push({ name: fileName, content: document.getText() });
+      }
+    } catch {}
+
+    // Collect prompts
+    const promptsPath = path.join(cursorFolderPath, 'prompts');
+    try {
+      const promptFiles = await collectMarkdownFilesFromFolder(promptsPath, allowedExtensions);
+      for (const filePath of promptFiles) {
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+        const fileName = path.basename(filePath, path.extname(filePath));
+        bundle.prompts.push({ name: fileName, content: document.getText() });
+      }
+    } catch {}
+
+    // Collect HTTP files
+    const httpPath = path.join(cursorFolderPath, 'http');
+    try {
+      const httpFiles = await collectHttpFilesFromFolder(httpPath);
+      const environmentsFolderName = getEnvironmentsFolderName();
+      
+      for (const filePath of httpFiles) {
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+        const normalizedPath = filePath.replace(/\\/g, '/');
+        const httpMatch = normalizedPath.match(/\/http\/(.+)$/);
+        const relativePath = httpMatch ? httpMatch[1] : path.basename(filePath);
+        
+        bundle.http.push({
+          type: 'http',
+          relativePath: relativePath,
+          content: document.getText()
+        });
+      }
+      
+      // Collect environment files
+      const environmentsPath = path.join(httpPath, environmentsFolderName);
+      try {
+        const envFiles = await collectEnvFilesFromFolder(environmentsPath);
+        for (const filePath of envFiles) {
+          const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+          const normalizedPath = filePath.replace(/\\/g, '/');
+          const envMatch = normalizedPath.match(new RegExp(`\\/${environmentsFolderName}\\/(.+)$`));
+          const relativePath = envMatch ? `${environmentsFolderName}/${envMatch[1]}` : path.basename(filePath);
+          
+          bundle.http.push({
+            type: 'env',
+            relativePath: relativePath,
+            content: document.getText()
+          });
+        }
+      } catch {}
+    } catch {}
+
+    // Check if we have any files
+    const totalFiles = bundle.commands.length + bundle.rules.length + bundle.prompts.length + bundle.http.length;
+    if (totalFiles === 0) {
+      vscode.window.showWarningMessage('No files found in project folder');
+      return null;
+    }
+
+    // Compress and encode the entire bundle
+    const bundleJson = JSON.stringify(bundle);
+    const compressedData = compressAndEncode(bundleJson);
+
+    // Build shareable URL: cursortoys://PROJECT_BUNDLE:data
+    return `cursortoys://PROJECT_BUNDLE:${compressedData}`;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error generating project bundle: ${error}`);
+    return null;
+  }
+}
+
 

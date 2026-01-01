@@ -2,11 +2,12 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { generateDeeplink } from './deeplinkGenerator';
 import { importDeeplink } from './deeplinkImporter';
-import { generateShareable } from './shareableGenerator';
+import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForEnvFolder, generateShareableForHttpFolderWithEnv, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForProject } from './shareableGenerator';
 import { importShareable } from './shareableImporter';
-import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
+import { EnvCodeLensProvider } from './envCodeLensProvider';
 import { UserCommandsTreeProvider, CommandFileItem } from './userCommandsTreeProvider';
 import { UserPromptsTreeProvider, PromptFileItem } from './userPromptsTreeProvider';
 import { sendToChat, sendSelectionToChat, buildPromptDeeplink, MAX_DEEPLINK_LENGTH } from './sendToChat';
@@ -64,7 +65,7 @@ async function generateDeeplinkWithValidation(
  */
 async function generateShareableWithValidation(
   uri: vscode.Uri | undefined,
-  forcedType?: 'command' | 'rule' | 'prompt'
+  forcedType?: 'command' | 'rule' | 'prompt' | 'http' | 'env'
 ): Promise<void> {
   // If no URI, try to get from active editor
   let filePath: string;
@@ -80,15 +81,20 @@ async function generateShareableWithValidation(
     filePath = editor.document.uri.fsPath;
   }
 
-  // Validate extension
-  const config = vscode.workspace.getConfiguration('cursorToys');
-  const allowedExtensions = config.get<string[]>('allowedExtensions', ['md']);
-  
-  if (!isAllowedExtension(filePath, allowedExtensions)) {
-    vscode.window.showErrorMessage(
-      `File extension is not in the allowed extensions list: ${allowedExtensions.join(', ')}`
-    );
-    return;
+  // Validate extension based on type
+  if (forcedType === 'http' || forcedType === 'env') {
+    // HTTP and ENV types have their own validation in generateShareable
+  } else {
+    // For command, rule, prompt - validate with allowed extensions
+    const config = vscode.workspace.getConfiguration('cursorToys');
+    const allowedExtensions = config.get<string[]>('allowedExtensions', ['md']);
+    
+    if (!isAllowedExtension(filePath, allowedExtensions)) {
+      vscode.window.showErrorMessage(
+        `File extension is not in the allowed extensions list: ${allowedExtensions.join(', ')}`
+      );
+      return;
+    }
   }
 
   // Generate shareable
@@ -96,7 +102,39 @@ async function generateShareableWithValidation(
   if (shareable) {
     // Copy to clipboard
     await vscode.env.clipboard.writeText(shareable);
-    vscode.window.showInformationMessage('CursorToys shareable copied to clipboard!');
+    const typeLabel = forcedType === 'http' ? 'HTTP request' : forcedType === 'env' ? 'Environment' : 'CursorToys';
+    vscode.window.showInformationMessage(`${typeLabel} shareable copied to clipboard!`);
+  }
+}
+
+/**
+ * Helper function to generate shareable with path validation
+ */
+async function generateShareableWithPathValidation(
+  uri: vscode.Uri | undefined,
+  forcedType: 'http' | 'env'
+): Promise<void> {
+  // If no URI, try to get from active editor
+  let filePath: string;
+  
+  if (uri) {
+    filePath = uri.fsPath;
+  } else {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showErrorMessage('No file selected');
+      return;
+    }
+    filePath = editor.document.uri.fsPath;
+  }
+
+  // Generate shareable with path
+  const shareable = await generateShareableWithPath(filePath, forcedType);
+  if (shareable) {
+    // Copy to clipboard
+    await vscode.env.clipboard.writeText(shareable);
+    const typeLabel = forcedType === 'http' ? 'HTTP request' : 'Environment';
+    vscode.window.showInformationMessage(`${typeLabel} shareable (with folder structure) copied to clipboard!`);
   }
 }
 
@@ -213,6 +251,13 @@ export function activate(context: vscode.ExtensionContext) {
     httpCodeLensProvider
   );
 
+  // Register ENV CodeLens Provider for environment files
+  const envCodeLensProvider = new EnvCodeLensProvider();
+  const envCodeLensDisposable = vscode.languages.registerCodeLensProvider(
+    { scheme: 'file', pattern: '**/.env*' },
+    envCodeLensProvider
+  );
+
   // Specific command to generate command deeplink
   const generateCommandSpecific = vscode.commands.registerCommand(
     'cursor-toys.generate-command',
@@ -261,13 +306,279 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // Specific command to generate HTTP shareable
+  const generateShareableHttpSpecific = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysHttp',
+    async (uri?: vscode.Uri) => {
+      await generateShareableWithValidation(uri, 'http');
+    }
+  );
+
+  // Specific command to generate ENV shareable
+  const generateShareableEnvSpecific = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysEnv',
+    async (uri?: vscode.Uri) => {
+      await generateShareableWithValidation(uri, 'env');
+    }
+  );
+
+  // Specific command to generate HTTP shareable with path
+  const generateShareableHttpWithPathSpecific = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysHttpWithPath',
+    async (uri?: vscode.Uri) => {
+      await generateShareableWithPathValidation(uri, 'http');
+    }
+  );
+
+  // Specific command to generate ENV shareable with path
+  const generateShareableEnvWithPathSpecific = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysEnvWithPath',
+    async (uri?: vscode.Uri) => {
+      await generateShareableWithPathValidation(uri, 'env');
+    }
+  );
+
+  // Command to share entire HTTP folder
+  const shareHttpFolderCommand = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysHttpFolder',
+    async (uri?: vscode.Uri) => {
+      try {
+        let folderPath: string;
+        
+        if (uri) {
+          // Get folder path from URI
+          const stat = await vscode.workspace.fs.stat(uri);
+          if (stat.type !== vscode.FileType.Directory) {
+            vscode.window.showErrorMessage('Please select a folder');
+            return;
+          }
+          folderPath = uri.fsPath;
+        } else {
+          vscode.window.showErrorMessage('Please select a folder');
+          return;
+        }
+
+        // Generate shareables for all files in folder
+        const shareables = await generateShareableForHttpFolder(folderPath);
+        if (shareables && shareables.length > 0) {
+          // Join all shareables with newlines
+          const shareableText = shareables.join('\n');
+          
+          // Copy to clipboard
+          await vscode.env.clipboard.writeText(shareableText);
+          
+          vscode.window.showInformationMessage(
+            `${shareables.length} HTTP request(s) copied to clipboard as CursorToys shareable!`
+          );
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error generating folder shareable: ${error}`);
+      }
+    }
+  );
+
+  // Command to share entire ENV folder
+  const shareEnvFolderCommand = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysEnvFolder',
+    async (uri?: vscode.Uri) => {
+      try {
+        let folderPath: string;
+        
+        if (uri) {
+          // Get folder path from URI
+          const stat = await vscode.workspace.fs.stat(uri);
+          if (stat.type !== vscode.FileType.Directory) {
+            vscode.window.showErrorMessage('Please select a folder');
+            return;
+          }
+          folderPath = uri.fsPath;
+        } else {
+          vscode.window.showErrorMessage('Please select a folder');
+          return;
+        }
+
+        // Generate shareables for all files in folder
+        const shareables = await generateShareableForEnvFolder(folderPath);
+        if (shareables && shareables.length > 0) {
+          // Join all shareables with newlines
+          const shareableText = shareables.join('\n');
+          
+          // Copy to clipboard
+          await vscode.env.clipboard.writeText(shareableText);
+          
+          vscode.window.showInformationMessage(
+            `${shareables.length} environment file(s) copied to clipboard as CursorToys shareable!`
+          );
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error generating folder shareable: ${error}`);
+      }
+    }
+  );
+
+  // Command to share HTTP folder with environments
+  const shareHttpFolderWithEnvCommand = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysHttpFolderWithEnv',
+    async (uri?: vscode.Uri) => {
+      try {
+        let folderPath: string;
+        
+        if (uri) {
+          // Get folder path from URI
+          const stat = await vscode.workspace.fs.stat(uri);
+          if (stat.type !== vscode.FileType.Directory) {
+            vscode.window.showErrorMessage('Please select a folder');
+            return;
+          }
+          folderPath = uri.fsPath;
+        } else {
+          vscode.window.showErrorMessage('Please select a folder');
+          return;
+        }
+
+        // Generate shareables for all files in folder
+        const shareable = await generateShareableForHttpFolderWithEnv(folderPath);
+        if (shareable) {
+          // Copy to clipboard
+          await vscode.env.clipboard.writeText(shareable);
+          
+          vscode.window.showInformationMessage(
+            `HTTP + Environments bundle copied to clipboard as CursorToys shareable!`
+          );
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error generating folder shareable: ${error}`);
+      }
+    }
+  );
+
+  // Command to share command folder as bundle
+  const shareCommandFolderCommand = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysCommandFolder',
+    async (uri?: vscode.Uri) => {
+      try {
+        let folderPath: string;
+        
+        if (uri) {
+          const stat = await vscode.workspace.fs.stat(uri);
+          if (stat.type !== vscode.FileType.Directory) {
+            vscode.window.showErrorMessage('Please select a folder');
+            return;
+          }
+          folderPath = uri.fsPath;
+        } else {
+          vscode.window.showErrorMessage('Please select a folder');
+          return;
+        }
+
+        const shareable = await generateShareableForCommandFolder(folderPath);
+        if (shareable) {
+          await vscode.env.clipboard.writeText(shareable);
+          vscode.window.showInformationMessage('Commands bundle copied to clipboard!');
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error generating command bundle: ${error}`);
+      }
+    }
+  );
+
+  // Command to share rule folder as bundle
+  const shareRuleFolderCommand = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysRuleFolder',
+    async (uri?: vscode.Uri) => {
+      try {
+        let folderPath: string;
+        
+        if (uri) {
+          const stat = await vscode.workspace.fs.stat(uri);
+          if (stat.type !== vscode.FileType.Directory) {
+            vscode.window.showErrorMessage('Please select a folder');
+            return;
+          }
+          folderPath = uri.fsPath;
+        } else {
+          vscode.window.showErrorMessage('Please select a folder');
+          return;
+        }
+
+        const shareable = await generateShareableForRuleFolder(folderPath);
+        if (shareable) {
+          await vscode.env.clipboard.writeText(shareable);
+          vscode.window.showInformationMessage('Rules bundle copied to clipboard!');
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error generating rule bundle: ${error}`);
+      }
+    }
+  );
+
+  // Command to share prompt folder as bundle
+  const sharePromptFolderCommand = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysPromptFolder',
+    async (uri?: vscode.Uri) => {
+      try {
+        let folderPath: string;
+        
+        if (uri) {
+          const stat = await vscode.workspace.fs.stat(uri);
+          if (stat.type !== vscode.FileType.Directory) {
+            vscode.window.showErrorMessage('Please select a folder');
+            return;
+          }
+          folderPath = uri.fsPath;
+        } else {
+          vscode.window.showErrorMessage('Please select a folder');
+          return;
+        }
+
+        const shareable = await generateShareableForPromptFolder(folderPath);
+        if (shareable) {
+          await vscode.env.clipboard.writeText(shareable);
+          vscode.window.showInformationMessage('Prompts bundle copied to clipboard!');
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error generating prompt bundle: ${error}`);
+      }
+    }
+  );
+
+  // Command to share entire project (.cursor folder)
+  const shareProjectCommand = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysProject',
+    async (uri?: vscode.Uri) => {
+      try {
+        let folderPath: string;
+        
+        if (uri) {
+          const stat = await vscode.workspace.fs.stat(uri);
+          if (stat.type !== vscode.FileType.Directory) {
+            vscode.window.showErrorMessage('Please select a folder');
+            return;
+          }
+          folderPath = uri.fsPath;
+        } else {
+          vscode.window.showErrorMessage('Please select a folder');
+          return;
+        }
+
+        const shareable = await generateShareableForProject(folderPath);
+        if (shareable) {
+          await vscode.env.clipboard.writeText(shareable);
+          vscode.window.showInformationMessage('Project bundle copied to clipboard!');
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error generating project bundle: ${error}`);
+      }
+    }
+  );
+
   // Unified command to import both deeplink and shareable
   const importCommand = vscode.commands.registerCommand(
     'cursor-toys.import',
     async () => {
       const url = await vscode.window.showInputBox({
-        prompt: 'Paste the Cursor deeplink or CursorToys shareable',
-        placeHolder: 'cursor://... or https://cursor.com/link/... or cursortoys://...',
+        prompt: 'Paste your CursorToys link (supports: files, bundles, deeplinks)',
+        placeHolder: 'cursortoys://... or cursor://... or https://cursor.com/link/...',
         validateInput: (value) => {
           if (!value) {
             return 'Please enter a link';
@@ -1434,6 +1745,7 @@ export function activate(context: vscode.ExtensionContext) {
     tabChangeDisposable,
     codeLensDisposable,
     httpCodeLensDisposable,
+    envCodeLensDisposable,
     httpHoverDisposable,
     httpCompletionDisposable,
     activeEditorChangeDisposable,
@@ -1445,6 +1757,17 @@ export function activate(context: vscode.ExtensionContext) {
     generateShareableCommandSpecific,
     generateShareableRuleSpecific,
     generateShareablePromptSpecific,
+    generateShareableHttpSpecific,
+    generateShareableEnvSpecific,
+    generateShareableHttpWithPathSpecific,
+    generateShareableEnvWithPathSpecific,
+    shareHttpFolderCommand,
+    shareEnvFolderCommand,
+    shareHttpFolderWithEnvCommand,
+    shareCommandFolderCommand,
+    shareRuleFolderCommand,
+    sharePromptFolderCommand,
+    shareProjectCommand,
     importCommand,
     saveAsUserCommand,
     saveAsUserPrompt,
