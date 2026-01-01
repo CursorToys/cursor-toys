@@ -27,6 +27,11 @@ export class DeeplinkCodeLensProvider implements vscode.CodeLensProvider {
       return [];
     }
 
+    // Only show CodeLens for command, rule, and prompt files (not http or env)
+    if (fileType !== 'command' && fileType !== 'rule' && fileType !== 'prompt') {
+      return [];
+    }
+
     // Validate extension
     const config = vscode.workspace.getConfiguration('cursorToys');
     const allowedExtensions = config.get<string[]>('allowedExtensions', ['md']);
@@ -60,6 +65,9 @@ export class DeeplinkCodeLensProvider implements vscode.CodeLensProvider {
         deeplinkLabel = 'Share as Deeplink';
         shareableLabel = 'Share as CursorToys';
         break;
+      default:
+        // This should never happen due to the check above
+        return [];
     }
 
     // Create CodeLens for Deeplink on the first line (line 0)

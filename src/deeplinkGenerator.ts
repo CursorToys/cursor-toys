@@ -54,7 +54,13 @@ export async function generateDeeplink(
     if (forcedType) {
       fileType = forcedType;
     } else {
-      fileType = getFileTypeFromPath(filePath);
+      const detectedType = getFileTypeFromPath(filePath);
+      // Filter out http and env types for deeplinks
+      if (detectedType === 'command' || detectedType === 'rule' || detectedType === 'prompt') {
+        fileType = detectedType;
+      } else {
+        fileType = null;
+      }
       if (!fileType) {
         vscode.window.showErrorMessage('File must be in .cursor/commands/, .claude/commands/, .cursor/rules/ or .cursor/prompts/');
         return null;

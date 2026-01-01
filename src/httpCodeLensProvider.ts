@@ -250,6 +250,7 @@ export class HttpCodeLensProvider implements vscode.CodeLensProvider {
       this.codeLenses.push(codeLens);
     }
 
+    // Note: Share CodeLens removed - use context menu instead
     return this.codeLenses;
   }
 
