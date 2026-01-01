@@ -22,7 +22,7 @@ export function validateUrlLength(url: string): boolean {
 /**
  * Detects the file type based on the path
  */
-export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'prompt' | 'http' | 'env' | null {
+export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | null {
   const normalizedPath = filePath.replace(/\\/g, '/');
   const baseFolderName = getBaseFolderName();
   const environmentsFolderName = getEnvironmentsFolderName();
@@ -42,6 +42,11 @@ export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'pro
   if (normalizedPath.includes(`/.${baseFolderName}/prompts/`) || 
       normalizedPath.includes('/.cursor/prompts/')) {
     return 'prompt';
+  }
+  // Notepads can use custom base folder or legacy .cursor
+  if (normalizedPath.includes(`/.${baseFolderName}/notepads/`) || 
+      normalizedPath.includes('/.cursor/notepads/')) {
+    return 'notepad';
   }
   // HTTP requests in .{baseFolder}/http/ folder (but not in environments folder)
   if ((normalizedPath.includes(`/.${baseFolderName}/http/`) || 
@@ -225,6 +230,16 @@ export function getPersonalPromptsPaths(): string[] {
   }
   
   return paths;
+}
+
+/**
+ * Gets the full path to the notepads folder
+ * @param workspacePath Workspace path (required for notepads - they are workspace-specific)
+ * @param isUser Deprecated - notepads are always workspace-specific
+ */
+export function getNotepadsPath(workspacePath: string, isUser: boolean = false): string {
+  const baseFolderName = getBaseFolderName();
+  return path.join(workspacePath, `.${baseFolderName}`, 'notepads');
 }
 
 /**

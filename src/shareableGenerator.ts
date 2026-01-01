@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as zlib from 'zlib';
 import { getFileTypeFromPath, sanitizeFileName, isAllowedExtension, getBaseFolderName, getEnvironmentsFolderName } from './utils';
+import { GistManager } from './gistManager';
 
 const MAX_CONTENT_SIZE = 50 * 1024 * 1024; // 50MB limit for safety
 
@@ -13,7 +14,7 @@ const MAX_CONTENT_SIZE = 50 * 1024 * 1024; // 50MB limit for safety
  */
 export async function generateShareable(
   filePath: string,
-  forcedType?: 'command' | 'rule' | 'prompt' | 'http' | 'env'
+  forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env'
 ): Promise<string | null> {
   try {
     // Read configuration
@@ -30,13 +31,13 @@ export async function generateShareable(
     }
 
     // Detect or use forced type
-    let fileType: 'command' | 'rule' | 'prompt' | 'http' | 'env' | null;
+    let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | null;
     if (forcedType) {
       fileType = forcedType;
     } else {
       fileType = getFileTypeFromPath(filePath);
       if (!fileType) {
-        vscode.window.showErrorMessage('File must be in commands/, rules/, prompts/, http/ or http/environments/ folder');
+        vscode.window.showErrorMessage('File must be in commands/, rules/, prompts/, notepads/, http/ or http/environments/ folder');
         return null;
       }
     }
@@ -55,7 +56,7 @@ export async function generateShareable(
         return null;
       }
     } else {
-      // For command, rule, prompt - validate extension
+      // For command, rule, prompt, notepad - validate extension
       if (!isAllowedExtension(filePath, allowedExtensions)) {
         vscode.window.showErrorMessage(
           `File extension is not in the allowed extensions list: ${allowedExtensions.join(', ')}`
@@ -125,7 +126,7 @@ export function compressAndEncode(content: string): string {
  * @returns Shareable URL
  */
 export function buildShareableUrl(
-  type: 'command' | 'rule' | 'prompt' | 'http' | 'env',
+  type: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env',
   fileName: string,
   compressedData: string
 ): string {
@@ -844,6 +845,71 @@ export async function generateShareableForPromptFolder(
 }
 
 /**
+ * Generates shareable bundle for all notepad files in a folder
+ * @param folderPath Notepad folder path to share
+ * @returns Single shareable URL containing all notepad files as a bundle
+ */
+export async function generateShareableForNotepadFolder(
+  folderPath: string
+): Promise<string | null> {
+  try {
+    // Check if folder exists
+    const folderUri = vscode.Uri.file(folderPath);
+    try {
+      const stat = await vscode.workspace.fs.stat(folderUri);
+      if (stat.type !== vscode.FileType.Directory) {
+        vscode.window.showErrorMessage('Selected path is not a folder');
+        return null;
+      }
+    } catch {
+      vscode.window.showErrorMessage(`Folder not found: ${folderPath}`);
+      return null;
+    }
+
+    // Get allowed extensions
+    const config = vscode.workspace.getConfiguration('cursorToys');
+    const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+
+    const files: Array<{ name: string, content: string }> = [];
+
+    // Collect notepad files
+    const notepadFiles = await collectMarkdownFilesFromFolder(folderPath, allowedExtensions);
+    
+    if (notepadFiles.length === 0) {
+      vscode.window.showWarningMessage('No notepad files found in folder');
+      return null;
+    }
+
+    for (const filePath of notepadFiles) {
+      // Read file content
+      const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+      const content = document.getText();
+      
+      // Get file name without extension
+      const fileName = path.basename(filePath, path.extname(filePath));
+      
+      files.push({
+        name: fileName,
+        content: content
+      });
+    }
+
+    // Create bundle object
+    const bundle = { files };
+
+    // Compress and encode the entire bundle
+    const bundleJson = JSON.stringify(bundle);
+    const compressedData = compressAndEncode(bundleJson);
+
+    // Build shareable URL: cursortoys://NOTEPAD_BUNDLE:data
+    return `cursortoys://NOTEPAD_BUNDLE:${compressedData}`;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error generating notepad bundle: ${error}`);
+    return null;
+  }
+}
+
+/**
  * Generates shareable bundle for entire project (.cursor folder)
  * @param cursorFolderPath Path to .cursor folder
  * @returns Single shareable URL containing entire project as a bundle
@@ -874,6 +940,7 @@ export async function generateShareableForProject(
       commands: [],
       rules: [],
       prompts: [],
+      notepads: [],
       http: []
     };
 
@@ -907,6 +974,17 @@ export async function generateShareableForProject(
         const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
         const fileName = path.basename(filePath, path.extname(filePath));
         bundle.prompts.push({ name: fileName, content: document.getText() });
+      }
+    } catch {}
+
+    // Collect notepads
+    const notepadsPath = path.join(cursorFolderPath, 'notepads');
+    try {
+      const notepadFiles = await collectMarkdownFilesFromFolder(notepadsPath, allowedExtensions);
+      for (const filePath of notepadFiles) {
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+        const fileName = path.basename(filePath, path.extname(filePath));
+        bundle.notepads.push({ name: fileName, content: document.getText() });
       }
     } catch {}
 
@@ -963,6 +1041,339 @@ export async function generateShareableForProject(
     return `cursortoys://PROJECT_BUNDLE:${compressedData}`;
   } catch (error) {
     vscode.window.showErrorMessage(`Error generating project bundle: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Generates a GitHub Gist for a single file
+ * @param filePath File path
+ * @param forcedType Forced type (optional)
+ * @param context Extension context for GistManager
+ * @returns Gist URL or null if failed
+ */
+export async function generateGistShareable(
+  filePath: string,
+  forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env',
+  context?: vscode.ExtensionContext
+): Promise<string | null> {
+  try {
+    if (!context) {
+      vscode.window.showErrorMessage('Extension context not available');
+      return null;
+    }
+
+    const gistManager = GistManager.getInstance(context);
+
+    // Ensure token is configured
+    const hasToken = await gistManager.ensureTokenConfigured();
+    if (!hasToken) {
+      return null;
+    }
+
+    // Determine visibility
+    const isPublic = await gistManager.determineVisibility();
+    if (isPublic === null) {
+      return null; // User cancelled
+    }
+
+    // Read configuration
+    const config = vscode.workspace.getConfiguration('cursorToys');
+    const allowedExtensions = config.get<string[]>('allowedExtensions', ['md']);
+
+    // Check if file exists
+    const uri = vscode.Uri.file(filePath);
+    try {
+      await vscode.workspace.fs.stat(uri);
+    } catch {
+      vscode.window.showErrorMessage(`File not found: ${filePath}`);
+      return null;
+    }
+
+    // Detect or use forced type
+    let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | null;
+    if (forcedType) {
+      fileType = forcedType;
+    } else {
+      fileType = getFileTypeFromPath(filePath);
+      if (!fileType) {
+        vscode.window.showErrorMessage('File must be in commands/, rules/, prompts/, notepads/, http/ or http/environments/ folder');
+        return null;
+      }
+    }
+
+    // Validate file extension based on type
+    if (fileType === 'http') {
+      const ext = path.extname(filePath).substring(1).toLowerCase();
+      if (ext !== 'req' && ext !== 'request') {
+        vscode.window.showErrorMessage('HTTP files must have .req or .request extension');
+        return null;
+      }
+    } else if (fileType === 'env') {
+      const fileName = path.basename(filePath);
+      if (!fileName.startsWith('.env')) {
+        vscode.window.showErrorMessage('Environment files must start with .env');
+        return null;
+      }
+    } else {
+      // For command, rule, prompt, notepad - validate extension
+      if (!isAllowedExtension(filePath, allowedExtensions)) {
+        vscode.window.showErrorMessage(
+          `File extension is not in the allowed extensions list: ${allowedExtensions.join(', ')}`
+        );
+        return null;
+      }
+    }
+
+    // Read file content
+    const document = await vscode.workspace.openTextDocument(uri);
+    const content = document.getText();
+
+    // Get file name with extension
+    const fileName = path.basename(filePath);
+    const fileNameWithoutExt = path.parse(filePath).name;
+
+    // Build metadata
+    const metadata = gistManager.buildMetadata(
+      fileType,
+      [{ name: fileName, type: fileType, size: content.length }]
+    );
+
+    // Build description
+    const description = gistManager.buildGistDescription(
+      fileType,
+      fileNameWithoutExt
+    );
+
+    // Create gist files object
+    const files: { [filename: string]: { content: string } } = {
+      [fileName]: { content },
+      '.cursortoys-metadata.json': { content: JSON.stringify(metadata, null, 2) }
+    };
+
+    // Create gist
+    vscode.window.showInformationMessage('Creating Gist...');
+    const gistUrl = await gistManager.createGist(files, description, isPublic);
+
+    return gistUrl;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error creating Gist: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Generates a GitHub Gist for a bundle (folder of files)
+ * @param bundleType Type of bundle
+ * @param folderPath Folder path to share
+ * @param context Extension context for GistManager
+ * @returns Gist URL or null if failed
+ */
+export async function generateGistShareableForBundle(
+  bundleType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'project',
+  folderPath: string,
+  context?: vscode.ExtensionContext
+): Promise<string | null> {
+  try {
+    if (!context) {
+      vscode.window.showErrorMessage('Extension context not available');
+      return null;
+    }
+
+    const gistManager = GistManager.getInstance(context);
+
+    // Ensure token is configured
+    const hasToken = await gistManager.ensureTokenConfigured();
+    if (!hasToken) {
+      return null;
+    }
+
+    // Determine visibility
+    const isPublic = await gistManager.determineVisibility();
+    if (isPublic === null) {
+      return null; // User cancelled
+    }
+
+    // Check if folder exists
+    const folderUri = vscode.Uri.file(folderPath);
+    try {
+      const stat = await vscode.workspace.fs.stat(folderUri);
+      if (stat.type !== vscode.FileType.Directory) {
+        vscode.window.showErrorMessage('Selected path is not a folder');
+        return null;
+      }
+    } catch {
+      vscode.window.showErrorMessage(`Folder not found: ${folderPath}`);
+      return null;
+    }
+
+    const config = vscode.workspace.getConfiguration('cursorToys');
+    const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+    const files: { [filename: string]: { content: string } } = {};
+    const fileMetadata: Array<{ name: string; type: string; size: number }> = [];
+
+    // Collect files based on bundle type
+    if (bundleType === 'command') {
+      const commandFiles = await collectMarkdownFilesFromFolder(folderPath, allowedExtensions);
+      for (const filePath of commandFiles) {
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+        const content = document.getText();
+        const fileName = path.basename(filePath);
+        files[fileName] = { content };
+        fileMetadata.push({ name: fileName, type: 'command', size: content.length });
+      }
+    } else if (bundleType === 'rule') {
+      const ruleFiles = await collectMarkdownFilesFromFolder(folderPath, allowedExtensions);
+      for (const filePath of ruleFiles) {
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+        const content = document.getText();
+        const fileName = path.basename(filePath);
+        files[fileName] = { content };
+        fileMetadata.push({ name: fileName, type: 'rule', size: content.length });
+      }
+    } else if (bundleType === 'prompt') {
+      const promptFiles = await collectMarkdownFilesFromFolder(folderPath, allowedExtensions);
+      for (const filePath of promptFiles) {
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+        const content = document.getText();
+        const fileName = path.basename(filePath);
+        files[fileName] = { content };
+        fileMetadata.push({ name: fileName, type: 'prompt', size: content.length });
+      }
+    } else if (bundleType === 'notepad') {
+      const notepadFiles = await collectMarkdownFilesFromFolder(folderPath, allowedExtensions);
+      for (const filePath of notepadFiles) {
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+        const content = document.getText();
+        const fileName = path.basename(filePath);
+        files[fileName] = { content };
+        fileMetadata.push({ name: fileName, type: 'notepad', size: content.length });
+      }
+    } else if (bundleType === 'http') {
+      const httpFiles = await collectHttpFilesFromFolder(folderPath);
+      for (const filePath of httpFiles) {
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+        const content = document.getText();
+        const fileName = path.basename(filePath);
+        files[fileName] = { content };
+        fileMetadata.push({ name: fileName, type: 'http', size: content.length });
+      }
+
+      // Also collect environment files if they exist
+      const environmentsFolderName = getEnvironmentsFolderName();
+      const environmentsPath = path.join(folderPath, environmentsFolderName);
+      try {
+        const envFiles = await collectEnvFilesFromFolder(environmentsPath);
+        for (const filePath of envFiles) {
+          const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+          const content = document.getText();
+          const fileName = path.basename(filePath);
+          files[fileName] = { content };
+          fileMetadata.push({ name: fileName, type: 'env', size: content.length });
+        }
+      } catch {
+        // No environment files, that's OK
+      }
+    } else if (bundleType === 'project') {
+      // Collect all file types from project
+      const commandsPath = path.join(folderPath, 'commands');
+      const rulesPath = path.join(folderPath, 'rules');
+      const promptsPath = path.join(folderPath, 'prompts');
+      const notepadsPath = path.join(folderPath, 'notepads');
+      const httpPath = path.join(folderPath, 'http');
+
+      // Commands
+      try {
+        const commandFiles = await collectMarkdownFilesFromFolder(commandsPath, allowedExtensions);
+        for (const filePath of commandFiles) {
+          const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+          const content = document.getText();
+          const fileName = `commands/${path.basename(filePath)}`;
+          files[fileName] = { content };
+          fileMetadata.push({ name: fileName, type: 'command', size: content.length });
+        }
+      } catch {}
+
+      // Rules
+      try {
+        const ruleFiles = await collectMarkdownFilesFromFolder(rulesPath, allowedExtensions);
+        for (const filePath of ruleFiles) {
+          const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+          const content = document.getText();
+          const fileName = `rules/${path.basename(filePath)}`;
+          files[fileName] = { content };
+          fileMetadata.push({ name: fileName, type: 'rule', size: content.length });
+        }
+      } catch {}
+
+      // Prompts
+      try {
+        const promptFiles = await collectMarkdownFilesFromFolder(promptsPath, allowedExtensions);
+        for (const filePath of promptFiles) {
+          const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+          const content = document.getText();
+          const fileName = `prompts/${path.basename(filePath)}`;
+          files[fileName] = { content };
+          fileMetadata.push({ name: fileName, type: 'prompt', size: content.length });
+        }
+      } catch {}
+
+      // Notepads
+      try {
+        const notepadFiles = await collectMarkdownFilesFromFolder(notepadsPath, allowedExtensions);
+        for (const filePath of notepadFiles) {
+          const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+          const content = document.getText();
+          const fileName = `notepads/${path.basename(filePath)}`;
+          files[fileName] = { content };
+          fileMetadata.push({ name: fileName, type: 'notepad', size: content.length });
+        }
+      } catch {}
+
+      // HTTP files
+      try {
+        const httpFiles = await collectHttpFilesFromFolder(httpPath);
+        for (const filePath of httpFiles) {
+          const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+          const content = document.getText();
+          const fileName = `http/${path.basename(filePath)}`;
+          files[fileName] = { content };
+          fileMetadata.push({ name: fileName, type: 'http', size: content.length });
+        }
+      } catch {}
+    }
+
+    if (Object.keys(files).length === 0) {
+      vscode.window.showWarningMessage('No files found to share');
+      return null;
+    }
+
+    // Build metadata
+    const bundleTypeStr = `${bundleType}_bundle`;
+    const metadata = gistManager.buildMetadata(
+      'bundle',
+      fileMetadata,
+      bundleTypeStr
+    );
+
+    // Build description
+    const folderName = path.basename(folderPath);
+    const description = gistManager.buildGistDescription(
+      'bundle',
+      folderName,
+      bundleTypeStr
+    );
+
+    // Add metadata file
+    files['.cursortoys-metadata.json'] = { content: JSON.stringify(metadata, null, 2) };
+
+    // Create gist
+    vscode.window.showInformationMessage('Creating Gist bundle...');
+    const gistUrl = await gistManager.createGist(files, description, isPublic);
+
+    return gistUrl;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error creating Gist bundle: ${error}`);
     return null;
   }
 }

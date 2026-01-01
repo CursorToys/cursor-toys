@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import { sanitizeFileName, getCommandsPath, getPromptsPath, getRulesPath, getHttpPath, getEnvironmentsPath } from './utils';
+import { sanitizeFileName, getCommandsPath, getPromptsPath, getRulesPath, getNotepadsPath, getHttpPath, getEnvironmentsPath } from './utils';
+import { GistManager, GistResponse, CursorToysMetadata } from './gistManager';
 
 interface ShareableParams {
-  type: 'command' | 'prompt' | 'rule' | 'http' | 'env';
+  type: 'command' | 'prompt' | 'rule' | 'notepad' | 'http' | 'env';
   name: string;
   content: string; // Already decompressed
   relativePath?: string; // Optional: relative path for HTTP_PATH and ENV_PATH types
@@ -33,6 +34,10 @@ export async function importShareable(shareableUrl: string): Promise<void> {
       await importPromptBundle(shareableUrl);
       return;
     }
+    if (shareableUrl.startsWith('cursortoys://NOTEPAD_BUNDLE:')) {
+      await importNotepadBundle(shareableUrl);
+      return;
+    }
     if (shareableUrl.startsWith('cursortoys://PROJECT_BUNDLE:')) {
       await importProjectBundle(shareableUrl);
       return;
@@ -46,7 +51,7 @@ export async function importShareable(shareableUrl: string): Promise<void> {
     }
 
     // For commands and prompts, ask if user wants to save as Project or Personal
-    // HTTP and ENV files are always saved in project workspace
+    // Notepads and HTTP/ENV files are always saved in project workspace
     let isPersonal = false;
     if (params.type === 'command' || params.type === 'prompt') {
       const itemType = params.type === 'command' ? 'command' : 'prompt';
@@ -428,6 +433,71 @@ async function importPromptBundle(bundleUrl: string): Promise<void> {
 }
 
 /**
+ * Imports a bundle of notepad files
+ * @param bundleUrl Bundle URL in format: cursortoys://NOTEPAD_BUNDLE:compressedData
+ */
+async function importNotepadBundle(bundleUrl: string): Promise<void> {
+  try {
+    const withoutProtocol = bundleUrl.substring('cursortoys://NOTEPAD_BUNDLE:'.length);
+    const decompressed = decodeAndDecompress(withoutProtocol);
+    const bundle = JSON.parse(decompressed);
+    
+    if (!bundle.files || !Array.isArray(bundle.files)) {
+      vscode.window.showErrorMessage('Invalid bundle format');
+      return;
+    }
+
+    // Notepads are always saved in project workspace
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage('No workspace open. Notepads are workspace-specific.');
+      return;
+    }
+
+    const workspacePath = workspaceFolder.uri.fsPath;
+    const notepadsPath = getNotepadsPath(workspacePath, false);
+    
+    // Get default extension
+    const config = vscode.workspace.getConfiguration('cursorToys');
+    const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+    const defaultExtension = allowedExtensions[0] || 'md';
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const file of bundle.files) {
+      try {
+        const { name, content } = file;
+        const fileName = `${name}.${defaultExtension}`;
+        const fullPath = path.join(notepadsPath, fileName);
+        
+        // Create directory if needed
+        await createDirectoryRecursive(notepadsPath);
+        
+        // Write file
+        const fileUri = vscode.Uri.file(fullPath);
+        const fileContent = Buffer.from(content, 'utf8');
+        await vscode.workspace.fs.writeFile(fileUri, fileContent);
+        
+        successCount++;
+      } catch (error) {
+        console.error(`Error importing notepad ${file.name}:`, error);
+        errorCount++;
+      }
+    }
+
+    if (errorCount === 0) {
+      vscode.window.showInformationMessage(`Successfully imported ${successCount} notepad(s) to project!`);
+    } else {
+      vscode.window.showWarningMessage(`Imported ${successCount} notepad(s), ${errorCount} failed.`);
+    }
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error importing notepad bundle: ${error}`);
+  }
+}
+
+/**
  * Imports a complete project bundle
  * @param bundleUrl Bundle URL in format: cursortoys://PROJECT_BUNDLE:compressedData
  */
@@ -509,6 +579,25 @@ async function importProjectBundle(bundleUrl: string): Promise<void> {
       }
     }
 
+    // Import notepads
+    if (bundle.notepads && Array.isArray(bundle.notepads)) {
+      const notepadsPath = getNotepadsPath(workspacePath, false);
+      await createDirectoryRecursive(notepadsPath);
+      
+      for (const file of bundle.notepads) {
+        try {
+          const fileName = `${file.name}.${defaultExtension}`;
+          const fullPath = path.join(notepadsPath, fileName);
+          const fileUri = vscode.Uri.file(fullPath);
+          await vscode.workspace.fs.writeFile(fileUri, Buffer.from(file.content, 'utf8'));
+          totalSuccess++;
+        } catch (error) {
+          console.error(`Error importing notepad ${file.name}:`, error);
+          totalError++;
+        }
+      }
+    }
+
     // Import HTTP files
     if (bundle.http && Array.isArray(bundle.http)) {
       const httpBasePath = getHttpPath(workspacePath);
@@ -568,7 +657,7 @@ export function parseShareableUrl(url: string): ShareableParams | null {
 
     // Extract type (handle both TYPE and TYPE_PATH)
     const typeStr = parts[0].toUpperCase();
-    let type: 'command' | 'prompt' | 'rule' | 'http' | 'env';
+    let type: 'command' | 'prompt' | 'notepad' | 'rule' | 'http' | 'env';
     let hasPath = false;
     let relativePath: string | undefined;
     
@@ -576,6 +665,8 @@ export function parseShareableUrl(url: string): ShareableParams | null {
       type = 'command';
     } else if (typeStr === 'PROMPT') {
       type = 'prompt';
+    } else if (typeStr === 'NOTEPAD') {
+      type = 'notepad';
     } else if (typeStr === 'RULE') {
       type = 'rule';
     } else if (typeStr === 'HTTP') {
@@ -589,7 +680,7 @@ export function parseShareableUrl(url: string): ShareableParams | null {
       type = 'env';
       hasPath = true;
     } else {
-      vscode.window.showErrorMessage(`Invalid type: ${typeStr}. Must be COMMAND, PROMPT, RULE, HTTP, ENV, HTTP_PATH, or ENV_PATH.`);
+      vscode.window.showErrorMessage(`Invalid type: ${typeStr}. Must be COMMAND, PROMPT, NOTEPAD, RULE, HTTP, ENV, HTTP_PATH, or ENV_PATH.`);
       return null;
     }
 
@@ -711,6 +802,10 @@ function getDestinationPath(
       folderPath = getPromptsPath(workspacePath, isPersonal);
       fileName = `${params.name}.${defaultExtension}`;
       break;
+    case 'notepad':
+      folderPath = getNotepadsPath(workspacePath, isPersonal);
+      fileName = `${params.name}.${defaultExtension}`;
+      break;
     case 'http':
       // HTTP files go to project workspace
       if (params.relativePath) {
@@ -762,6 +857,318 @@ async function createDirectoryRecursive(dirPath: string): Promise<void> {
       // Directory doesn't exist, create it
       await vscode.workspace.fs.createDirectory(uri);
     }
+  }
+}
+
+/**
+ * Imports a file or bundle from a GitHub Gist
+ * @param gistIdOrUrl Gist ID or URL
+ * @param context Extension context for GistManager
+ */
+export async function importFromGist(
+  gistIdOrUrl: string,
+  context?: vscode.ExtensionContext
+): Promise<void> {
+  try {
+    if (!context) {
+      vscode.window.showErrorMessage('Extension context not available');
+      return;
+    }
+
+    const gistManager = GistManager.getInstance(context);
+
+    // Parse and validate URL/ID
+    const gistId = gistManager.parseGistUrl(gistIdOrUrl);
+    if (!gistId) {
+      vscode.window.showErrorMessage('Invalid Gist URL or ID. Please check and try again.');
+      return;
+    }
+
+    // Fetch gist
+    vscode.window.showInformationMessage('Fetching Gist...');
+    const gist = await gistManager.fetchGist(gistId);
+
+    // Validate format
+    if (!gistManager.validateGistFormat(gist)) {
+      vscode.window.showErrorMessage('This Gist does not appear to be a valid CursorToys share.');
+      return;
+    }
+
+    // Extract metadata if available
+    const metadata = gistManager.extractMetadata(gist);
+
+    // Detect type and import
+    const gistType = detectGistType(gist, metadata);
+
+    if (gistType === 'single') {
+      await importSingleFileFromGist(gist, metadata);
+    } else if (gistType === 'bundle') {
+      await importBundleFromGist(gist, metadata);
+    } else {
+      vscode.window.showErrorMessage('Unable to determine Gist type. Please check the format.');
+    }
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error importing from Gist: ${error}`);
+  }
+}
+
+/**
+ * Detects if a Gist contains a single file or a bundle
+ */
+function detectGistType(gist: GistResponse, metadata: CursorToysMetadata | null): 'single' | 'bundle' | 'unknown' {
+  if (metadata) {
+    // Use metadata to determine type
+    if (metadata.cursortoys.type === 'bundle') {
+      return 'bundle';
+    } else {
+      return 'single';
+    }
+  }
+
+  // Fallback: count non-metadata files
+  const fileNames = Object.keys(gist.files).filter(name => name !== '.cursortoys-metadata.json');
+  
+  if (fileNames.length === 0) {
+    return 'unknown';
+  } else if (fileNames.length === 1) {
+    return 'single';
+  } else {
+    return 'bundle';
+  }
+}
+
+/**
+ * Imports a single file from a Gist
+ */
+async function importSingleFileFromGist(
+  gist: GistResponse,
+  metadata: CursorToysMetadata | null
+): Promise<void> {
+  // Get the file (skip metadata file)
+  const fileNames = Object.keys(gist.files).filter(name => name !== '.cursortoys-metadata.json');
+  
+  if (fileNames.length === 0) {
+    vscode.window.showErrorMessage('No files found in Gist');
+    return;
+  }
+
+  const fileName = fileNames[0];
+  const file = gist.files[fileName];
+  
+  if (!file.content) {
+    vscode.window.showErrorMessage('File content not available');
+    return;
+  }
+
+  // Determine file type
+  let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env';
+  
+  if (metadata && metadata.cursortoys.type !== 'bundle') {
+    fileType = metadata.cursortoys.type;
+  } else {
+    // Fallback: detect by extension
+    if (fileName.endsWith('.md') || fileName.endsWith('.mdc')) {
+      // Default to command if can't determine
+      fileType = 'command';
+    } else if (fileName.endsWith('.req') || fileName.endsWith('.request')) {
+      fileType = 'http';
+    } else if (fileName.startsWith('.env')) {
+      fileType = 'env';
+    } else {
+      vscode.window.showErrorMessage('Unable to determine file type');
+      return;
+    }
+  }
+
+  // For commands and prompts, ask if user wants to save as Project or Personal
+  let isPersonal = false;
+  if (fileType === 'command' || fileType === 'prompt') {
+    const itemType = fileType === 'command' ? 'command' : 'prompt';
+    const itemLocation = await vscode.window.showQuickPick(
+      [
+        { 
+          label: `Personal ${itemType}s`, 
+          description: `Available in all projects (~/.cursor/${itemType}s)`, 
+          value: true 
+        },
+        { 
+          label: `Project ${itemType}s`, 
+          description: 'Specific to this workspace', 
+          value: false 
+        }
+      ],
+      {
+        placeHolder: `Where do you want to save this ${itemType}?`
+      }
+    );
+
+    if (itemLocation === undefined) {
+      return;
+    }
+
+    isPersonal = itemLocation.value;
+  }
+
+  // Get workspace folder (only needed for project files)
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder && !isPersonal) {
+    vscode.window.showErrorMessage('No workspace open');
+    return;
+  }
+
+  const workspacePath = workspaceFolder?.uri.fsPath || '';
+  
+  // Determine destination path
+  let folderPath: string;
+  
+  switch (fileType) {
+    case 'command':
+      folderPath = getCommandsPath(workspacePath, isPersonal);
+      break;
+    case 'rule':
+      folderPath = getRulesPath(workspacePath, isPersonal);
+      break;
+    case 'prompt':
+      folderPath = getPromptsPath(workspacePath, isPersonal);
+      break;
+    case 'notepad':
+      folderPath = getNotepadsPath(workspacePath, isPersonal);
+      break;
+    case 'http':
+      folderPath = getHttpPath(workspacePath);
+      break;
+    case 'env':
+      folderPath = getEnvironmentsPath(workspacePath);
+      break;
+  }
+
+  // Create directory if needed
+  await createDirectoryRecursive(folderPath);
+
+  // Check if file exists
+  const fileUri = vscode.Uri.file(path.join(folderPath, fileName));
+  let fileExists = false;
+  try {
+    await vscode.workspace.fs.stat(fileUri);
+    fileExists = true;
+  } catch {
+    // File doesn't exist, that's fine
+  }
+
+  if (fileExists) {
+    const overwrite = await vscode.window.showWarningMessage(
+      `File ${fileName} already exists. Do you want to overwrite it?`,
+      'Yes',
+      'No'
+    );
+    if (overwrite !== 'Yes') {
+      return;
+    }
+  }
+
+  // Write file
+  const content = Buffer.from(file.content, 'utf8');
+  await vscode.workspace.fs.writeFile(fileUri, content);
+
+  vscode.window.showInformationMessage(`File imported successfully: ${fileName}`);
+  
+  // Open file
+  const document = await vscode.workspace.openTextDocument(fileUri);
+  await vscode.window.showTextDocument(document);
+}
+
+/**
+ * Imports a bundle of files from a Gist
+ */
+async function importBundleFromGist(
+  gist: GistResponse,
+  metadata: CursorToysMetadata | null
+): Promise<void> {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (!workspaceFolder) {
+    vscode.window.showErrorMessage('No workspace open. Please open a folder first.');
+    return;
+  }
+
+  const workspacePath = workspaceFolder.uri.fsPath;
+  const config = vscode.workspace.getConfiguration('cursorToys');
+  const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+  const defaultExtension = allowedExtensions[0] || 'md';
+
+  let successCount = 0;
+  let errorCount = 0;
+
+  // Get bundle type from metadata
+  const bundleType = metadata?.cursortoys.bundleType;
+
+  // Process each file
+  for (const [fileName, file] of Object.entries(gist.files)) {
+    // Skip metadata file
+    if (fileName === '.cursortoys-metadata.json') {
+      continue;
+    }
+
+    if (!file.content) {
+      errorCount++;
+      continue;
+    }
+
+    try {
+      let destPath: string;
+
+      // Determine destination based on file type and bundle type
+      if (bundleType === 'project_bundle') {
+        // Project bundle: files already have folder prefix (commands/, rules/, etc)
+        destPath = path.join(workspacePath, `.cursor`, fileName);
+      } else if (bundleType === 'command_bundle') {
+        destPath = path.join(getCommandsPath(workspacePath, false), fileName);
+      } else if (bundleType === 'rule_bundle') {
+        destPath = path.join(getRulesPath(workspacePath, false), fileName);
+      } else if (bundleType === 'prompt_bundle') {
+        destPath = path.join(getPromptsPath(workspacePath, false), fileName);
+      } else if (bundleType === 'notepad_bundle') {
+        destPath = path.join(getNotepadsPath(workspacePath, false), fileName);
+      } else if (bundleType === 'http_bundle') {
+        if (fileName.startsWith('.env')) {
+          destPath = path.join(getEnvironmentsPath(workspacePath), fileName);
+        } else {
+          destPath = path.join(getHttpPath(workspacePath), fileName);
+        }
+      } else {
+        // Fallback: detect by extension
+        if (fileName.endsWith('.md') || fileName.endsWith('.mdc')) {
+          destPath = path.join(getCommandsPath(workspacePath, false), fileName);
+        } else if (fileName.endsWith('.req') || fileName.endsWith('.request')) {
+          destPath = path.join(getHttpPath(workspacePath), fileName);
+        } else if (fileName.startsWith('.env')) {
+          destPath = path.join(getEnvironmentsPath(workspacePath), fileName);
+        } else {
+          errorCount++;
+          continue;
+        }
+      }
+
+      // Create directory if needed
+      const dirPath = path.dirname(destPath);
+      await createDirectoryRecursive(dirPath);
+
+      // Write file
+      const fileUri = vscode.Uri.file(destPath);
+      const content = Buffer.from(file.content, 'utf8');
+      await vscode.workspace.fs.writeFile(fileUri, content);
+
+      successCount++;
+    } catch (error) {
+      console.error(`Error importing file ${fileName}:`, error);
+      errorCount++;
+    }
+  }
+
+  // Show summary
+  if (errorCount === 0) {
+    vscode.window.showInformationMessage(`Gist imported successfully: ${successCount} file(s) imported.`);
+  } else {
+    vscode.window.showWarningMessage(`Imported ${successCount} file(s), ${errorCount} failed.`);
   }
 }
 
