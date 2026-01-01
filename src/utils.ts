@@ -22,9 +22,10 @@ export function validateUrlLength(url: string): boolean {
 /**
  * Detects the file type based on the path
  */
-export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'prompt' | null {
+export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'prompt' | 'http' | 'env' | null {
   const normalizedPath = filePath.replace(/\\/g, '/');
   const baseFolderName = getBaseFolderName();
+  const environmentsFolderName = getEnvironmentsFolderName();
   
   // Commands can be in .cursor/commands/, .claude/commands/, or custom base folder
   if (normalizedPath.includes('/.cursor/commands/') || 
@@ -41,6 +42,26 @@ export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'pro
   if (normalizedPath.includes(`/.${baseFolderName}/prompts/`) || 
       normalizedPath.includes('/.cursor/prompts/')) {
     return 'prompt';
+  }
+  // HTTP requests in .{baseFolder}/http/ folder (but not in environments folder)
+  if ((normalizedPath.includes(`/.${baseFolderName}/http/`) || 
+       normalizedPath.includes('/.cursor/http/')) &&
+      !normalizedPath.includes(`/${environmentsFolderName}/`) &&
+      !normalizedPath.includes('/environments/')) {
+    const ext = getFileExtension(filePath).toLowerCase();
+    if (ext === 'req' || ext === 'request') {
+      return 'http';
+    }
+  }
+  // Environment files in .{baseFolder}/http/{environmentsFolder}/ folder
+  if (normalizedPath.includes(`/.${baseFolderName}/http/${environmentsFolderName}/`) || 
+      normalizedPath.includes(`/.cursor/http/${environmentsFolderName}/`) ||
+      normalizedPath.includes(`/.${baseFolderName}/http/environments/`) || 
+      normalizedPath.includes('/.cursor/http/environments/')) {
+    const fileName = path.basename(filePath);
+    if (fileName.startsWith('.env')) {
+      return 'env';
+    }
   }
   
   return null;
@@ -243,13 +264,24 @@ export function getHttpResponsePath(requestPath: string): string {
 }
 
 /**
+ * Gets the environments folder name based on configuration
+ * @returns Environments folder name (e.g., '.environments', 'environments', '__environments__', '_env')
+ */
+export function getEnvironmentsFolderName(): string {
+  const config = vscode.workspace.getConfiguration('cursorToys');
+  const folderName = config.get<string>('environmentsFolder', '.environments');
+  return folderName;
+}
+
+/**
  * Gets the path to the environments folder
  * @param workspacePath Workspace path
- * @returns Path to .{baseFolder}/http/environments/
+ * @returns Path to .{baseFolder}/http/{environmentsFolder}/
  */
 export function getEnvironmentsPath(workspacePath: string): string {
   const baseFolderName = getBaseFolderName();
-  return path.join(workspacePath, `.${baseFolderName}`, 'http', 'environments');
+  const environmentsFolderName = getEnvironmentsFolderName();
+  return path.join(workspacePath, `.${baseFolderName}`, 'http', environmentsFolderName);
 }
 
 /**
@@ -270,5 +302,15 @@ export function getHttpPath(workspacePath: string): string {
 export function isEnvironmentFile(filePath: string): boolean {
   const fileName = path.basename(filePath);
   return fileName.startsWith('.env');
+}
+
+/**
+ * Checks if a file is an HTTP or ENV file that can be shared
+ * @param filePath The file path to check
+ * @returns true if the file is HTTP request or ENV file
+ */
+export function isHttpOrEnvFile(filePath: string): boolean {
+  const fileType = getFileTypeFromPath(filePath);
+  return fileType === 'http' || fileType === 'env';
 }
 
