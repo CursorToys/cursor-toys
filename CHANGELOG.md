@@ -2,6 +2,168 @@
 
 All notable changes to the "CursorToys" extension will be documented in this file.
 
+## [1.2.0] - 2025-12-31
+
+### Added
+
+#### 🗂️ **HTTP and Environment File Sharing**
+- **HTTP Request Sharing**: Share HTTP requests as CursorToys shareables
+  - New command `cursor-toys.shareAsCursorToysHttp`: Share single HTTP request file
+  - New command `cursor-toys.shareAsCursorToysHttpWithPath`: Share HTTP request with folder structure
+  - New command `cursor-toys.shareAsCursorToysHttpFolder`: Share entire HTTP folder as bundle
+  - Support for `.req` and `.request` file types
+  - Automatic detection of HTTP files in `.cursor/http/` folder
+- **Environment File Sharing**: Share environment variables as CursorToys shareables
+  - New command `cursor-toys.shareAsCursorToysEnv`: Share single environment file
+  - New command `cursor-toys.shareAsCursorToysEnvWithPath`: Share environment with folder structure
+  - New command `cursor-toys.shareAsCursorToysEnvFolder`: Share entire environments folder as bundle
+  - Support for `.env*` files in environments folder
+  - Automatic detection of environment files
+- **Combined HTTP + Environment Bundles**: Share HTTP requests with their environments
+  - New command `cursor-toys.shareAsCursorToysHttpFolderWithEnv`: Bundle HTTP folder with environments
+  - Complete API testing setup sharing in one shareable
+- **Folder Bundles**: Share entire folders as single shareable
+  - New command `cursor-toys.shareAsCursorToysCommandFolder`: Bundle all commands from folder
+  - New command `cursor-toys.shareAsCursorToysRuleFolder`: Bundle all rules from folder
+  - New command `cursor-toys.shareAsCursorToysPromptFolder`: Bundle all prompts from folder
+  - New command `cursor-toys.shareAsCursorToysProject`: Bundle entire `.cursor` project folder
+  - Multiple files bundled into single shareable for easy distribution
+- **Environments Folder Configuration**: Customize environment folder name
+  - New setting `cursorToys.environmentsFolder`: Choose between `.environments`, `environments`, `__environments__`, or `_env`
+  - Default: `.environments` (hidden folder, recommended)
+  - Allows organization flexibility for HTTP environments
+- **ENV CodeLens Provider**: New CodeLens provider for environment files
+  - Registered for `.env*` files in environments folder
+  - Context-aware environment file detection
+
+### Changed
+- **CodeLens Filtering**: DeeplinkCodeLensProvider now only shows for command, rule, and prompt files
+  - HTTP and ENV files excluded from deeplink CodeLens (have their own sharing methods)
+  - Prevents CodeLens clutter on HTTP request files
+- **Deeplink Generation**: Filter out HTTP and ENV types from deeplink generation
+  - Only commands, rules, and prompts can be shared as traditional deeplinks
+  - HTTP and ENV use shareable format exclusively
+- **Import Command Enhanced**: Updated prompt text to reflect support for files, bundles, and deeplinks
+  - Changed from "Paste the Cursor deeplink or CursorToys shareable" to "Paste your CursorToys link (supports: files, bundles, deeplinks)"
+  - More descriptive placeholder text
+- **Context Menu Organization**: Enhanced context menu with folder-level actions
+  - Context menu now shows on both files and folders in `.cursor` structure
+  - Folder-specific commands only appear when right-clicking folders
+  - File-specific commands only appear when right-clicking files
+  - Improved regex patterns for better folder detection
+- **Shareable Generator**: Extended with multiple bundle generation functions
+  - `generateShareableWithPath()`: Generate shareable preserving folder structure
+  - `generateShareableForHttpFolder()`: Generate bundle for HTTP folder
+  - `generateShareableForEnvFolder()`: Generate bundle for environments folder
+  - `generateShareableForHttpFolderWithEnv()`: Generate combined HTTP + ENV bundle
+  - `generateShareableForCommandFolder()`: Generate commands bundle
+  - `generateShareableForRuleFolder()`: Generate rules bundle
+  - `generateShareableForPromptFolder()`: Generate prompts bundle
+  - `generateShareableForProject()`: Generate complete project bundle
+- **Shareable Importer**: Enhanced to handle bundle imports with folder structure
+  - Support for bundles with multiple files
+  - Automatic folder structure recreation
+  - File path preservation in bundles
+- **HTTP CodeLens**: Removed share CodeLens from HTTP files (use context menu instead)
+  - Comment added: "Note: Share CodeLens removed - use context menu instead"
+  - Cleaner UI for HTTP request files
+- **Utils Enhanced**: Extended file type detection
+  - Added HTTP and ENV file type detection
+  - `getFileTypeFromPath()` now returns `'http' | 'env'` in addition to existing types
+  - `getEnvironmentsFolderName()`: Get configured environments folder name
+  - `getEnvironmentsPath()`: Updated to use configurable folder name
+  - `isHttpOrEnvFile()`: New helper to check if file is HTTP or ENV type
+  - Improved environment file detection with multiple folder name support
+
+### Technical Details
+
+#### Enhanced Files
+- **`src/extension.ts`**:
+  - Added `generateShareableWithPathValidation()` helper function for HTTP/ENV with path
+  - Registered 11 new shareable commands for HTTP, ENV, and folder bundles
+  - Added ENV CodeLens provider registration
+  - Extended `generateShareableWithValidation()` to accept `'http' | 'env'` types
+  - Added conditional extension validation based on file type
+  - Enhanced import command prompt text
+- **`src/shareableGenerator.ts`**:
+  - Added 8 new bundle generation functions
+  - Support for folder structure preservation
+  - Support for multiple file bundling
+  - Added HTTP and ENV specific file filtering
+  - Bundle compression and encoding for efficient sharing
+- **`src/shareableImporter.ts`**:
+  - Enhanced to handle bundle imports
+  - Support for multiple files in single shareable
+  - Automatic folder structure recreation
+  - File path preservation and validation
+- **`src/codelensProvider.ts`**:
+  - Added filtering to exclude HTTP and ENV files
+  - Only shows CodeLens for command, rule, and prompt files
+  - Added default case to prevent errors
+- **`src/httpCodeLensProvider.ts`**:
+  - Removed share CodeLens from HTTP files
+  - Added comment explaining removal
+- **`src/deeplinkGenerator.ts`**:
+  - Added filtering to exclude HTTP and ENV types
+  - Only generates deeplinks for command, rule, and prompt files
+  - Type validation before deeplink generation
+- **`src/utils.ts`**:
+  - Extended `getFileTypeFromPath()` return type to include `'http' | 'env'`
+  - Added HTTP file detection with extension validation (`.req`, `.request`)
+  - Added ENV file detection with folder name validation
+  - Added `getEnvironmentsFolderName()` function
+  - Updated `getEnvironmentsPath()` to use configurable folder name
+  - Added `isHttpOrEnvFile()` helper function
+- **`package.json`**:
+  - Version bumped from 1.1.0 to 1.2.0
+  - Added 11 new commands for HTTP, ENV, and folder bundles
+  - Added `environmentsFolder` configuration option
+  - Updated context menu conditions to support folder-level actions
+  - Enhanced regex patterns for better file/folder detection
+  - Organized commands by file type in context menu
+  - Updated import command title for clarity
+
+#### New Files
+- **`src/envCodeLensProvider.ts`**: CodeLens provider for environment files
+  - Validates environment file location
+  - Checks for `.env*` file pattern
+  - Currently returns empty array (share via context menu)
+
+#### New Commands
+- `cursor-toys.shareAsCursorToysHttp`: Share HTTP request file
+- `cursor-toys.shareAsCursorToysEnv`: Share environment file
+- `cursor-toys.shareAsCursorToysHttpWithPath`: Share HTTP with folder structure
+- `cursor-toys.shareAsCursorToysEnvWithPath`: Share ENV with folder structure
+- `cursor-toys.shareAsCursorToysHttpFolder`: Share HTTP folder as bundle
+- `cursor-toys.shareAsCursorToysEnvFolder`: Share environments folder as bundle
+- `cursor-toys.shareAsCursorToysHttpFolderWithEnv`: Share HTTP + ENV bundle
+- `cursor-toys.shareAsCursorToysCommandFolder`: Share commands folder as bundle
+- `cursor-toys.shareAsCursorToysRuleFolder`: Share rules folder as bundle
+- `cursor-toys.shareAsCursorToysPromptFolder`: Share prompts folder as bundle
+- `cursor-toys.shareAsCursorToysProject`: Share entire project as bundle
+
+#### Configuration Options Added
+- `cursorToys.environmentsFolder`: Name of folder to store HTTP environment files
+  - Options: `.environments` (default), `environments`, `__environments__`, `_env`
+  - Allows customization of environment folder organization
+
+### Use Cases
+
+**Share HTTP Requests:**
+1. Right-click on `.req` or `.request` file in `.cursor/http/` folder
+2. Select "CursorToys: Share as CursorToys (HTTP Request)"
+3. Share the copied link with team members
+
+**Share Complete API Setup:**
+1. Right-click on `.cursor/http/` folder
+2. Select "CursorToys: Share Folder as CursorToys (HTTP + Environments)"
+3. Team receives both requests and environment configurations
+
+**Share Project Configuration:**
+1. Right-click on `.cursor` folder
+2. Select "CursorToys: Share Project as CursorToys (Complete Bundle)"
+3. Entire project setup (commands, rules, prompts, HTTP) shared in one link
+
 ## [1.1.0] - 2025-12-31
 
 ### Added
