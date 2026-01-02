@@ -19,7 +19,50 @@ import { HttpVariableHoverProvider, HttpEnvironmentCompletionProvider, HttpEnvir
 import { minifyFile, formatMinificationStats, detectFileType } from './minifier';
 import { trimClipboardAuto, trimClipboardWithPrompt } from './clipboardProcessor';
 import { GistManager } from './gistManager';
+import { RecommendationsManager } from './recommendationsManager';
+import { RecommendationsBrowserPanel } from './recommendationsBrowserPanel';
 import * as fs from 'fs';
+
+/**
+ * Checks recommendations on workspace startup (with delay)
+ */
+async function checkRecommendationsOnStartup(manager: RecommendationsManager): Promise<void> {
+  // Delay to not slow down activation
+  setTimeout(async () => {
+    try {
+      if (await manager.shouldShowRecommendations()) {
+        const context = await manager.detectProjectContext();
+        const recommendations = await manager.getRecommendationsForContext(context);
+        
+        if (recommendations.length > 0) {
+          const totalItems = recommendations.reduce((sum, rec) => sum + rec.items.length, 0);
+          
+          const action = await vscode.window.showInformationMessage(
+            `CursorToys Marketplace has ${totalItems} recommended items for your project`,
+            'Open Marketplace',
+            'Not Now',
+            "Don't Show Again"
+          );
+
+          if (action === 'Open Marketplace') {
+            // This will be handled by the command
+            vscode.commands.executeCommand('cursor-toys.browseRecommendations');
+          } else if (action === "Don't Show Again") {
+            await vscode.workspace.getConfiguration('cursorToys').update(
+              'recommendationsEnabled',
+              false,
+              vscode.ConfigurationTarget.Global
+            );
+          }
+
+          await manager.markRecommendationsShown();
+        }
+      }
+    } catch (error) {
+      console.error('Error checking recommendations on startup:', error);
+    }
+  }, 5000); // 5 seconds delay
+}
 
 /**
  * Helper function to generate deeplink with validations
@@ -143,6 +186,95 @@ async function generateShareableWithPathValidation(
 export function activate(context: vscode.ExtensionContext) {
   // Initialize Environment Manager
   const envManager = EnvironmentManager.getInstance();
+  
+  // Initialize Recommendations Manager
+  const recsManager = RecommendationsManager.getInstance(context);
+  
+  // Create Status Bar Item for CursorToys Menu
+  const cursorToysStatusBarItem = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Right,
+    100
+  );
+  cursorToysStatusBarItem.text = '$(github-action) CursorToys';
+  cursorToysStatusBarItem.tooltip = 'Open CursorToys Menu';
+  cursorToysStatusBarItem.command = 'cursor-toys.showMenu';
+  cursorToysStatusBarItem.show();
+  context.subscriptions.push(cursorToysStatusBarItem);
+  
+  // Register CursorToys Menu command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.showMenu', async () => {
+      const items: vscode.QuickPickItem[] = [
+        {
+          label: '$(compass) Open Marketplace',
+          description: 'Browse and install recommended commands, prompts and rules',
+          detail: 'Marketplace'
+        },
+        {
+          label: '$(refresh) Refresh Recommendations',
+          description: 'Update recommendations cache',
+          detail: 'Recommendations'
+        },
+        {
+          label: '$(search) Check Recommendations',
+          description: 'Check recommendations for current project',
+          detail: 'Recommendations'
+        },
+        {
+          label: '$(link) Generate Deeplink',
+          description: 'Generate shareable deeplink from current file',
+          detail: 'Deeplinks'
+        },
+        {
+          label: '$(cloud-download) Import from URL',
+          description: 'Import command, prompt or rule from deeplink or Gist',
+          detail: 'Import'
+        },
+        {
+          label: '$(globe) Import from Gist',
+          description: 'Import directly from GitHub Gist URL',
+          detail: 'Import'
+        },
+        {
+          label: '$(comment) Send to Chat',
+          description: 'Send current file or selection to Cursor chat',
+          detail: 'Chat'
+        },
+        {
+          label: '$(terminal) HTTP Request',
+          description: 'Execute HTTP request from .http file',
+          detail: 'HTTP Client'
+        }
+      ];
+
+      const selected = await vscode.window.showQuickPick(items, {
+        placeHolder: 'Select a CursorToys action',
+        matchOnDescription: true,
+        matchOnDetail: true
+      });
+
+      if (!selected) {
+        return;
+      }
+
+      // Map selection to command
+      const commandMap: { [key: string]: string } = {
+        'Open Marketplace': 'cursor-toys.browseRecommendations',
+        'Refresh Recommendations': 'cursor-toys.refreshRecommendations',
+        'Check Recommendations': 'cursor-toys.checkRecommendations',
+        'Generate Deeplink': 'cursor-toys.generate',
+        'Import from URL': 'cursor-toys.import',
+        'Import from Gist': 'cursor-toys.importFromGist',
+        'Send to Chat': 'cursor-toys.sendToChat',
+        'HTTP Request': 'cursor-toys.http.execute'
+      };
+
+      const commandId = commandMap[selected.label.replace(/\$\([^)]+\)\s*/, '')];
+      if (commandId) {
+        await vscode.commands.executeCommand(commandId);
+      }
+    })
+  );
   
   // Register HTTP environment providers
   const httpHoverProvider = new HttpVariableHoverProvider();
@@ -2151,6 +2283,54 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // Recommendations commands
+  const checkRecommendationsCommand = vscode.commands.registerCommand('cursor-toys.checkRecommendations', async () => {
+    try {
+      const projectContext = await recsManager.detectProjectContext();
+      const recommendations = await recsManager.getRecommendationsForContext(projectContext);
+      
+      if (recommendations.length === 0) {
+        vscode.window.showInformationMessage('No recommendations found for this project.');
+        return;
+      }
+
+      // Count total items
+      const totalItems = recommendations.reduce((sum, rec) => sum + rec.items.length, 0);
+
+      const action = await vscode.window.showInformationMessage(
+        `CursorToys Marketplace has ${totalItems} recommended items for your project`,
+        'Open Marketplace',
+        'Not Now'
+      );
+
+      if (action === 'Open Marketplace') {
+        await RecommendationsBrowserPanel.createOrShow(context, recsManager);
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`Error checking recommendations: ${error}`);
+    }
+  });
+
+  const browseRecommendationsCommand = vscode.commands.registerCommand('cursor-toys.browseRecommendations', async () => {
+    await RecommendationsBrowserPanel.createOrShow(context, recsManager);
+  });
+
+  const refreshRecommendationsCommand = vscode.commands.registerCommand('cursor-toys.refreshRecommendations', async () => {
+    await recsManager.clearCache();
+  });
+
+  // Check recommendations on workspace open (delayed)
+  if (vscode.workspace.workspaceFolders) {
+    checkRecommendationsOnStartup(recsManager);
+  }
+
+  // Watch for workspace folder changes
+  const workspaceChangeListener = vscode.workspace.onDidChangeWorkspaceFolders(() => {
+    if (vscode.workspace.workspaceFolders) {
+      checkRecommendationsOnStartup(recsManager);
+    }
+  });
+
   // Register URI Handler for cursor://godrix.cursor-toys/* and vscode://godrix.cursor-toys/* deeplinks
   const uriHandler = vscode.window.registerUriHandler({
     handleUri(uri: vscode.Uri) {
@@ -2368,6 +2548,10 @@ export function activate(context: vscode.ExtensionContext) {
     shareFolderViaGistCommand,
     configureGitHubTokenCommand,
     removeGitHubTokenCommand,
+    checkRecommendationsCommand,
+    browseRecommendationsCommand,
+    refreshRecommendationsCommand,
+    workspaceChangeListener,
     uriHandler
   );
   

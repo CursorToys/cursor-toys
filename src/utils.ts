@@ -329,3 +329,45 @@ export function isHttpOrEnvFile(filePath: string): boolean {
   return fileType === 'http' || fileType === 'env';
 }
 
+/**
+ * Parses simple YAML frontmatter from file content
+ * Helper function that uses the frontmatterParser module
+ * @param content File content
+ * @returns Parsed frontmatter data or null if none found
+ */
+export function parseYAMLFrontmatter(content: string): Record<string, any> | null {
+  // Import is done dynamically to avoid circular dependencies
+  const { parseFrontmatter } = require('./frontmatterParser');
+  
+  try {
+    const parsed = parseFrontmatter(content);
+    return parsed.hasFrontmatter ? parsed.metadata : null;
+  } catch (error) {
+    console.error('Error parsing YAML frontmatter:', error);
+    return null;
+  }
+}
+
+/**
+ * Extracts description from YAML frontmatter
+ * @param content File content
+ * @returns Description string or empty string
+ */
+export function extractDescriptionFromFrontmatter(content: string): string {
+  const frontmatter = parseYAMLFrontmatter(content);
+  return frontmatter?.description || '';
+}
+
+/**
+ * Extracts tags from YAML frontmatter
+ * @param content File content
+ * @returns Array of tags
+ */
+export function extractTagsFromFrontmatter(content: string): string[] {
+  const frontmatter = parseYAMLFrontmatter(content);
+  if (frontmatter?.tags && Array.isArray(frontmatter.tags)) {
+    return frontmatter.tags.map((tag: string) => tag.toLowerCase().trim()).filter((tag: string) => tag.length > 0);
+  }
+  return [];
+}
+
