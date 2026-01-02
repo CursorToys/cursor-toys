@@ -6,8 +6,8 @@ All notable changes to the "CursorToys" extension will be documented in this fil
 
 ### Fixed
 - Fixed GitHub token placeholder in README to avoid false positive in package security scan
-  - Changed placeholder from 'ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' to 'ghp_YOUR_TOKEN_HERE'
-  - Prevents vsce package from detecting placeholder as real token
+  - Changed placeholder format to use clear text instead of x's pattern
+  - Prevents vsce package from detecting placeholder as real token during packaging
 
 ### Added
 
