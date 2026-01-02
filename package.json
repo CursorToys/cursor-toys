@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -11,12 +11,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/godrix/cursor-toys.git"
+    "url": "https://github.com/CursorToys/cursor-toys.git"
   },
   "bugs": {
-    "url": "https://github.com/godrix/cursor-toys/issues"
+    "url": "https://github.com/CursorToys/cursor-toys/issues"
   },
-  "homepage": "https://github.com/godrix/cursor-toys#readme",
+  "homepage": "https://github.com/CursorToys/cursor-toys#readme",
   "keywords": [
     "cursor",
     "cursor-ai",
@@ -315,6 +315,26 @@
       {
         "command": "cursor-toys.removeGitHubToken",
         "title": "CursorToys: Remove GitHub Token"
+      },
+      {
+        "command": "cursor-toys.showMenu",
+        "title": "CursorToys: Show Menu",
+        "icon": "$(zap)"
+      },
+      {
+        "command": "cursor-toys.checkRecommendations",
+        "title": "CursorToys: Check Recommendations for this Project",
+        "icon": "$(compass)"
+      },
+      {
+        "command": "cursor-toys.browseRecommendations",
+        "title": "CursorToys: Browse Recommendations Marketplace",
+        "icon": "$(search)"
+      },
+      {
+        "command": "cursor-toys.refreshRecommendations",
+        "title": "CursorToys: Refresh Recommendations Cache",
+        "icon": "$(refresh)"
       }
     ],
     "submenus": [
@@ -723,6 +743,32 @@
           ],
           "default": "ask",
           "description": "Default visibility when creating GitHub Gists"
+        },
+        "cursorToys.recommendationsEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable CursorToys recommendations based on project context"
+        },
+        "cursorToys.recommendationsCheckOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Check for recommendations when opening a workspace"
+        },
+        "cursorToys.recommendationsSuggestInterval": {
+          "type": "number",
+          "default": 7,
+          "minimum": 1,
+          "description": "Days between recommendation suggestions (default: 7)"
+        },
+        "cursorToys.recommendationsIndexUrl": {
+          "type": "string",
+          "default": "https://raw.githubusercontent.com/CursorToys/marketplace/refs/heads/main/recommendations-index.json",
+          "description": "URL to remote recommendations index (raw file URL from GitHub or Gist). Default: CursorToys official marketplace (contributions via PR)"
+        },
+        "cursorToys.recommendationsIndexGistId": {
+          "type": "string",
+          "default": "",
+          "description": "Gist ID containing recommendations index (e.g., 'username/gistid' or just 'gistid'). Alternative to recommendationsIndexUrl for private/custom indexes."
         }
       }
     },
