@@ -2,6 +2,18 @@
 
 All notable changes to the "CursorToys" extension will be documented in this file.
 
+## [1.4.2] - 2026-01-04
+
+### Added
+- **Share via GitHub Gist in Personal Commands**: Added "Share via GitHub Gist" option to context menu of Personal Commands view
+- **Share via GitHub Gist in Personal Prompts**: Added "Share via GitHub Gist" option to context menu of Personal Prompts view
+
+### Changed
+- **Simplified StatusBar Menu**: Streamlined quick access menu (CursorToys icon in status bar) to show only most relevant commands:
+  - Added: New Notepad, Minify File, Trim Clipboard
+  - Kept: Open Marketplace, Check Recommendations, Import from URL
+  - Removed: Refresh Recommendations, Generate Deeplink, Import from Gist, Send to Chat, HTTP Request (still accessible via Command Palette and context menus)
+
 ## [1.4.1] - 2026-01-02
 
 ### Added
