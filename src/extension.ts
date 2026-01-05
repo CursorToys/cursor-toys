@@ -186,8 +186,9 @@ async function generateShareableWithPathValidation(
 }
 
 export function activate(context: vscode.ExtensionContext) {
-  // Initialize Environment Manager
+  // Initialize Environment Manager and setup file watchers
   const envManager = EnvironmentManager.getInstance();
+  envManager.setupFileWatchers();
   
   // Initialize Recommendations Manager
   const recsManager = RecommendationsManager.getInstance(context);
@@ -2979,5 +2980,9 @@ export function activate(context: vscode.ExtensionContext) {
   });
 }
 
-export function deactivate() {}
+export function deactivate() {
+  // Dispose environment manager watchers
+  const envManager = EnvironmentManager.getInstance();
+  envManager.dispose();
+}
 

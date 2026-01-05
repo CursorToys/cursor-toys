@@ -13,8 +13,12 @@ export class EnvironmentManager {
   private environmentsCache: Map<string, Map<string, string>> = new Map();
   private _onDidChangeEnvironment: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
   public readonly onDidChangeEnvironment: vscode.Event<string> = this._onDidChangeEnvironment.event;
+  private fileWatchers: Map<string, vscode.FileSystemWatcher> = new Map();
+  private workspacePaths: Set<string> = new Set();
 
-  private constructor() {}
+  private constructor() {
+    // File watchers will be set up when extension activates
+  }
 
   /**
    * Obtém a instância única do EnvironmentManager
@@ -238,6 +242,142 @@ export class EnvironmentManager {
    * Limpa o cache de environments
    */
   public clearCache(): void {
+    this.environmentsCache.clear();
+  }
+
+  /**
+   * Limpa o cache de um environment específico
+   * @param envName Nome do environment
+   * @param workspacePath Caminho do workspace
+   */
+  public clearEnvironmentCache(envName: string, workspacePath: string): void {
+    const cacheKey = `${workspacePath}:${envName}`;
+    this.environmentsCache.delete(cacheKey);
+  }
+
+  /**
+   * Limpa o cache de todos os environments de um workspace
+   * @param workspacePath Caminho do workspace
+   */
+  public clearWorkspaceCache(workspacePath: string): void {
+    const keysToDelete: string[] = [];
+    for (const key of this.environmentsCache.keys()) {
+      if (key.startsWith(`${workspacePath}:`)) {
+        keysToDelete.push(key);
+      }
+    }
+    keysToDelete.forEach(key => this.environmentsCache.delete(key));
+  }
+
+  /**
+   * Configura file watchers para monitorar mudanças nos arquivos .env
+   * Deve ser chamado na ativação da extensão
+   */
+  public setupFileWatchers(): void {
+    // Watch for workspace folder changes
+    vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      this.updateFileWatchers();
+    });
+
+    // Watch for file changes in existing workspaces
+    this.updateFileWatchers();
+  }
+
+  /**
+   * Atualiza os file watchers para todos os workspaces
+   */
+  private updateFileWatchers(): void {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders) {
+      return;
+    }
+
+    // Remove watchers for workspaces that no longer exist
+    const currentPaths = new Set(workspaceFolders.map(f => f.uri.fsPath));
+    for (const [path, watcher] of this.fileWatchers.entries()) {
+      if (!currentPaths.has(path)) {
+        watcher.dispose();
+        this.fileWatchers.delete(path);
+        this.workspacePaths.delete(path);
+      }
+    }
+
+    // Add watchers for new workspaces
+    for (const folder of workspaceFolders) {
+      const workspacePath = folder.uri.fsPath;
+      if (!this.workspacePaths.has(workspacePath)) {
+        this.workspacePaths.add(workspacePath);
+        this.createFileWatcher(workspacePath);
+      }
+    }
+  }
+
+  /**
+   * Cria um file watcher para um workspace específico
+   * @param workspacePath Caminho do workspace
+   */
+  private createFileWatcher(workspacePath: string): void {
+    const envDir = getEnvironmentsPath(workspacePath);
+    
+    // Create directory if it doesn't exist (watcher needs it to exist)
+    if (!fs.existsSync(envDir)) {
+      try {
+        fs.mkdirSync(envDir, { recursive: true });
+      } catch (error) {
+        // Directory creation failed, but continue anyway
+        console.warn(`Failed to create environments directory: ${envDir}`, error);
+      }
+    }
+    
+    // Watch for changes in .env files
+    const pattern = new vscode.RelativePattern(
+      vscode.Uri.file(envDir),
+      '.env*'
+    );
+
+    const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+    
+    watcher.onDidChange((uri) => {
+      // File was modified - clear cache for this workspace
+      this.clearWorkspaceCache(workspacePath);
+      
+      // Extract environment name from file path
+      const fileName = path.basename(uri.fsPath);
+      let envName: string;
+      if (fileName === '.env') {
+        envName = 'default';
+      } else if (fileName.startsWith('.env.')) {
+        envName = fileName.substring(5); // Remove '.env.'
+      } else {
+        return;
+      }
+      
+      // Fire event to notify listeners
+      this._onDidChangeEnvironment.fire(envName);
+    });
+
+    watcher.onDidCreate((uri) => {
+      // New .env file created - clear cache to force reload
+      this.clearWorkspaceCache(workspacePath);
+    });
+
+    watcher.onDidDelete((uri) => {
+      // .env file deleted - clear cache
+      this.clearWorkspaceCache(workspacePath);
+    });
+
+    this.fileWatchers.set(workspacePath, watcher);
+  }
+
+  /**
+   * Limpa todos os file watchers (usado na desativação da extensão)
+   */
+  public dispose(): void {
+    for (const watcher of this.fileWatchers.values()) {
+      watcher.dispose();
+    }
+    this.fileWatchers.clear();
+    this.workspacePaths.clear();
     this.environmentsCache.clear();
   }
 
