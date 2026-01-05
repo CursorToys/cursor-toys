@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import { sanitizeFileName, getCommandsPath, getPromptsPath, getRulesPath, getNotepadsPath, getHttpPath, getEnvironmentsPath, getHooksPath } from './utils';
+import { sanitizeFileName, getCommandsPath, getPromptsPath, getRulesPath, getNotepadsPath, getPlansPath, getHttpPath, getEnvironmentsPath, getHooksPath } from './utils';
 import { GistManager, GistResponse, CursorToysMetadata } from './gistManager';
 
 interface ShareableParams {
-  type: 'command' | 'prompt' | 'rule' | 'notepad' | 'http' | 'env' | 'hooks';
+  type: 'command' | 'prompt' | 'rule' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan';
   name: string;
   content: string; // Already decompressed
   relativePath?: string; // Optional: relative path for HTTP_PATH and ENV_PATH types
@@ -38,6 +38,10 @@ export async function importShareable(shareableUrl: string): Promise<void> {
       await importNotepadBundle(shareableUrl);
       return;
     }
+    if (shareableUrl.startsWith('cursortoys://PLAN_BUNDLE:')) {
+      await importPlanBundle(shareableUrl);
+      return;
+    }
     if (shareableUrl.startsWith('cursortoys://PROJECT_BUNDLE:')) {
       await importProjectBundle(shareableUrl);
       return;
@@ -54,11 +58,11 @@ export async function importShareable(shareableUrl: string): Promise<void> {
       return;
     }
 
-    // For commands and prompts, ask if user wants to save as Project or Personal
+    // For commands, prompts, and plans, ask if user wants to save as Project or Personal
     // Notepads and HTTP/ENV files are always saved in project workspace
     let isPersonal = false;
-    if (params.type === 'command' || params.type === 'prompt') {
-      const itemType = params.type === 'command' ? 'command' : 'prompt';
+    if (params.type === 'command' || params.type === 'prompt' || params.type === 'plan') {
+      const itemType = params.type === 'command' ? 'command' : params.type === 'prompt' ? 'prompt' : 'plan';
       const itemLocation = await vscode.window.showQuickPick(
         [
           { 
@@ -502,6 +506,80 @@ async function importNotepadBundle(bundleUrl: string): Promise<void> {
 }
 
 /**
+ * Imports a bundle of plan files
+ * @param bundleUrl Bundle URL in format: cursortoys://PLAN_BUNDLE:compressedData
+ */
+async function importPlanBundle(bundleUrl: string): Promise<void> {
+  try {
+    const withoutProtocol = bundleUrl.substring('cursortoys://PLAN_BUNDLE:'.length);
+    const decompressed = decodeAndDecompress(withoutProtocol);
+    const bundle = JSON.parse(decompressed);
+    
+    if (!bundle.files || !Array.isArray(bundle.files)) {
+      vscode.window.showErrorMessage('Invalid bundle format');
+      return;
+    }
+
+    // Ask if user wants to save as Project or Personal
+    const itemLocation = await vscode.window.showQuickPick(
+      [
+        { label: 'Personal plans', description: 'Available in all projects (~/.cursor/plans)', value: true },
+        { label: 'Project plans', description: 'Specific to this workspace', value: false }
+      ],
+      { placeHolder: 'Where do you want to save these plans?' }
+    );
+
+    if (itemLocation === undefined) {
+      return;
+    }
+
+    const isPersonal = itemLocation.value;
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    
+    if (!workspaceFolder && !isPersonal) {
+      vscode.window.showErrorMessage('No workspace open');
+      return;
+    }
+
+    const workspacePath = workspaceFolder?.uri.fsPath || '';
+    const plansPath = getPlansPath(workspacePath, isPersonal);
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const file of bundle.files) {
+      try {
+        const { name, content } = file;
+        const fileName = `${name}.plan.md`;
+        const fullPath = path.join(plansPath, fileName);
+        
+        // Create directory if needed
+        await createDirectoryRecursive(plansPath);
+        
+        // Write file
+        const fileUri = vscode.Uri.file(fullPath);
+        const fileContent = Buffer.from(content, 'utf8');
+        await vscode.workspace.fs.writeFile(fileUri, fileContent);
+        
+        successCount++;
+      } catch (error) {
+        console.error(`Error importing plan ${file.name}:`, error);
+        errorCount++;
+      }
+    }
+
+    if (errorCount === 0) {
+      const location = isPersonal ? 'personal' : 'project';
+      vscode.window.showInformationMessage(`Successfully imported ${successCount} plan(s) to ${location}!`);
+    } else {
+      vscode.window.showWarningMessage(`Imported ${successCount} plan(s), ${errorCount} failed.`);
+    }
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error importing plan bundle: ${error}`);
+  }
+}
+
+/**
  * Imports a complete project bundle
  * @param bundleUrl Bundle URL in format: cursortoys://PROJECT_BUNDLE:compressedData
  */
@@ -597,6 +675,25 @@ async function importProjectBundle(bundleUrl: string): Promise<void> {
           totalSuccess++;
         } catch (error) {
           console.error(`Error importing notepad ${file.name}:`, error);
+          totalError++;
+        }
+      }
+    }
+
+    // Import plans
+    if (bundle.plans && Array.isArray(bundle.plans)) {
+      const plansPath = getPlansPath(workspacePath);
+      await createDirectoryRecursive(plansPath);
+      
+      for (const file of bundle.plans) {
+        try {
+          const fileName = `${file.name}.plan.md`;
+          const fullPath = path.join(plansPath, fileName);
+          const fileUri = vscode.Uri.file(fullPath);
+          await vscode.workspace.fs.writeFile(fileUri, Buffer.from(file.content, 'utf8'));
+          totalSuccess++;
+        } catch (error) {
+          console.error(`Error importing plan ${file.name}:`, error);
           totalError++;
         }
       }
@@ -766,7 +863,7 @@ export function parseShareableUrl(url: string): ShareableParams | null {
 
     // Extract type (handle both TYPE and TYPE_PATH)
     const typeStr = parts[0].toUpperCase();
-    let type: 'command' | 'prompt' | 'notepad' | 'rule' | 'http' | 'env' | 'hooks';
+    let type: 'command' | 'prompt' | 'notepad' | 'rule' | 'http' | 'env' | 'hooks' | 'plan';
     let hasPath = false;
     let relativePath: string | undefined;
     
@@ -784,6 +881,8 @@ export function parseShareableUrl(url: string): ShareableParams | null {
       type = 'env';
     } else if (typeStr === 'HOOKS') {
       type = 'hooks';
+    } else if (typeStr === 'PLAN') {
+      type = 'plan';
     } else if (typeStr === 'HTTP_PATH') {
       type = 'http';
       hasPath = true;
@@ -791,7 +890,7 @@ export function parseShareableUrl(url: string): ShareableParams | null {
       type = 'env';
       hasPath = true;
     } else {
-      vscode.window.showErrorMessage(`Invalid type: ${typeStr}. Must be COMMAND, PROMPT, NOTEPAD, RULE, HTTP, ENV, HOOKS, HTTP_PATH, or ENV_PATH.`);
+      vscode.window.showErrorMessage(`Invalid type: ${typeStr}. Must be COMMAND, PROMPT, NOTEPAD, RULE, HTTP, ENV, HOOKS, PLAN, HTTP_PATH, or ENV_PATH.`);
       return null;
     }
 
@@ -951,6 +1050,11 @@ function getDestinationPath(
       folderPath = path.dirname(getHooksPath(workspacePath, isPersonal));
       fileName = 'hooks.json';
       break;
+    case 'plan':
+      // Plans can be personal or workspace-specific
+      folderPath = getPlansPath(workspacePath, isPersonal);
+      fileName = `${params.name}.plan.md`;
+      break;
   }
 
   return { folderPath, fileName };
@@ -1077,7 +1181,7 @@ async function importSingleFileFromGist(
   }
 
   // Determine file type
-  let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks';
+  let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan';
   
   if (metadata && metadata.cursortoys.type !== 'bundle') {
     fileType = metadata.cursortoys.type;
@@ -1085,6 +1189,8 @@ async function importSingleFileFromGist(
     // Fallback: detect by extension or filename
     if (fileName === 'hooks.json') {
       fileType = 'hooks';
+    } else if (fileName.endsWith('.plan.md')) {
+      fileType = 'plan';
     } else if (fileName.endsWith('.md') || fileName.endsWith('.mdc')) {
       // Default to command if can't determine
       fileType = 'command';
@@ -1098,9 +1204,9 @@ async function importSingleFileFromGist(
     }
   }
 
-  // For commands, prompts, and hooks, ask if user wants to save as Project or Personal
+  // For commands, prompts, plans, and hooks, ask if user wants to save as Project or Personal
   let isPersonal = false;
-  if (fileType === 'command' || fileType === 'prompt' || fileType === 'hooks') {
+  if (fileType === 'command' || fileType === 'prompt' || fileType === 'plan' || fileType === 'hooks') {
     let itemType: string;
     let folderName: string;
     
@@ -1110,6 +1216,9 @@ async function importSingleFileFromGist(
     } else if (fileType === 'prompt') {
       itemType = 'prompt';
       folderName = 'prompts';
+    } else if (fileType === 'plan') {
+      itemType = 'plan';
+      folderName = 'plans';
     } else {
       itemType = 'hooks';
       folderName = '';
@@ -1174,13 +1283,24 @@ async function importSingleFileFromGist(
     case 'hooks':
       folderPath = path.dirname(getHooksPath(workspacePath, isPersonal));
       break;
+    case 'plan':
+      folderPath = getPlansPath(workspacePath, isPersonal);
+      break;
   }
 
   // Create directory if needed
   await createDirectoryRecursive(folderPath);
 
+  // For plans, ensure the file name ends with .plan.md
+  let finalFileName = fileName;
+  if (fileType === 'plan' && !fileName.endsWith('.plan.md')) {
+    // Remove any existing extension and add .plan.md
+    const nameWithoutExt = path.parse(fileName).name;
+    finalFileName = `${nameWithoutExt}.plan.md`;
+  }
+
   // Check if file exists
-  const fileUri = vscode.Uri.file(path.join(folderPath, fileName));
+  const fileUri = vscode.Uri.file(path.join(folderPath, finalFileName));
   let fileExists = false;
   try {
     await vscode.workspace.fs.stat(fileUri);
@@ -1191,7 +1311,7 @@ async function importSingleFileFromGist(
 
   if (fileExists) {
     const overwrite = await vscode.window.showWarningMessage(
-      `File ${fileName} already exists. Do you want to overwrite it?`,
+      `File ${finalFileName} already exists. Do you want to overwrite it?`,
       'Yes',
       'No'
     );
@@ -1204,7 +1324,7 @@ async function importSingleFileFromGist(
   const content = Buffer.from(file.content, 'utf8');
   await vscode.workspace.fs.writeFile(fileUri, content);
 
-  vscode.window.showInformationMessage(`File imported successfully: ${fileName}`);
+  vscode.window.showInformationMessage(`File imported successfully: ${finalFileName}`);
   
   // Open file
   const document = await vscode.workspace.openTextDocument(fileUri);
@@ -1262,6 +1382,14 @@ async function importBundleFromGist(
         destPath = path.join(getPromptsPath(workspacePath, false), fileName);
       } else if (bundleType === 'notepad_bundle') {
         destPath = path.join(getNotepadsPath(workspacePath, false), fileName);
+      } else if (bundleType === 'plan_bundle') {
+        // Ensure .plan.md extension
+        let finalFileName = fileName;
+        if (!fileName.endsWith('.plan.md')) {
+          const nameWithoutExt = path.parse(fileName).name;
+          finalFileName = `${nameWithoutExt}.plan.md`;
+        }
+        destPath = path.join(getPlansPath(workspacePath), finalFileName);
       } else if (bundleType === 'http_bundle') {
         if (fileName.startsWith('.env')) {
           destPath = path.join(getEnvironmentsPath(workspacePath), fileName);
@@ -1270,7 +1398,9 @@ async function importBundleFromGist(
         }
       } else {
         // Fallback: detect by extension
-        if (fileName.endsWith('.md') || fileName.endsWith('.mdc')) {
+        if (fileName.endsWith('.plan.md')) {
+          destPath = path.join(getPlansPath(workspacePath), fileName);
+        } else if (fileName.endsWith('.md') || fileName.endsWith('.mdc')) {
           destPath = path.join(getCommandsPath(workspacePath, false), fileName);
         } else if (fileName.endsWith('.req') || fileName.endsWith('.request')) {
           destPath = path.join(getHttpPath(workspacePath), fileName);

@@ -22,7 +22,7 @@ export function validateUrlLength(url: string): boolean {
 /**
  * Detects the file type based on the path
  */
-export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | null {
+export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | null {
   const normalizedPath = filePath.replace(/\\/g, '/');
   const baseFolderName = getBaseFolderName();
   const environmentsFolderName = getEnvironmentsFolderName();
@@ -53,6 +53,26 @@ export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'pro
   if (normalizedPath.includes(`/.${baseFolderName}/notepads/`) || 
       normalizedPath.includes('/.cursor/notepads/')) {
     return 'notepad';
+  }
+  // Plans can be in personal folder (~/.cursor/plans/) or workspace folder
+  // Check personal folder first (home directory)
+  const homePath = getUserHomePath();
+  const normalizedHomePath = homePath.replace(/\\/g, '/');
+  if (normalizedPath.includes(`${normalizedHomePath}/.cursor/plans/`) || 
+      normalizedPath.includes(`${normalizedHomePath}/.${baseFolderName}/plans/`)) {
+    const fileName = path.basename(filePath);
+    if (fileName.endsWith('.plan.md')) {
+      return 'plan';
+    }
+  }
+  // Check workspace folder
+  if (normalizedPath.includes(`/.${baseFolderName}/plans/`) || 
+      normalizedPath.includes('/.cursor/plans/')) {
+    // Plans must have .plan.md extension
+    const fileName = path.basename(filePath);
+    if (fileName.endsWith('.plan.md')) {
+      return 'plan';
+    }
   }
   // HTTP requests in .{baseFolder}/http/ folder (but not in environments folder)
   if ((normalizedPath.includes(`/.${baseFolderName}/http/`) || 
@@ -246,6 +266,51 @@ export function getPersonalPromptsPaths(): string[] {
 export function getNotepadsPath(workspacePath: string, isUser: boolean = false): string {
   const baseFolderName = getBaseFolderName();
   return path.join(workspacePath, `.${baseFolderName}`, 'notepads');
+}
+
+/**
+ * Gets the full path to the plans folder
+ * @param workspacePath Optional workspace path (if not provided, returns user home path)
+ * @param isUser If true, returns path in user home directory; if false, returns workspace path
+ */
+export function getPlansPath(workspacePath?: string, isUser: boolean = false): string {
+  const baseFolderName = getBaseFolderName();
+  
+  if (isUser || !workspacePath) {
+    return path.join(getUserHomePath(), `.${baseFolderName}`, 'plans');
+  }
+  
+  return path.join(workspacePath, `.${baseFolderName}`, 'plans');
+}
+
+/**
+ * Gets the paths to the plan folders to show in Personal Plans view
+ * @returns Array of folder paths based on baseFolder configuration
+ */
+export function getPersonalPlansPaths(): string[] {
+  const homePath = getUserHomePath();
+  const baseFolderName = getBaseFolderName();
+  const paths: string[] = [];
+  
+  // Use configured base folder
+  paths.push(path.join(homePath, `.${baseFolderName}`, 'plans'));
+  
+  // Also include .cursor if different (for backward compatibility)
+  if (baseFolderName !== 'cursor') {
+    paths.push(path.join(homePath, '.cursor', 'plans'));
+  }
+  
+  return paths;
+}
+
+/**
+ * Checks if a file has the .plan.md extension
+ * @param filePath The file path to check
+ * @returns true if the file has .plan.md extension
+ */
+export function isPlanFile(filePath: string): boolean {
+  const fileName = path.basename(filePath);
+  return fileName.endsWith('.plan.md');
 }
 
 /**

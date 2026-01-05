@@ -2,15 +2,16 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { generateDeeplink } from './deeplinkGenerator';
 import { importDeeplink } from './deeplinkImporter';
-import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForEnvFolder, generateShareableForHttpFolderWithEnv, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForNotepadFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
+import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForEnvFolder, generateShareableForHttpFolderWithEnv, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist } from './shareableImporter';
-import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { EnvCodeLensProvider } from './envCodeLensProvider';
 import { UserCommandsTreeProvider, CommandFileItem } from './userCommandsTreeProvider';
 import { UserPromptsTreeProvider, PromptFileItem } from './userPromptsTreeProvider';
 import { UserNotepadsTreeProvider, NotepadFileItem } from './userNotepadsTreeProvider';
+import { UserPlansTreeProvider, PlanFileItem } from './userPlansTreeProvider';
 import { UserHooksTreeProvider, HooksFileItem } from './userHooksTreeProvider';
 import { createHooksFile, hooksFileExists, validateHooksFile } from './hooksManager';
 import { sendToChat, sendSelectionToChat, buildPromptDeeplink, MAX_DEEPLINK_LENGTH } from './sendToChat';
@@ -112,7 +113,7 @@ async function generateDeeplinkWithValidation(
  */
 async function generateShareableWithValidation(
   uri: vscode.Uri | undefined,
-  forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env'
+  forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'plan'
 ): Promise<void> {
   // If no URI, try to get from active editor
   let filePath: string;
@@ -129,10 +130,10 @@ async function generateShareableWithValidation(
   }
 
   // Validate extension based on type
-  if (forcedType === 'http' || forcedType === 'env') {
-    // HTTP and ENV types have their own validation in generateShareable
+  if (forcedType === 'http' || forcedType === 'env' || forcedType === 'plan') {
+    // HTTP, ENV, and PLAN types have their own validation in generateShareable
   } else {
-    // For command, rule, prompt - validate with allowed extensions
+    // For command, rule, prompt, notepad - validate with allowed extensions
     const config = vscode.workspace.getConfiguration('cursorToys');
     const allowedExtensions = config.get<string[]>('allowedExtensions', ['md']);
     
@@ -149,7 +150,7 @@ async function generateShareableWithValidation(
   if (shareable) {
     // Copy to clipboard
     await vscode.env.clipboard.writeText(shareable);
-    const typeLabel = forcedType === 'http' ? 'HTTP request' : forcedType === 'env' ? 'Environment' : 'CursorToys';
+    const typeLabel = forcedType === 'http' ? 'HTTP request' : forcedType === 'env' ? 'Environment' : forcedType === 'plan' ? 'Plan' : 'CursorToys';
     vscode.window.showInformationMessage(`${typeLabel} shareable copied to clipboard!`);
   }
 }
@@ -439,6 +440,14 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // Specific command to generate plan shareable
+  const generateShareablePlanSpecific = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysPlan',
+    async (uri?: vscode.Uri) => {
+      await generateShareableWithValidation(uri, 'plan');
+    }
+  );
+
   // Specific command to generate HTTP shareable
   const generateShareableHttpSpecific = vscode.commands.registerCommand(
     'cursor-toys.shareAsCursorToysHttp',
@@ -701,6 +710,36 @@ export function activate(context: vscode.ExtensionContext) {
         }
       } catch (error) {
         vscode.window.showErrorMessage(`Error generating notepad bundle: ${error}`);
+      }
+    }
+  );
+
+  // Command to share plan folder as bundle
+  const sharePlanFolderCommand = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysPlanFolder',
+    async (uri?: vscode.Uri) => {
+      try {
+        let folderPath: string;
+        
+        if (uri) {
+          const stat = await vscode.workspace.fs.stat(uri);
+          if (stat.type !== vscode.FileType.Directory) {
+            vscode.window.showErrorMessage('Please select a folder');
+            return;
+          }
+          folderPath = uri.fsPath;
+        } else {
+          vscode.window.showErrorMessage('Please select a folder');
+          return;
+        }
+
+        const shareable = await generateShareableForPlanFolder(folderPath);
+        if (shareable) {
+          await vscode.env.clipboard.writeText(shareable);
+          vscode.window.showInformationMessage('Plans bundle copied to clipboard!');
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error generating plan bundle: ${error}`);
       }
     }
   );
@@ -1442,6 +1481,14 @@ export function activate(context: vscode.ExtensionContext) {
     dragAndDropController: userNotepadsTreeProvider
   });
 
+  // Register User Plans Tree Provider
+  const userPlansTreeProvider = new UserPlansTreeProvider();
+  const userPlansTreeView = vscode.window.createTreeView('cursor-toys.userPlans', {
+    treeDataProvider: userPlansTreeProvider,
+    showCollapseAll: false,
+    dragAndDropController: userPlansTreeProvider
+  });
+
   // Register User Hooks Tree Provider
   const userHooksTreeProvider = new UserHooksTreeProvider();
   const userHooksTreeView = vscode.window.createTreeView('cursor-toys.userHooks', {
@@ -2117,6 +2164,215 @@ export function activate(context: vscode.ExtensionContext) {
     'cursor-toys.refreshNotepads',
     () => {
       userNotepadsTreeProvider.refresh();
+    }
+  );
+
+  /**
+   * Helper function to get URI from plan command argument (can be PlanFileItem or vscode.Uri)
+   */
+  function getPlanUriFromArgument(arg: PlanFileItem | vscode.Uri | undefined): vscode.Uri | null {
+    if (!arg) {
+      return null;
+    }
+    if (arg instanceof vscode.Uri) {
+      return arg;
+    }
+    if ('uri' in arg) {
+      return arg.uri;
+    }
+    return null;
+  }
+
+  /**
+   * Helper function to get file name from plan command argument
+   */
+  function getPlanFileNameFromArgument(arg: PlanFileItem | vscode.Uri | undefined): string {
+    if (!arg) {
+      return 'file';
+    }
+    if (arg instanceof vscode.Uri) {
+      return path.basename(arg.fsPath);
+    }
+    if ('fileName' in arg) {
+      return arg.fileName;
+    }
+    return 'file';
+  }
+
+  /**
+   * Helper function to get file path from plan command argument
+   */
+  function getPlanFilePathFromArgument(arg: PlanFileItem | vscode.Uri | undefined): string | null {
+    if (!arg) {
+      return null;
+    }
+    if (arg instanceof vscode.Uri) {
+      return arg.fsPath;
+    }
+    if ('filePath' in arg) {
+      return arg.filePath;
+    }
+    return null;
+  }
+
+  // Command to open user plan file
+  const openPlan = vscode.commands.registerCommand(
+    'cursor-toys.openPlan',
+    async (arg?: PlanFileItem | vscode.Uri) => {
+      const uri = getPlanUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      try {
+        const document = await vscode.workspace.openTextDocument(uri);
+        await vscode.window.showTextDocument(document);
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error opening file: ${error}`);
+      }
+    }
+  );
+
+  // Command to generate shareable for user plan
+  const generatePlanShareable = vscode.commands.registerCommand(
+    'cursor-toys.generatePlanShareable',
+    async (arg?: PlanFileItem | vscode.Uri) => {
+      const uri = getPlanUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      await generateShareableWithValidation(uri, 'plan');
+    }
+  );
+
+  // Command to delete user plan
+  const deletePlan = vscode.commands.registerCommand(
+    'cursor-toys.deletePlan',
+    async (arg?: PlanFileItem | vscode.Uri) => {
+      const uri = getPlanUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      const fileName = getPlanFileNameFromArgument(arg);
+      const confirm = await vscode.window.showWarningMessage(
+        `Are you sure you want to delete "${fileName}"?`,
+        'Yes',
+        'No'
+      );
+
+      if (confirm === 'Yes') {
+        try {
+          await vscode.workspace.fs.delete(uri);
+          vscode.window.showInformationMessage(`Plan "${fileName}" deleted`);
+          userPlansTreeProvider.refresh();
+        } catch (error) {
+          vscode.window.showErrorMessage(`Error deleting file: ${error}`);
+        }
+      }
+    }
+  );
+
+  // Command to reveal user plan in folder
+  const revealPlan = vscode.commands.registerCommand(
+    'cursor-toys.revealPlan',
+    async (arg?: PlanFileItem | vscode.Uri) => {
+      const uri = getPlanUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      try {
+        await vscode.commands.executeCommand('revealFileInOS', uri);
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error revealing file: ${error}`);
+      }
+    }
+  );
+
+  // Command to rename user plan
+  const renamePlan = vscode.commands.registerCommand(
+    'cursor-toys.renamePlan',
+    async (arg?: PlanFileItem | vscode.Uri) => {
+      const uri = getPlanUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      const currentFileName = getPlanFileNameFromArgument(arg);
+      const currentFilePath = getPlanFilePathFromArgument(arg);
+      
+      if (!currentFilePath) {
+        vscode.window.showErrorMessage('Unable to determine file path');
+        return;
+      }
+
+      // Extract name without .plan.md extension
+      const currentNameWithoutExt = currentFileName.replace(/\.plan\.md$/, '');
+
+      const newName = await vscode.window.showInputBox({
+        prompt: 'Enter new plan name',
+        value: currentNameWithoutExt,
+        validateInput: (value) => {
+          if (!value || value.trim().length === 0) {
+            return 'Plan name cannot be empty';
+          }
+
+          // Sanitize and check if name is valid
+          const sanitized = sanitizeFileName(value);
+          if (sanitized.length === 0) {
+            return 'Plan name contains invalid characters';
+          }
+
+          // Check if file already exists
+          const newFileName = `${sanitized}.plan.md`;
+          const newPath = path.join(path.dirname(currentFilePath), newFileName);
+          if (newPath === currentFilePath) {
+            return null; // Same name, no error
+          }
+
+          return null;
+        }
+      });
+
+      if (newName && newName !== currentNameWithoutExt) {
+        try {
+          const sanitized = sanitizeFileName(newName);
+          const newFileName = `${sanitized}.plan.md`;
+          const newPath = path.join(path.dirname(currentFilePath), newFileName);
+          const newUri = vscode.Uri.file(newPath);
+
+          // Check if file already exists
+          try {
+            await vscode.workspace.fs.stat(newUri);
+            const overwrite = await vscode.window.showWarningMessage(
+              `File "${newFileName}" already exists. Do you want to overwrite it?`,
+              'Yes',
+              'No'
+            );
+            if (overwrite !== 'Yes') {
+              return;
+            }
+          } catch {
+            // File doesn't exist, that's fine
+          }
+
+          await vscode.workspace.fs.rename(uri, newUri, { overwrite: true });
+          vscode.window.showInformationMessage(`Plan renamed to "${newFileName}"`);
+          userPlansTreeProvider.refresh();
+        } catch (error) {
+          vscode.window.showErrorMessage(`Error renaming file: ${error}`);
+        }
+      }
+    }
+  );
+
+  // Command to refresh user plans tree
+  const refreshPlans = vscode.commands.registerCommand(
+    'cursor-toys.refreshPlans',
+    () => {
+      userPlansTreeProvider.refresh();
     }
   );
 
@@ -2856,6 +3112,66 @@ export function activate(context: vscode.ExtensionContext) {
 
   let userNotepadsWatchers = createNotepadsWatchers();
 
+  // File system watchers for plans folder
+  const createPlansWatchers = (): vscode.FileSystemWatcher[] => {
+    const watchers: vscode.FileSystemWatcher[] = [];
+    
+    // Personal plans
+    const personalPlansPaths = getPersonalPlansPaths();
+    for (const folderPath of personalPlansPaths) {
+      const folderUri = vscode.Uri.file(folderPath);
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(folderUri, '**/*.plan.md')
+      );
+
+      watcher.onDidCreate(() => {
+        userPlansTreeProvider.refresh();
+      });
+
+      watcher.onDidDelete(() => {
+        userPlansTreeProvider.refresh();
+      });
+
+      watcher.onDidChange(() => {
+        // Optionally refresh on file changes (not just create/delete)
+        // userPlansTreeProvider.refresh();
+      });
+
+      watchers.push(watcher);
+    }
+    
+    // Project plans (if workspace exists)
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const workspacePath = workspaceFolder.uri.fsPath;
+      const plansPath = getPlansPath(workspacePath, false);
+      const folderUri = vscode.Uri.file(plansPath);
+      
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(folderUri, '**/*.plan.md')
+      );
+
+      watcher.onDidCreate(() => {
+        userPlansTreeProvider.refresh();
+      });
+
+      watcher.onDidDelete(() => {
+        userPlansTreeProvider.refresh();
+      });
+
+      watcher.onDidChange(() => {
+        // Optionally refresh on file changes (not just create/delete)
+        // userPlansTreeProvider.refresh();
+      });
+
+      watchers.push(watcher);
+    }
+    
+    return watchers;
+  };
+
+  let userPlansWatchers = createPlansWatchers();
+
   // Watch for configuration changes
   const configWatcher = vscode.workspace.onDidChangeConfiguration((e) => {
     if (e.affectsConfiguration('cursorToys.commandsFolder') || 
@@ -2876,6 +3192,9 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(watcher);
   });
   userNotepadsWatchers.forEach(watcher => {
+    context.subscriptions.push(watcher);
+  });
+  userPlansWatchers.forEach(watcher => {
     context.subscriptions.push(watcher);
   });
   userHooksWatchers.forEach(watcher => {
@@ -2900,6 +3219,7 @@ export function activate(context: vscode.ExtensionContext) {
     generateShareableRuleSpecific,
     generateShareablePromptSpecific,
     generateShareableNotepadSpecific,
+    generateShareablePlanSpecific,
     generateShareableHttpSpecific,
     generateShareableEnvSpecific,
     generateShareableHttpWithPathSpecific,
@@ -2911,6 +3231,7 @@ export function activate(context: vscode.ExtensionContext) {
     shareRuleFolderCommand,
     sharePromptFolderCommand,
     shareNotepadFolderCommand,
+    sharePlanFolderCommand,
     shareProjectCommand,
     importCommand,
     saveAsUserCommand,
@@ -2937,6 +3258,13 @@ export function activate(context: vscode.ExtensionContext) {
     revealNotepad,
     renameNotepad,
     refreshNotepads,
+    userPlansTreeView,
+    openPlan,
+    generatePlanShareable,
+    deletePlan,
+    revealPlan,
+    renamePlan,
+    refreshPlans,
     userHooksTreeView,
     createHooksFileCommand,
     openHooksCommand,

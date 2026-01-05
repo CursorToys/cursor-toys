@@ -14,7 +14,7 @@ const MAX_CONTENT_SIZE = 50 * 1024 * 1024; // 50MB limit for safety
  */
 export async function generateShareable(
   filePath: string,
-  forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks'
+  forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan'
 ): Promise<string | null> {
   try {
     // Read configuration
@@ -31,13 +31,13 @@ export async function generateShareable(
     }
 
     // Detect or use forced type
-    let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | null;
+    let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | null;
     if (forcedType) {
       fileType = forcedType;
     } else {
       fileType = getFileTypeFromPath(filePath);
       if (!fileType) {
-        vscode.window.showErrorMessage('File must be in commands/, rules/, prompts/, notepads/, http/ or http/environments/ folder');
+        vscode.window.showErrorMessage('File must be in commands/, rules/, prompts/, notepads/, plans/, http/ or http/environments/ folder');
         return null;
       }
     }
@@ -53,6 +53,13 @@ export async function generateShareable(
       const fileName = path.basename(filePath);
       if (!fileName.startsWith('.env')) {
         vscode.window.showErrorMessage('Environment files must start with .env');
+        return null;
+      }
+    } else if (fileType === 'plan') {
+      // Plans must have .plan.md extension
+      const fileName = path.basename(filePath);
+      if (!fileName.endsWith('.plan.md')) {
+        vscode.window.showErrorMessage('Plan files must have .plan.md extension');
         return null;
       }
     } else {
@@ -126,7 +133,7 @@ export function compressAndEncode(content: string): string {
  * @returns Shareable URL
  */
 export function buildShareableUrl(
-  type: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks',
+  type: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan',
   fileName: string,
   compressedData: string
 ): string {
@@ -910,6 +917,121 @@ export async function generateShareableForNotepadFolder(
 }
 
 /**
+ * Generates shareable bundle for all plan files in a folder
+ * @param folderPath Plan folder path to share
+ * @returns Single shareable URL containing all plan files as a bundle
+ */
+export async function generateShareableForPlanFolder(
+  folderPath: string
+): Promise<string | null> {
+  try {
+    // Check if folder exists
+    const folderUri = vscode.Uri.file(folderPath);
+    try {
+      const stat = await vscode.workspace.fs.stat(folderUri);
+      if (stat.type !== vscode.FileType.Directory) {
+        vscode.window.showErrorMessage('Selected path is not a folder');
+        return null;
+      }
+    } catch {
+      vscode.window.showErrorMessage(`Folder not found: ${folderPath}`);
+      return null;
+    }
+
+    const files: Array<{ name: string, content: string }> = [];
+
+    // Collect plan files (only .plan.md)
+    const planFiles: string[] = [];
+    try {
+      const folderUri = vscode.Uri.file(folderPath);
+      const entries = await vscode.workspace.fs.readDirectory(folderUri);
+      
+      for (const [name, type] of entries) {
+        const fullPath = path.join(folderPath, name);
+        
+        if (type === vscode.FileType.Directory) {
+          // Recursively scan subdirectories
+          const subFiles = await collectPlanFilesFromFolder(fullPath);
+          planFiles.push(...subFiles);
+        } else if (type === vscode.FileType.File) {
+          // Check if file has .plan.md extension
+          if (name.endsWith('.plan.md')) {
+            planFiles.push(fullPath);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Error reading folder ${folderPath}:`, error);
+    }
+    
+    if (planFiles.length === 0) {
+      vscode.window.showWarningMessage('No plan files (.plan.md) found in folder');
+      return null;
+    }
+
+    for (const filePath of planFiles) {
+      // Read file content
+      const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+      const content = document.getText();
+      
+      // Get file name without extension
+      const fileName = path.basename(filePath, '.plan.md');
+      
+      files.push({
+        name: fileName,
+        content: content
+      });
+    }
+
+    // Create bundle object
+    const bundle = { files };
+
+    // Compress and encode the entire bundle
+    const bundleJson = JSON.stringify(bundle);
+    const compressedData = compressAndEncode(bundleJson);
+
+    // Build shareable URL: cursortoys://PLAN_BUNDLE:data
+    return `cursortoys://PLAN_BUNDLE:${compressedData}`;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error generating plan bundle: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Recursively collects all plan files (.plan.md) from a folder
+ * @param folderPath Folder path to scan
+ * @returns Array of file paths
+ */
+async function collectPlanFilesFromFolder(folderPath: string): Promise<string[]> {
+  const files: string[] = [];
+  
+  try {
+    const folderUri = vscode.Uri.file(folderPath);
+    const entries = await vscode.workspace.fs.readDirectory(folderUri);
+    
+    for (const [name, type] of entries) {
+      const fullPath = path.join(folderPath, name);
+      
+      if (type === vscode.FileType.Directory) {
+        // Recursively scan subdirectories
+        const subFiles = await collectPlanFilesFromFolder(fullPath);
+        files.push(...subFiles);
+      } else if (type === vscode.FileType.File) {
+        // Check if file has .plan.md extension
+        if (name.endsWith('.plan.md')) {
+          files.push(fullPath);
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Error reading folder ${folderPath}:`, error);
+  }
+  
+  return files;
+}
+
+/**
  * Generates shareable bundle for entire project (.cursor folder)
  * @param cursorFolderPath Path to .cursor folder
  * @returns Single shareable URL containing entire project as a bundle
@@ -941,6 +1063,7 @@ export async function generateShareableForProject(
       rules: [],
       prompts: [],
       notepads: [],
+      plans: [],
       http: []
     };
 
@@ -988,6 +1111,17 @@ export async function generateShareableForProject(
       }
     } catch {}
 
+    // Collect plans
+    const plansPath = path.join(cursorFolderPath, 'plans');
+    try {
+      const planFiles = await collectPlanFilesFromFolder(plansPath);
+      for (const filePath of planFiles) {
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+        const fileName = path.basename(filePath, '.plan.md');
+        bundle.plans.push({ name: fileName, content: document.getText() });
+      }
+    } catch {}
+
     // Collect HTTP files
     const httpPath = path.join(cursorFolderPath, 'http');
     try {
@@ -1027,7 +1161,7 @@ export async function generateShareableForProject(
     } catch {}
 
     // Check if we have any files
-    const totalFiles = bundle.commands.length + bundle.rules.length + bundle.prompts.length + bundle.http.length;
+    const totalFiles = bundle.commands.length + bundle.rules.length + bundle.prompts.length + bundle.notepads.length + bundle.plans.length + bundle.http.length;
     if (totalFiles === 0) {
       vscode.window.showWarningMessage('No files found in project folder');
       return null;
@@ -1054,7 +1188,7 @@ export async function generateShareableForProject(
  */
 export async function generateGistShareable(
   filePath: string,
-  forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks',
+  forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan',
   context?: vscode.ExtensionContext
 ): Promise<string | null> {
   try {
@@ -1091,13 +1225,13 @@ export async function generateGistShareable(
     }
 
     // Detect or use forced type
-    let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | null;
+    let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | null;
     if (forcedType) {
       fileType = forcedType;
     } else {
       fileType = getFileTypeFromPath(filePath);
       if (!fileType) {
-        vscode.window.showErrorMessage('File must be in commands/, rules/, prompts/, notepads/, http/ or http/environments/ folder');
+        vscode.window.showErrorMessage('File must be in commands/, rules/, prompts/, notepads/, plans/, http/ or http/environments/ folder');
         return null;
       }
     }
@@ -1113,6 +1247,13 @@ export async function generateGistShareable(
       const fileName = path.basename(filePath);
       if (!fileName.startsWith('.env')) {
         vscode.window.showErrorMessage('Environment files must start with .env');
+        return null;
+      }
+    } else if (fileType === 'plan') {
+      // Plans must have .plan.md extension
+      const fileName = path.basename(filePath);
+      if (!fileName.endsWith('.plan.md')) {
+        vscode.window.showErrorMessage('Plan files must have .plan.md extension');
         return null;
       }
     } else {
@@ -1133,7 +1274,12 @@ export async function generateGistShareable(
     const fileName = path.basename(filePath);
     const fileNameWithoutExt = path.parse(filePath).name;
 
-    // Build metadata
+    // Build metadata (fileType cannot be null here)
+    if (!fileType) {
+      vscode.window.showErrorMessage('Unable to determine file type');
+      return null;
+    }
+
     const metadata = gistManager.buildMetadata(
       fileType,
       [{ name: fileName, type: fileType, size: content.length }]
@@ -1170,7 +1316,7 @@ export async function generateGistShareable(
  * @returns Gist URL or null if failed
  */
 export async function generateGistShareableForBundle(
-  bundleType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'project',
+  bundleType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'project' | 'plan',
   folderPath: string,
   context?: vscode.ExtensionContext
 ): Promise<string | null> {
@@ -1249,6 +1395,15 @@ export async function generateGistShareableForBundle(
         files[fileName] = { content };
         fileMetadata.push({ name: fileName, type: 'notepad', size: content.length });
       }
+    } else if (bundleType === 'plan') {
+      const planFiles = await collectPlanFilesFromFolder(folderPath);
+      for (const filePath of planFiles) {
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+        const content = document.getText();
+        const fileName = path.basename(filePath);
+        files[fileName] = { content };
+        fileMetadata.push({ name: fileName, type: 'plan', size: content.length });
+      }
     } else if (bundleType === 'http') {
       const httpFiles = await collectHttpFilesFromFolder(folderPath);
       for (const filePath of httpFiles) {
@@ -1280,6 +1435,7 @@ export async function generateGistShareableForBundle(
       const rulesPath = path.join(folderPath, 'rules');
       const promptsPath = path.join(folderPath, 'prompts');
       const notepadsPath = path.join(folderPath, 'notepads');
+      const plansPath = path.join(folderPath, 'plans');
       const httpPath = path.join(folderPath, 'http');
 
       // Commands
@@ -1327,6 +1483,18 @@ export async function generateGistShareableForBundle(
           const fileName = `notepads/${path.basename(filePath)}`;
           files[fileName] = { content };
           fileMetadata.push({ name: fileName, type: 'notepad', size: content.length });
+        }
+      } catch {}
+
+      // Plans
+      try {
+        const planFiles = await collectPlanFilesFromFolder(plansPath);
+        for (const filePath of planFiles) {
+          const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+          const content = document.getText();
+          const fileName = `plans/${path.basename(filePath)}`;
+          files[fileName] = { content };
+          fileMetadata.push({ name: fileName, type: 'plan', size: content.length });
         }
       } catch {}
 

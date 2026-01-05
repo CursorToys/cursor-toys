@@ -233,6 +233,40 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "cursor-toys.openPlan",
+        "title": "CursorToys: Open Plan",
+        "icon": "$(file-text)"
+      },
+      {
+        "command": "cursor-toys.generatePlanShareable",
+        "title": "CursorToys: Share Plan"
+      },
+      {
+        "command": "cursor-toys.deletePlan",
+        "title": "CursorToys: Delete Plan"
+      },
+      {
+        "command": "cursor-toys.revealPlan",
+        "title": "CursorToys: Reveal Plan in Folder"
+      },
+      {
+        "command": "cursor-toys.renamePlan",
+        "title": "CursorToys: Rename Plan"
+      },
+      {
+        "command": "cursor-toys.refreshPlans",
+        "title": "CursorToys: Refresh Plans",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.shareAsCursorToysPlan",
+        "title": "CursorToys: Share as CursorToys (Plan)"
+      },
+      {
+        "command": "cursor-toys.shareAsCursorToysPlanFolder",
+        "title": "CursorToys: Share Folder as CursorToys (Plans Bundle)"
+      },
+      {
         "command": "cursor-toys.createHooksFile",
         "title": "CursorToys: Create Hooks File",
         "icon": "$(add)"
@@ -417,6 +451,11 @@
           "when": "true"
         },
         {
+          "id": "cursor-toys.userPlans",
+          "name": "Cursor Plans",
+          "when": "true"
+        },
+        {
           "id": "cursor-toys.userHooks",
           "name": "Cursor Hooks",
           "when": "true"
@@ -427,7 +466,7 @@
       "explorer/context": [
         {
           "submenu": "cursor-toys",
-          "when": "resourcePath =~ /[\\\\/]\\.(cursor|claude|vscode|ai)[\\\\/](commands|rules|prompts|notepads|http)/ || resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)$/ || resourceFilename == hooks.json",
+          "when": "resourcePath =~ /[\\\\/]\\.(cursor|claude|vscode|ai)[\\\\/](commands|rules|prompts|notepads|plans|http)/ || resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)$/ || resourceFilename == hooks.json",
           "group": "navigation"
         }
       ],
@@ -450,6 +489,11 @@
         {
           "command": "cursor-toys.refreshNotepads",
           "when": "view == cursor-toys.userNotepads",
+          "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.refreshPlans",
+          "when": "view == cursor-toys.userPlans",
           "group": "navigation"
         },
         {
@@ -547,6 +591,36 @@
         {
           "command": "cursor-toys.deleteNotepad",
           "when": "view == cursor-toys.userNotepads && viewItem == userNotepadFile",
+          "group": "2_actions"
+        },
+        {
+          "command": "cursor-toys.openPlan",
+          "when": "view == cursor-toys.userPlans && viewItem == userPlanFile",
+          "group": "inline"
+        },
+        {
+          "command": "cursor-toys.generatePlanShareable",
+          "when": "view == cursor-toys.userPlans && viewItem == userPlanFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareViaGist",
+          "when": "view == cursor-toys.userPlans && viewItem == userPlanFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.renamePlan",
+          "when": "view == cursor-toys.userPlans && viewItem == userPlanFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.revealPlan",
+          "when": "view == cursor-toys.userPlans && viewItem == userPlanFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.deletePlan",
+          "when": "view == cursor-toys.userPlans && viewItem == userPlanFile",
           "group": "2_actions"
         },
         {
@@ -652,6 +726,14 @@
         {
           "command": "cursor-toys.shareAsCursorToysNotepadFolder",
           "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]notepads($|[\\\\/])/"
+        },
+        {
+          "command": "cursor-toys.shareAsCursorToysPlan",
+          "when": "resourcePath =~ /\\.(cursor|vscode|ai)\\/plans\\// && !explorerResourceIsFolder && resourceFilename =~ /\\.plan\\.md$/"
+        },
+        {
+          "command": "cursor-toys.shareAsCursorToysPlanFolder",
+          "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]plans($|[\\\\/])/"
         },
         {
           "command": "cursor-toys.shareAsCursorToysHttp",
