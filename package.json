@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "1.5.0",
+  "version": "1.5.2",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
