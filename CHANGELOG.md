@@ -2,6 +2,132 @@
 
 All notable changes to the "CursorToys" extension will be documented in this file.
 
+## [1.5.2] - 2026-01-05
+
+### Added
+
+#### 📋 **Cursor Plans Management**
+- **Plans Management**: New system to manage Cursor plan files
+  - New "Cursor Plans" view in Explorer sidebar to browse and manage plans
+  - Support for both personal plans (`~/.cursor/plans/`) and project plans (`workspace/.cursor/plans/`)
+  - Visual tree view with hierarchical folder structure
+  - Automatic tree view refresh on file changes
+  - Drag-and-drop support for organizing plans between folders
+- **Plans Commands**:
+  - `cursor-toys.openPlan`: Open plan file in editor
+  - `cursor-toys.generatePlanShareable`: Generate shareable for plan
+  - `cursor-toys.deletePlan`: Delete plan file
+  - `cursor-toys.renamePlan`: Rename plan file
+  - `cursor-toys.revealPlan`: Reveal plan in file system
+  - `cursor-toys.refreshPlans`: Refresh plans tree view
+  - `cursor-toys.shareAsCursorToysPlan`: Share plan as CursorToys format
+  - `cursor-toys.shareAsCursorToysPlanFolder`: Share plan folder as bundle
+- **Plans Sharing**: Complete sharing infrastructure for plans
+  - Share individual plans via CursorToys compressed format
+  - Share plan folders as bundles
+  - Share plans via GitHub Gist with metadata
+  - Import plans from shareables and bundles
+  - Support for both personal and project plans import
+- **Plans Tree View Features**:
+  - Hierarchical display of plans organized in folders
+  - Visual distinction between personal and workspace plans
+  - Context menu with all management options
+  - File system watchers for real-time updates
+  - Support for `.plan.md` file extension
+
+### Changed
+- **Shareable Generator**: Extended to support plans type
+  - Added `generateShareableForPlanFolder()`: Generate shareable for plan folder bundle
+  - Added plan type to all shareable functions
+  - Validation of `.plan.md` file extension
+  - Support for plan bundles in project bundles
+- **Shareable Importer**: Enhanced to handle plans imports
+  - Added `importPlanBundle()`: Import plan bundle from shareable
+  - Support for `cursortoys://PLAN:` and `cursortoys://PLAN_BUNDLE:` protocols
+  - Plans import flow with personal/project location choice
+  - Validation of `.plan.md` file extension on import
+- **GistManager**: Updated to support plans type
+  - Added `'plan'` to supported types in metadata
+  - Support for plan type in Gist description building
+  - Added `plan_bundle` to bundle types
+- **Utils Enhanced**: Added plans path helpers
+  - `getPlansPath()`: Get path to plans folder (personal or project)
+  - `getPersonalPlansPaths()`: Get personal plans paths
+  - `isPlanFile()`: Check if file has `.plan.md` extension
+  - `getFileTypeFromPath()`: Extended to detect plan files
+
+### Technical Details
+
+#### New Files
+- **`src/userPlansTreeProvider.ts`**: Complete plans management system
+  - Tree provider for plans with drag-and-drop support
+  - Hierarchical folder structure display
+  - Support for both personal and project plans
+  - Context menu integration
+  - File system integration for opening and revealing files
+  - Visual icons for plans files
+
+#### Enhanced Files
+- **`src/extension.ts`**:
+  - Registered UserPlansTreeProvider for plans view
+  - Added 8 new plans-related commands
+  - Integrated plans file watchers for real-time updates
+  - Added helper functions for plans command arguments
+  - Support for plans in context menus
+- **`src/shareableGenerator.ts`**:
+  - Added `generateShareableForPlanFolder()` function
+  - Extended type definitions to include `'plan'`
+  - Validation logic for `.plan.md` file extension
+  - Support for plans in project bundles
+  - Added `collectPlanFilesFromFolder()` helper function
+- **`src/shareableImporter.ts`**:
+  - Added `importPlanBundle()` function for plan bundle import
+  - Extended type definitions to include `'plan'`
+  - Support for `cursortoys://PLAN:` and `cursortoys://PLAN_BUNDLE:` protocol parsing
+  - Plans destination path handling
+  - Support for plans in Gist imports
+- **`src/gistManager.ts`**:
+  - Extended `CursorToysMetadata` type to include `'plan'`
+  - Updated type definitions in helper functions
+  - Added `plan_bundle` to bundle types
+- **`src/utils.ts`**:
+  - Added `getPlansPath()` function
+  - Added `getPersonalPlansPaths()` function
+  - Added `isPlanFile()` helper function
+  - Extended `getFileTypeFromPath()` to detect plan files
+- **`package.json`**:
+  - Added `cursor-toys.userPlans` view contribution
+  - Added 8 new plans commands
+  - Added plans context menu items
+  - Added view title actions for plans tree
+  - Added activation events for plans view
+
+#### New View
+- `cursor-toys.userPlans`: Cursor Plans tree view in Explorer sidebar
+  - Shows both personal and project plans files
+  - Displays plans organized in folders
+  - Context menu with all plans management actions
+
+### Use Cases
+
+**Managing Cursor Plans:**
+1. View plans in "Cursor Plans" view in Explorer sidebar
+2. Create plans with `.plan.md` extension in `.cursor/plans/` folder
+3. Organize plans in subfolders with drag-and-drop
+4. Share individual plans or entire folders with team
+
+**Sharing Plans:**
+1. Right-click on plan in tree view
+2. Choose "Share Plan" (CursorToys format) or "Share via GitHub Gist"
+3. Share link with team members
+4. Recipients import with `Cmd+Shift+I`
+
+**Importing Plans:**
+1. Press `Cmd+Shift+I` in Cursor
+2. Paste plan shareable link or Gist URL
+3. Choose Personal or Project location
+4. Plan is imported and ready to use
+
 ## [1.5.1] - 2026-01-05
 
 ### Added
