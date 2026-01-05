@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -233,6 +233,58 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "cursor-toys.createHooksFile",
+        "title": "CursorToys: Create Hooks File",
+        "icon": "$(add)"
+      },
+      {
+        "command": "cursor-toys.openHooks",
+        "title": "CursorToys: Open Hooks",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "cursor-toys.shareHooks",
+        "title": "CursorToys: Share Hooks"
+      },
+      {
+        "command": "cursor-toys.shareHooksViaGist",
+        "title": "CursorToys: Share Hooks via GitHub Gist"
+      },
+      {
+        "command": "cursor-toys.deleteHooks",
+        "title": "CursorToys: Delete Hooks"
+      },
+      {
+        "command": "cursor-toys.revealHooks",
+        "title": "CursorToys: Reveal Hooks in Folder"
+      },
+      {
+        "command": "cursor-toys.refreshHooks",
+        "title": "CursorToys: Refresh Hooks",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.openHookScript",
+        "title": "CursorToys: Open Hook Script",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "cursor-toys.shareHookScript",
+        "title": "CursorToys: Share Hook Script"
+      },
+      {
+        "command": "cursor-toys.shareHookScriptViaGist",
+        "title": "CursorToys: Share Hook Script via GitHub Gist"
+      },
+      {
+        "command": "cursor-toys.revealHookScript",
+        "title": "CursorToys: Reveal Hook Script in Folder"
+      },
+      {
+        "command": "cursor-toys.deleteHookScript",
+        "title": "CursorToys: Delete Hook Script"
+      },
+      {
         "command": "cursor-toys.shareAsCursorToysNotepad",
         "title": "CursorToys: Share as CursorToys (Notepad)"
       },
@@ -363,6 +415,11 @@
           "id": "cursor-toys.userNotepads",
           "name": "Project Notepads",
           "when": "true"
+        },
+        {
+          "id": "cursor-toys.userHooks",
+          "name": "Cursor Hooks",
+          "when": "true"
         }
       ]
     },
@@ -370,7 +427,7 @@
       "explorer/context": [
         {
           "submenu": "cursor-toys",
-          "when": "resourcePath =~ /[\\\\/]\\.(cursor|claude|vscode|ai)[\\\\/](commands|rules|prompts|notepads|http)/ || resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)$/",
+          "when": "resourcePath =~ /[\\\\/]\\.(cursor|claude|vscode|ai)[\\\\/](commands|rules|prompts|notepads|http)/ || resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)$/ || resourceFilename == hooks.json",
           "group": "navigation"
         }
       ],
@@ -393,6 +450,16 @@
         {
           "command": "cursor-toys.refreshNotepads",
           "when": "view == cursor-toys.userNotepads",
+          "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.createHooksFile",
+          "when": "view == cursor-toys.userHooks",
+          "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.refreshHooks",
+          "when": "view == cursor-toys.userHooks",
           "group": "navigation"
         }
       ],
@@ -481,6 +548,56 @@
           "command": "cursor-toys.deleteNotepad",
           "when": "view == cursor-toys.userNotepads && viewItem == userNotepadFile",
           "group": "2_actions"
+        },
+        {
+          "command": "cursor-toys.openHooks",
+          "when": "view == cursor-toys.userHooks && viewItem == hooksFile",
+          "group": "inline"
+        },
+        {
+          "command": "cursor-toys.shareHooks",
+          "when": "view == cursor-toys.userHooks && viewItem == hooksFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareHooksViaGist",
+          "when": "view == cursor-toys.userHooks && viewItem == hooksFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.revealHooks",
+          "when": "view == cursor-toys.userHooks && viewItem == hooksFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.deleteHooks",
+          "when": "view == cursor-toys.userHooks && viewItem == hooksFile",
+          "group": "2_actions"
+        },
+        {
+          "command": "cursor-toys.openHookScript",
+          "when": "view == cursor-toys.userHooks && viewItem == hooksScript",
+          "group": "inline"
+        },
+        {
+          "command": "cursor-toys.shareHookScript",
+          "when": "view == cursor-toys.userHooks && viewItem == hooksScript",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareHookScriptViaGist",
+          "when": "view == cursor-toys.userHooks && viewItem == hooksScript",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.revealHookScript",
+          "when": "view == cursor-toys.userHooks && viewItem == hooksScript",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.deleteHookScript",
+          "when": "view == cursor-toys.userHooks && viewItem == hooksScript",
+          "group": "2_actions"
         }
       ],
       "cursor-toys": [
@@ -567,6 +684,14 @@
         {
           "command": "cursor-toys.shareAsCursorToysProject",
           "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)$/"
+        },
+        {
+          "command": "cursor-toys.shareHooks",
+          "when": "resourceFilename == hooks.json"
+        },
+        {
+          "command": "cursor-toys.shareHooksViaGist",
+          "when": "resourceFilename == hooks.json"
         },
         {
           "command": "cursor-toys.initializeEnvironments",
