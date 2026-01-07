@@ -6,6 +6,34 @@ All notable changes to the "CursorToys" extension will be documented in this fil
 
 ### Added
 
+#### 🔧 **Inline Variables and Helper Functions for HTTP Requests**
+- **Inline Variable Support**: Define variables directly in HTTP request files using `# @var` decorator
+  - Format: `# @var VAR_NAME=value` or `# @var VAR_NAME value`
+  - Support for global variables (before first `##` section)
+  - Support for section-specific variables (override global)
+  - Cascading behavior: section variables override global variables
+  - Case-insensitive variable matching in hover provider
+  - Variables are excluded from environment variable substitution (variables with `@` prefix are processed separately)
+- **Helper Functions**: Built-in helper functions for dynamic values
+  - `{{@prompt("label")}}` - Prompt user for input value with custom label
+  - `{{@randomIn(min, max)}}` - Generate random integer between min and max (inclusive)
+  - `{{@datetime}}` or `{{@datetime("format")}}` - Current date/time (ISO, timestamp, date, time, or custom format)
+  - `{{@uuid()}}` - Generate random UUID v4
+  - `{{@randomString(length)}}` - Generate random alphanumeric string of specified length
+- **Enhanced Hover Provider**: Improved variable hover information
+  - Shows `# @var` variable definitions when hovering over variables
+  - Displays variable source (file-level `# @var` vs environment file)
+  - Provides helpful tips for defining variables
+  - Shows when `# @var` values override environment variables
+- **Syntax Highlighting**: Enhanced syntax highlighting for inline variables
+  - `# @var` decorator highlighted as control directive
+  - Variable name highlighted separately
+  - Helper expressions (`{{@helper()}}`) highlighted as function calls
+  - Visual distinction between file variables and environment variables
+- **REST Client Format Enhancement**: Improved parsing to skip comments and empty lines
+  - Better handling of `# @var` decorators in REST Client format
+  - Preserves variable definitions during request parsing
+
 #### 📋 **Cursor Plans Management**
 - **Plans Management**: New system to manage Cursor plan files
   - New "Cursor Plans" view in Explorer sidebar to browse and manage plans
@@ -68,6 +96,24 @@ All notable changes to the "CursorToys" extension will be documented in this fil
   - Visual icons for plans files
 
 #### Enhanced Files
+- **`src/httpRequestExecutor.ts`**:
+  - Added `extractFileVariables()`: Extract variables defined with `# @var` decorator
+  - Added `replaceFileVariables()`: Replace `{{VAR_NAME}}` with file variable values
+  - Added `replacePromptVariables()`: Replace `{{@prompt()}}` expressions with user input
+  - Added helper functions system: `@prompt`, `@randomIn`, `@datetime`, `@uuid`, `@randomString`
+  - Enhanced REST Client format parsing to preserve `# @var` decorators and comments
+  - Improved variable substitution order: environment variables → file variables → prompt/helper expressions
+  - Support for cascading variables (global → section-specific)
+- **`src/httpEnvironmentProviders.ts`**:
+  - Enhanced hover provider to detect and display `# @var` variable definitions
+  - Added case-insensitive variable matching for file variables
+  - Improved hover tooltips to show variable source (`# @var` vs environment file)
+  - Added helpful tips for defining variables when not found
+  - Shows when `# @var` values override environment variables
+- **`syntaxes/http-request.tmLanguage.json`**:
+  - Added syntax highlighting for `# @var` decorator pattern
+  - Added highlighting for helper expressions (`{{@helper()}}`)
+  - Proper scoping for variable decorators and helper functions
 - **`src/extension.ts`**:
   - Registered UserPlansTreeProvider for plans view
   - Added 8 new plans-related commands
@@ -109,6 +155,46 @@ All notable changes to the "CursorToys" extension will be documented in this fil
   - Context menu with all plans management actions
 
 ### Use Cases
+
+**Using Inline Variables:**
+```http
+# @var API_BASE=https://api.example.com
+# @var API_KEY=your-key-here
+# @var USER_ID=12345
+
+## Get User
+GET {{API_BASE}}/users/{{USER_ID}}
+Authorization: Bearer {{API_KEY}}
+```
+
+**Using Helper Functions:**
+```http
+## Create User with Random Data
+POST {{BASE_URL}}/api/users
+Content-Type: application/json
+
+{
+  "id": "{{@uuid()}}",
+  "name": "User{{@randomString(8)}}",
+  "age": {{@randomIn(18, 65)}},
+  "createdAt": "{{@datetime}}",
+  "email": "{{@prompt("Enter email")}}"
+}
+```
+
+**Cascading Variables:**
+```http
+# @var TIMEOUT=5000
+
+## Request 1
+GET {{BASE_URL}}/api/users
+# Uses TIMEOUT=5000 (global)
+
+# @var TIMEOUT=10000
+## Request 2
+GET {{BASE_URL}}/api/posts
+# Uses TIMEOUT=10000 (section-specific, overrides global)
+```
 
 **Managing Cursor Plans:**
 1. View plans in "Cursor Plans" view in Explorer sidebar

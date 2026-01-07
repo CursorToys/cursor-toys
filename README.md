@@ -63,11 +63,13 @@ CursorToys includes over 9 utility categories to optimize your Cursor AI workflo
 **Test APIs without leaving Cursor** — Full REST client built-in.
 
 - 🚀 **Execute Requests** — Run HTTP requests from `.req` files with CodeLens
-- 📝 **Multiple Formats** — cURL commands or structured JSON
+- 📝 **Multiple Formats** — cURL commands or REST Client format (METHOD URL)
 - ⚡ **Performance Tracking** — See execution time for each request
 - 🎨 **Syntax Highlighting** — Beautiful highlighting for requests and responses
-- 🌍 **Environment Variables** — Use `{{variableName}}` for dynamic values
-- 🔧 **Multiple Environments** — Switch between dev, staging, prod instantly
+- 🌍 **Environment Variables** — Use `{{variableName}}` from `.env` files
+- 🔧 **Inline Variables** — Define variables with `# @var VAR_NAME=value` directly in files
+- 🎯 **Helper Functions** — Dynamic values: `{{@uuid()}}`, `{{@datetime}}`, `{{@randomIn()}}`, `{{@prompt()}}`
+- 🔄 **Multiple Environments** — Switch between dev, staging, prod instantly
 - 💾 **Auto-Save Responses** — Or preview-only mode for quick tests
 
 ### 📚 Personal Libraries
