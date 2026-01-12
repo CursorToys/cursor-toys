@@ -29,7 +29,8 @@ CursorToys includes over 9 utility categories to optimize your Cursor AI workflo
 |---|---|---|
 | [🎯 Smart Recommendations](#-smart-recommendations) | [🔗 Instant Sharing](#-instant-sharing) | [🌐 In-Editor API Testing](#-in-editor-api-testing) |
 | [📚 Personal Libraries](#-personal-libraries) | [📓 Project Notepads](#-project-notepads) | [🪝 Cursor Hooks](#-cursor-hooks) |
-| [🗜️ File Minification](#️-file-minification) | [💬 Chat Integration](#-chat-integration) | [🌐 GitHub Gist Integration](#-github-gist-integration) |
+| [🎓 Skills Management](#-skills-management) | [🗜️ File Minification](#️-file-minification) | [💬 Chat Integration](#-chat-integration) |
+| [🌐 GitHub Gist Integration](#-github-gist-integration) | | |
 
 ### 🎯 Smart Recommendations
 
@@ -106,6 +107,19 @@ CursorToys includes over 9 utility categories to optimize your Cursor AI workflo
 - 🔗 **Shareable** — Share hooks via CursorToys format or GitHub Gist
 - 📝 **Script Detection** — Automatically detects and displays hook scripts
 - 🎯 **Context Menu** — Right-click actions for all hook operations
+
+### 🎓 Skills Management
+
+**Manage Cursor Skills** — Complete support for Cursor Skills with visual tree view.
+
+- 🗂️ **Visual Tree View** — Browse and manage skills in Explorer sidebar
+- 🏠 **Personal + Project** — Separate skills for personal (`~/.cursor/skills/`, `~/.claude/skills/`) and project-specific (`workspace/.cursor/skills/`)
+- 📁 **Hierarchical Organization** — Organize skills in folders with drag-and-drop support
+- ✏️ **Easy Management** — Open, rename, delete, reveal skills
+- 🔗 **Shareable** — Share individual skills or entire folders as bundles
+- 📝 **SKILL.md Support** — Automatic detection of SKILL.md files in skill folders
+- 🎯 **CodeLens Integration** — Share skills directly from SKILL.md files
+- 🔄 **Auto-Refresh** — File system watchers keep tree view in sync
 
 ### 🗜️ File Minification
 
@@ -227,9 +241,18 @@ Click the "Send Request" link that appears above → See formatted response!
 
 ## ✨ What's New
 
-**Version 1.5.0 (January 2026)**
+**Version 1.6.0 (January 2026)**
 
 For a detailed look at the latest changes, visit the [CHANGELOG](CHANGELOG.md).
+
+**✨ Highlights**
+
+- ✅ **Skills Management** — Complete support for Cursor Skills with visual tree view
+- ✅ **UI Improvements** — Enhanced Personal Commands and Prompts views with category organization
+- ✅ **Skills Sharing** — Share skills via deeplinks, CursorToys format, or GitHub Gist
+- ✅ **Skills CodeLens** — Direct sharing from SKILL.md files
+
+**Version 1.5.0 (January 2026)**
 
 **✨ Highlights**
 
@@ -284,6 +307,21 @@ For a detailed look at the latest changes, visit the [CHANGELOG](CHANGELOG.md).
 - Detailed savings statistics
 - Configurable output suffix
 - Context menu and editor title bar
+
+### Skills Management
+- Visual tree view for skills (personal and project)
+- Hierarchical folder structure (Category → Skill Folder → SKILL.md)
+- Share individual skills via deeplink or CursorToys format
+- Share skills folders as bundles
+- Import skills from deeplinks and shareables
+- CodeLens support for SKILL.md files
+- Drag-and-drop support for organizing skills
+
+### UI Improvements
+- **Personal Commands View**: Enhanced to show categories at root level (Personal/Workspace)
+- **Personal Prompts View**: Enhanced to show categories at root level (Personal/Workspace)
+- Better organization with clear separation between personal and project items
+- Maintains backward compatibility with existing folder structure
 
 ### General Improvements
 - Performance improvements in cache system
