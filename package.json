@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "1.5.2",
+  "version": "1.6.0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -49,6 +49,7 @@
     "onCommand:cursor-toys.generate-command",
     "onCommand:cursor-toys.generate-rule",
     "onCommand:cursor-toys.generate-prompt",
+    "onCommand:cursor-toys.generate-skill",
     "onCommand:cursor-toys.shareAsCursorToysCommand",
     "onCommand:cursor-toys.shareAsCursorToysRule",
     "onCommand:cursor-toys.shareAsCursorToysPrompt",
@@ -58,6 +59,7 @@
     "onView:cursor-toys.userCommands",
     "onView:cursor-toys.userPrompts",
     "onView:cursor-toys.userNotepads",
+    "onView:cursor-toys.userSkills",
     "onCommand:cursor-toys.sendToChat",
     "onCommand:cursor-toys.sendSelectionToChat",
     "onCommand:cursor-toys.copySelectionAsPrompt",
@@ -82,6 +84,10 @@
         "title": "CursorToys: Share as Deeplink (Prompt)"
       },
       {
+        "command": "cursor-toys.generate-skill",
+        "title": "CursorToys: Share as Deeplink (Skill)"
+      },
+      {
         "command": "cursor-toys.import",
         "title": "CursorToys: Import"
       },
@@ -96,6 +102,10 @@
       {
         "command": "cursor-toys.shareAsCursorToysPrompt",
         "title": "CursorToys: Share as CursorToys (Prompt)"
+      },
+      {
+        "command": "cursor-toys.shareAsCursorToysSkill",
+        "title": "CursorToys: Share as CursorToys (Skill)"
       },
       {
         "command": "cursor-toys.shareAsCursorToysHttp",
@@ -136,6 +146,10 @@
       {
         "command": "cursor-toys.shareAsCursorToysPromptFolder",
         "title": "CursorToys: Share Folder as CursorToys (Prompts Bundle)"
+      },
+      {
+        "command": "cursor-toys.shareAsCursorToysSkillFolder",
+        "title": "CursorToys: Share Folder as CursorToys (Skills Bundle)"
       },
       {
         "command": "cursor-toys.shareAsCursorToysProject",
@@ -199,6 +213,32 @@
       {
         "command": "cursor-toys.refreshUserPrompts",
         "title": "CursorToys: Refresh Prompts",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.openSkill",
+        "title": "CursorToys: Open Skill",
+        "icon": "$(file)"
+      },
+      {
+        "command": "cursor-toys.generateSkillDeeplink",
+        "title": "CursorToys: Generate Skill Share Link"
+      },
+      {
+        "command": "cursor-toys.deleteSkill",
+        "title": "CursorToys: Delete Skill"
+      },
+      {
+        "command": "cursor-toys.revealSkill",
+        "title": "CursorToys: Reveal Skill in Folder"
+      },
+      {
+        "command": "cursor-toys.renameSkill",
+        "title": "CursorToys: Rename Skill"
+      },
+      {
+        "command": "cursor-toys.refreshSkills",
+        "title": "CursorToys: Refresh Skills",
         "icon": "$(refresh)"
       },
       {
@@ -436,23 +476,28 @@
     "views": {
       "explorer": [
         {
+          "id": "cursor-toys.userNotepads",
+          "name": "Notepads",
+          "when": "true"
+        },
+        {
           "id": "cursor-toys.userCommands",
-          "name": "Personal Commands",
+          "name": "Commands",
           "when": "true"
         },
         {
           "id": "cursor-toys.userPrompts",
-          "name": "Personal Prompts",
-          "when": "true"
-        },
-        {
-          "id": "cursor-toys.userNotepads",
-          "name": "Project Notepads",
+          "name": "Prompts",
           "when": "true"
         },
         {
           "id": "cursor-toys.userPlans",
           "name": "Cursor Plans",
+          "when": "true"
+        },
+        {
+          "id": "cursor-toys.userSkills",
+          "name": "Skills",
           "when": "true"
         },
         {
@@ -466,7 +511,7 @@
       "explorer/context": [
         {
           "submenu": "cursor-toys",
-          "when": "resourcePath =~ /[\\\\/]\\.(cursor|claude|vscode|ai)[\\\\/](commands|rules|prompts|notepads|plans|http)/ || resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)$/ || resourceFilename == hooks.json",
+          "when": "resourcePath =~ /[\\\\/]\\.(cursor|claude|vscode|ai)[\\\\/](commands|rules|prompts|notepads|plans|skills|http)/ || resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)$/ || resourceFilename == hooks.json || resourceFilename == SKILL.md",
           "group": "navigation"
         }
       ],
@@ -504,6 +549,11 @@
         {
           "command": "cursor-toys.refreshHooks",
           "when": "view == cursor-toys.userHooks",
+          "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.refreshSkills",
+          "when": "view == cursor-toys.userSkills",
           "group": "navigation"
         }
       ],
@@ -624,6 +674,36 @@
           "group": "2_actions"
         },
         {
+          "command": "cursor-toys.openSkill",
+          "when": "view == cursor-toys.userSkills && viewItem == userSkillFile",
+          "group": "inline"
+        },
+        {
+          "command": "cursor-toys.generateSkillDeeplink",
+          "when": "view == cursor-toys.userSkills && viewItem == userSkillFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareAsCursorToysSkill",
+          "when": "view == cursor-toys.userSkills && viewItem == userSkillFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.renameSkill",
+          "when": "view == cursor-toys.userSkills && viewItem == userSkillFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.revealSkill",
+          "when": "view == cursor-toys.userSkills && viewItem == userSkillFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.deleteSkill",
+          "when": "view == cursor-toys.userSkills && viewItem == userSkillFile",
+          "group": "2_actions"
+        },
+        {
           "command": "cursor-toys.openHooks",
           "when": "view == cursor-toys.userHooks && viewItem == hooksFile",
           "group": "inline"
@@ -734,6 +814,18 @@
         {
           "command": "cursor-toys.shareAsCursorToysPlanFolder",
           "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]plans($|[\\\\/])/"
+        },
+        {
+          "command": "cursor-toys.generate-skill",
+          "when": "resourceFilename == SKILL.md"
+        },
+        {
+          "command": "cursor-toys.shareAsCursorToysSkill",
+          "when": "resourceFilename == SKILL.md"
+        },
+        {
+          "command": "cursor-toys.shareAsCursorToysSkillFolder",
+          "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|claude|vscode|ai)[\\\\/]skills($|[\\\\/])/"
         },
         {
           "command": "cursor-toys.shareAsCursorToysHttp",

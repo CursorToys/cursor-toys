@@ -2,6 +2,144 @@
 
 All notable changes to the "CursorToys" extension will be documented in this file.
 
+## [1.6.0] - 2026-01-XX
+
+### Added
+
+#### 🎯 **Skills Management**
+- **Skills Support**: Complete support for Cursor Skills
+  - New "Skills" view in Explorer sidebar to browse and manage skills
+  - Support for both personal skills (`~/.cursor/skills/`, `~/.claude/skills/`) and project skills (`workspace/.cursor/skills/`, `workspace/.claude/skills/`)
+  - Visual tree view with hierarchical folder structure (Category → Skill Folder → SKILL.md)
+  - Automatic tree view refresh on file changes
+  - Drag-and-drop support for organizing skills between folders
+- **Skills Commands**:
+  - `cursor-toys.openSkill`: Open SKILL.md file in editor
+  - `cursor-toys.generateSkillDeeplink`: Generate deeplink for skill
+  - `cursor-toys.shareAsCursorToysSkill`: Share skill as CursorToys format
+  - `cursor-toys.shareAsCursorToysSkillFolder`: Share skills folder as bundle
+  - `cursor-toys.deleteSkill`: Delete skill folder
+  - `cursor-toys.renameSkill`: Rename skill folder
+  - `cursor-toys.revealSkill`: Reveal skill in file system
+  - `cursor-toys.refreshSkills`: Refresh skills tree view
+- **Skills Sharing**: Complete sharing infrastructure for skills
+  - Share individual skills via deeplink (`cursor://.../skill?name={skillName}&text={content}`)
+  - Share individual skills via CursorToys compressed format
+  - Share skills folders as bundles (`cursortoys://SKILL_BUNDLE:...`)
+  - Import skills from deeplinks and shareables
+  - Support for both personal and project skills import
+- **Skills Tree View Features**:
+  - Hierarchical display: Category (Personal/Workspace) → Skill Folders → SKILL.md
+  - Visual distinction between personal and workspace skills
+  - Context menu with all management options
+  - File system watchers for real-time updates
+  - Support for `.cursor/skills/` and `.claude/skills/` folders
+- **Skills CodeLens**: CodeLens support for SKILL.md files
+  - "Share as Deeplink" and "Share as CursorToys" actions in SKILL.md files
+  - Automatic detection of SKILL.md files in skills folders
+
+#### 🎨 **UI Improvements**
+- **Personal Commands View**: Enhanced to match Hooks and Plans structure
+  - Now displays categories at root level: "Personal (~/.cursor)" and "{workspaceName} (workspace)"
+  - Better organization with clear separation between personal and project commands
+  - Maintains backward compatibility with existing folder structure
+- **Personal Prompts View**: Enhanced to match Hooks and Plans structure
+  - Now displays categories at root level: "Personal (~/.cursor)" and "{workspaceName} (workspace)"
+  - Better organization with clear separation between personal and project prompts
+  - Maintains backward compatibility with existing folder structure
+
+### Changed
+- **UserCommandsTreeProvider**: Updated to show Personal/Workspace categories
+  - Added `'category'` type to tree items
+  - Root level now shows categories instead of direct files
+  - Improved drag-and-drop handling for categories
+- **UserPromptsTreeProvider**: Updated to show Personal/Workspace categories
+  - Added `'category'` type to tree items
+  - Root level now shows categories instead of direct files
+  - Improved drag-and-drop handling for categories
+- **Shareable Generator**: Extended to support skills type
+  - Added `generateShareableForSkillFolder()`: Generate shareable for skills folder bundle
+  - Added `collectSkillFoldersFromFolder()`: Helper to collect skill folders recursively
+  - Added skill type to all shareable functions
+  - Validation of SKILL.md file naming
+- **Shareable Importer**: Enhanced to handle skills imports
+  - Added `importSkillBundle()`: Import skills bundle from shareable
+  - Support for `cursortoys://SKILL:` and `cursortoys://SKILL_BUNDLE:` protocols
+  - Skills import flow with personal/project location choice
+  - Creates skill folder structure (folder with SKILL.md inside)
+- **Deeplink Generator/Importer**: Extended to support skills
+  - Added skill type detection in `getFileTypeFromPath()`
+  - Support for `cursor://.../skill?name={skillName}&text={content}` format
+  - Skills deeplink generation uses skill folder name as skill name
+  - Skills import creates folder structure automatically
+- **CodeLens Provider**: Enhanced to detect SKILL.md files
+  - Added skill type detection
+  - CodeLens actions for SKILL.md files
+- **Utils Enhanced**: Added skills path helpers
+  - `getSkillsPath()`: Get path to skills folder (personal or project)
+  - `getPersonalSkillsPaths()`: Get personal skills paths (includes both .cursor and .claude)
+  - `isSkillFolder()`: Check if folder contains SKILL.md
+  - `getFileTypeFromPath()`: Extended to detect skill files (SKILL.md)
+
+### Technical Details
+
+#### New Files
+- **`src/userSkillsTreeProvider.ts`**: Complete skills management system
+  - Tree provider for skills with drag-and-drop support
+  - Hierarchical folder structure display (Category → Skill Folder → SKILL.md)
+  - Support for both personal and project skills
+  - Context menu integration
+  - File system integration for opening and revealing files
+  - Visual icons for skill folders and SKILL.md files
+
+#### Enhanced Files
+- **`src/utils.ts`**:
+  - Added `getSkillsPath()`: Get skills folder path
+  - Added `getPersonalSkillsPaths()`: Get personal skills paths array
+  - Added `isSkillFolder()`: Check if folder is a skill folder
+  - Extended `getFileTypeFromPath()` to detect `'skill'` type
+- **`src/userCommandsTreeProvider.ts`**:
+  - Added `'category'` type support
+  - Modified `getChildren()` to return Personal/Workspace categories at root
+  - Updated `getTreeItem()` to handle category items
+  - Enhanced drag-and-drop to support categories
+- **`src/userPromptsTreeProvider.ts`**:
+  - Added `'category'` type support
+  - Modified `getChildren()` to return Personal/Workspace categories at root
+  - Updated `getTreeItem()` to handle category items
+  - Enhanced drag-and-drop to support categories
+- **`src/deeplinkGenerator.ts`**:
+  - Added `'skill'` type support
+  - Extended `generateDeeplink()` to accept skill type
+  - Updated `buildDeeplink()` to handle skills (uses folder name as skill name)
+- **`src/deeplinkImporter.ts`**:
+  - Added `'skill'` type support
+  - Extended `parseDeeplinkUrl()` to recognize skill type
+  - Updated `getDestinationPath()` to create skill folder structure
+  - Enhanced import flow to create folders for skills
+- **`src/shareableGenerator.ts`**:
+  - Added `generateShareableForSkillFolder()`: Generate skills bundle
+  - Added `collectSkillFoldersFromFolder()`: Helper function
+  - Extended all shareable functions to support skill type
+- **`src/shareableImporter.ts`**:
+  - Added `importSkillBundle()`: Import skills bundle
+  - Extended `parseShareableUrl()` to recognize SKILL type
+  - Updated `getDestinationPath()` to handle skills
+- **`src/codelensProvider.ts`**:
+  - Added skill type detection
+  - CodeLens actions for SKILL.md files
+- **`src/extension.ts`**:
+  - Registered `UserSkillsTreeProvider` and tree view
+  - Registered all skills-related commands
+  - Added FileSystemWatcher for skills folders
+  - Added helper functions for skills commands
+- **`package.json`**:
+  - Added `cursor-toys.userSkills` view
+  - Added all skills-related commands
+  - Added context menu items for skills
+  - Added activation events for skills view
+  - Updated version to 1.6.0
+
 ## [1.5.2] - 2026-01-05
 
 ### Added
