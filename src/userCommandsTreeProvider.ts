@@ -3,9 +3,9 @@ import * as path from 'path';
 import { getCommandsPath, isAllowedExtension, getPersonalCommandsPaths } from './utils';
 
 /**
- * Represents a tree item (can be a folder or a file)
+ * Represents a tree item (can be a category, folder or a file)
  */
-export type TreeItemType = 'folder' | 'file';
+export type TreeItemType = 'category' | 'folder' | 'file';
 
 /**
  * Represents a command file or folder in the tree view
@@ -16,7 +16,8 @@ export interface CommandFileItem {
   filePath: string;
   type: TreeItemType;
   folderPath?: string; // Relative folder path for grouping
-  children?: CommandFileItem[]; // Children for folder items
+  isPersonal?: boolean; // Whether this is from personal folder
+  children?: CommandFileItem[]; // Children for folder/category items
 }
 
 /**
@@ -41,7 +42,16 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
    * Gets the tree item for a given element
    */
   getTreeItem(element: CommandFileItem): vscode.TreeItem {
-    if (element.type === 'folder') {
+    if (element.type === 'category') {
+      // Category item (Personal or Workspace)
+      const treeItem = new vscode.TreeItem(
+        element.fileName,
+        vscode.TreeItemCollapsibleState.Expanded
+      );
+      treeItem.iconPath = new vscode.ThemeIcon('folder');
+      treeItem.contextValue = 'commandCategory';
+      return treeItem;
+    } else if (element.type === 'folder') {
       // Folder item
       const treeItem = new vscode.TreeItem(
         element.fileName,
@@ -193,11 +203,11 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
   }
 
   /**
-   * Gets the children of the tree (folders and files)
+   * Gets the children of the tree (categories, folders and files)
    */
   async getChildren(element?: CommandFileItem): Promise<CommandFileItem[]> {
-    // If element is a folder, return its children
-    if (element && element.type === 'folder') {
+    // If element is a category or folder, return its children
+    if (element && (element.type === 'category' || element.type === 'folder')) {
       return element.children || [];
     }
 
@@ -205,61 +215,116 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
     if (element && element.type === 'file') {
       return [];
     }
-    // Root level - get all folders and files
-    try {
-      // Get allowed extensions from configuration
-      const config = vscode.workspace.getConfiguration('cursorToys');
-      const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
-      const viewMode = config.get<string>('personalCommandsView', 'both');
+    
+    // Root level - get categories (Personal and Workspace)
+    const items: CommandFileItem[] = [];
 
-      // Get paths to folders to read from
-      const folderPaths = getPersonalCommandsPaths();
-      const sourceCategories: CommandFileItem[] = [];
+    // Get allowed extensions from configuration
+    const config = vscode.workspace.getConfiguration('cursorToys');
+    const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+    const viewMode = config.get<string>('personalCommandsView', 'both');
 
-      // Read from each folder
-      for (const folderPath of folderPaths) {
-        const folderUri = vscode.Uri.file(folderPath);
+    // Personal commands
+    const personalCommandsPaths = getPersonalCommandsPaths();
+    let personalCommands: CommandFileItem[] = [];
+    
+    for (const folderPath of personalCommandsPaths) {
+      const folderUri = vscode.Uri.file(folderPath);
 
-        // Check if folder exists
-        try {
-          await vscode.workspace.fs.stat(folderUri);
-        } catch {
-          // Folder doesn't exist, skip it
-          continue;
-        }
+      // Check if folder exists
+      try {
+        await vscode.workspace.fs.stat(folderUri);
+      } catch {
+        // Folder doesn't exist, skip it
+        continue;
+      }
 
-        // Recursively read all command files from this folder
+      // Recursively read all command files from this folder
+      const commandFiles = await this.readDirectoryRecursive(
+        folderPath,
+        folderPath,
+        allowedExtensions
+      );
+
+      // Mark files as personal
+      commandFiles.forEach(file => {
+        file.isPersonal = true;
+      });
+
+      personalCommands.push(...commandFiles);
+    }
+
+    // Group personal commands by their subfolders
+    if (personalCommands.length > 0) {
+      const groupedPersonalCommands = this.groupFilesByFolder(personalCommands, 'cursor');
+      
+      // Determine label based on view mode
+      let personalLabel = 'Personal (~/.cursor)';
+      if (viewMode === 'both' && personalCommandsPaths.length > 1) {
+        // If showing both, we might want to show separate categories
+        // For now, combine them into one Personal category
+        personalLabel = 'Personal (~/.cursor)';
+      } else if (viewMode === 'claude') {
+        personalLabel = 'Personal (~/.claude)';
+      }
+      
+      items.push({
+        uri: vscode.Uri.file(''), // Dummy URI for category
+        fileName: personalLabel,
+        filePath: '',
+        type: 'category',
+        isPersonal: true,
+        children: groupedPersonalCommands
+      });
+    }
+
+    // Workspace commands
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const workspacePath = workspaceFolder.uri.fsPath;
+      const workspaceCommandsPath = getCommandsPath(workspacePath, false);
+      const folderUri = vscode.Uri.file(workspaceCommandsPath);
+
+      // Check if folder exists
+      try {
+        await vscode.workspace.fs.stat(folderUri);
+        
+        // Recursively read all command files from workspace
         const commandFiles = await this.readDirectoryRecursive(
-          folderPath,
-          folderPath,
+          workspaceCommandsPath,
+          workspaceCommandsPath,
           allowedExtensions
         );
 
-        const folderName = folderPath.includes('.cursor') ? 'cursor' : 'claude';
-        
+        // Mark files as workspace (not personal)
+        commandFiles.forEach(file => {
+          file.isPersonal = false;
+        });
+
         // Group files by their subfolders
-        const groupedItems = this.groupFilesByFolder(commandFiles, folderName);
-
-        // If showing both folders, create source categories
-        if (viewMode === 'both' && folderPaths.length > 1) {
-          // Create a category for this source
-          const sourceCategory = this.createSourceCategory(folderName, groupedItems);
-          sourceCategories.push(sourceCategory);
-        } else {
-          // Single source mode - add items directly without category
-          sourceCategories.push(...groupedItems);
-        }
+        const groupedItems = this.groupFilesByFolder(commandFiles, 'cursor');
+        
+        // Add workspace category
+        const workspaceName = workspaceFolder.name || 'Project';
+        items.push({
+          uri: vscode.Uri.file(''), // Dummy URI for category
+          fileName: `${workspaceName} (workspace)`,
+          filePath: workspaceCommandsPath,
+          type: 'category',
+          isPersonal: false,
+          children: groupedItems
+        });
+      } catch {
+        // Folder doesn't exist, skip it
       }
+    }
 
-      // Sort categories/items: alphabetically
-      sourceCategories.sort((a, b) => a.fileName.localeCompare(b.fileName));
-
-      return sourceCategories;
-    } catch (error) {
-      // Handle errors (folder doesn't exist, permission denied, etc.)
-      console.error('Error reading user commands folder:', error);
+    // If no commands exist, return empty
+    if (items.length === 0) {
       return [];
     }
+
+    return items;
   }
 
   /**
@@ -296,7 +361,6 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
 
     // Determine the target folder
     let targetFolderPath: string;
-    let targetBasePath: string;
 
     if (!target) {
       // Dropped on root - shouldn't happen but handle it
@@ -304,30 +368,35 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
       return;
     }
 
-    if (target.type === 'folder') {
-      // Dropped on a folder
-      if (target.fileName.startsWith('.cursor') || target.fileName.startsWith('.claude')) {
-        // Dropped on source category (.cursor or .claude)
-        const sourceName = target.fileName.replace('.', '');
-        const paths = getPersonalCommandsPaths();
-        targetBasePath = paths.find(p => p.includes(`.${sourceName}`)) || '';
-        targetFolderPath = targetBasePath;
+    if (target.type === 'category') {
+      // Dropped on a category - determine base path based on category
+      const draggedItem = draggedItems[0];
+      const draggedBasePath = this.getBasePath(draggedItem.filePath);
+      
+      // Use the category's base path
+      if (target.isPersonal) {
+        const personalCommandsPaths = getPersonalCommandsPaths();
+        targetFolderPath = personalCommandsPaths[0] || draggedBasePath;
       } else {
-        // Dropped on a subfolder
-        // Need to determine the base path from the dragged item
-        const draggedItem = draggedItems[0];
-        const draggedBasePath = this.getBasePath(draggedItem.filePath);
-        targetBasePath = draggedBasePath;
-        
-        // Extract the actual folder path without emoji
-        const folderName = target.fileName.replace('📁 ', '');
-        targetFolderPath = path.join(draggedBasePath, target.folderPath || folderName);
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (workspaceFolder) {
+          targetFolderPath = getCommandsPath(workspaceFolder.uri.fsPath, false);
+        } else {
+          targetFolderPath = draggedBasePath;
+        }
       }
+    } else if (target.type === 'folder') {
+      // Dropped on a folder
+      const draggedItem = draggedItems[0];
+      const draggedBasePath = this.getBasePath(draggedItem.filePath);
+      
+      // Extract the actual folder path
+      const folderName = target.fileName;
+      targetFolderPath = path.join(draggedBasePath, target.folderPath || folderName);
     } else {
       // Dropped on a file - move to the same folder as the target file
       const targetDir = path.dirname(target.filePath);
       targetFolderPath = targetDir;
-      targetBasePath = this.getBasePath(target.filePath);
     }
 
     // Move each dragged file
@@ -369,12 +438,25 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
    * @returns Base commands path (.cursor/commands or .claude/commands)
    */
   private getBasePath(filePath: string): string {
-    const paths = getPersonalCommandsPaths();
-    for (const basePath of paths) {
+    // Check personal commands paths first
+    const personalCommandsPaths = getPersonalCommandsPaths();
+    for (const basePath of personalCommandsPaths) {
       if (filePath.startsWith(basePath)) {
         return basePath;
       }
     }
+    
+    // Check workspace commands path
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const workspacePath = workspaceFolder.uri.fsPath;
+      const commandsPath = getCommandsPath(workspacePath, false);
+      
+      if (filePath.startsWith(commandsPath)) {
+        return commandsPath;
+      }
+    }
+    
     return '';
   }
 }

@@ -3,9 +3,9 @@ import * as path from 'path';
 import { getPromptsPath, isAllowedExtension, getPersonalPromptsPaths } from './utils';
 
 /**
- * Represents a tree item (can be a folder or a file)
+ * Represents a tree item (can be a category, folder or a file)
  */
-export type TreeItemType = 'folder' | 'file';
+export type TreeItemType = 'category' | 'folder' | 'file';
 
 /**
  * Represents a prompt file or folder in the tree view
@@ -16,7 +16,8 @@ export interface PromptFileItem {
   filePath: string;
   type: TreeItemType;
   folderPath?: string; // Relative folder path for grouping
-  children?: PromptFileItem[]; // Children for folder items
+  isPersonal?: boolean; // Whether this is from personal folder
+  children?: PromptFileItem[]; // Children for folder/category items
 }
 
 /**
@@ -41,7 +42,16 @@ export class UserPromptsTreeProvider implements vscode.TreeDataProvider<PromptFi
    * Gets the tree item for a given element
    */
   getTreeItem(element: PromptFileItem): vscode.TreeItem {
-    if (element.type === 'folder') {
+    if (element.type === 'category') {
+      // Category item (Personal or Workspace)
+      const treeItem = new vscode.TreeItem(
+        element.fileName,
+        vscode.TreeItemCollapsibleState.Expanded
+      );
+      treeItem.iconPath = new vscode.ThemeIcon('folder');
+      treeItem.contextValue = 'promptCategory';
+      return treeItem;
+    } else if (element.type === 'folder') {
       // Folder item
       const treeItem = new vscode.TreeItem(
         element.fileName,
@@ -176,11 +186,11 @@ export class UserPromptsTreeProvider implements vscode.TreeDataProvider<PromptFi
   }
 
   /**
-   * Gets the children of the tree (folders and files)
+   * Gets the children of the tree (categories, folders and files)
    */
   async getChildren(element?: PromptFileItem): Promise<PromptFileItem[]> {
-    // If element is a folder, return its children
-    if (element && element.type === 'folder') {
+    // If element is a category or folder, return its children
+    if (element && (element.type === 'category' || element.type === 'folder')) {
       return element.children || [];
     }
 
@@ -188,53 +198,104 @@ export class UserPromptsTreeProvider implements vscode.TreeDataProvider<PromptFi
     if (element && element.type === 'file') {
       return [];
     }
-    // Root level - get all folders and files
-    try {
-      // Get allowed extensions from configuration
-      const config = vscode.workspace.getConfiguration('cursorToys');
-      const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+    
+    // Root level - get categories (Personal and Workspace)
+    const items: PromptFileItem[] = [];
 
-      // Get paths to folders to read from
-      const folderPaths = getPersonalPromptsPaths();
-      const items: PromptFileItem[] = [];
+    // Get allowed extensions from configuration
+    const config = vscode.workspace.getConfiguration('cursorToys');
+    const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
 
-      // Read from each folder
-      for (const folderPath of folderPaths) {
-        const folderUri = vscode.Uri.file(folderPath);
+    // Personal prompts
+    const personalPromptsPaths = getPersonalPromptsPaths();
+    let personalPrompts: PromptFileItem[] = [];
+    
+    for (const folderPath of personalPromptsPaths) {
+      const folderUri = vscode.Uri.file(folderPath);
 
-        // Check if folder exists
-        try {
-          await vscode.workspace.fs.stat(folderUri);
-        } catch {
-          // Folder doesn't exist, skip it
-          continue;
-        }
+      // Check if folder exists
+      try {
+        await vscode.workspace.fs.stat(folderUri);
+      } catch {
+        // Folder doesn't exist, skip it
+        continue;
+      }
 
-        // Recursively read all prompt files from this folder
+      // Recursively read all prompt files from this folder
+      const promptFiles = await this.readDirectoryRecursive(
+        folderPath,
+        folderPath,
+        allowedExtensions
+      );
+
+      // Mark files as personal
+      promptFiles.forEach(file => {
+        file.isPersonal = true;
+      });
+
+      personalPrompts.push(...promptFiles);
+    }
+
+    // Group personal prompts by their subfolders
+    if (personalPrompts.length > 0) {
+      const groupedPersonalPrompts = this.groupFilesByFolder(personalPrompts, 'cursor');
+      items.push({
+        uri: vscode.Uri.file(''), // Dummy URI for category
+        fileName: 'Personal (~/.cursor)',
+        filePath: '',
+        type: 'category',
+        isPersonal: true,
+        children: groupedPersonalPrompts
+      });
+    }
+
+    // Workspace prompts
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const workspacePath = workspaceFolder.uri.fsPath;
+      const workspacePromptsPath = getPromptsPath(workspacePath, false);
+      const folderUri = vscode.Uri.file(workspacePromptsPath);
+
+      // Check if folder exists
+      try {
+        await vscode.workspace.fs.stat(folderUri);
+        
+        // Recursively read all prompt files from workspace
         const promptFiles = await this.readDirectoryRecursive(
-          folderPath,
-          folderPath,
+          workspacePromptsPath,
+          workspacePromptsPath,
           allowedExtensions
         );
 
-        const folderName = 'cursor'; // Currently only .cursor/prompts
-        
+        // Mark files as workspace (not personal)
+        promptFiles.forEach(file => {
+          file.isPersonal = false;
+        });
+
         // Group files by their subfolders
-        const groupedItems = this.groupFilesByFolder(promptFiles, folderName);
-
-        // Add items directly (no source categories since we only have .cursor for now)
-        items.push(...groupedItems);
+        const groupedItems = this.groupFilesByFolder(promptFiles, 'cursor');
+        
+        // Add workspace category
+        const workspaceName = workspaceFolder.name || 'Project';
+        items.push({
+          uri: vscode.Uri.file(''), // Dummy URI for category
+          fileName: `${workspaceName} (workspace)`,
+          filePath: workspacePromptsPath,
+          type: 'category',
+          isPersonal: false,
+          children: groupedItems
+        });
+      } catch {
+        // Folder doesn't exist, skip it
       }
+    }
 
-      // Sort items alphabetically
-      items.sort((a, b) => a.fileName.localeCompare(b.fileName));
-
-      return items;
-    } catch (error) {
-      // Handle errors (folder doesn't exist, permission denied, etc.)
-      console.error('Error reading user prompts folder:', error);
+    // If no prompts exist, return empty
+    if (items.length === 0) {
       return [];
     }
+
+    return items;
   }
 
   /**
@@ -271,7 +332,6 @@ export class UserPromptsTreeProvider implements vscode.TreeDataProvider<PromptFi
 
     // Determine the target folder
     let targetFolderPath: string;
-    let targetBasePath: string;
 
     if (!target) {
       // Dropped on root - shouldn't happen but handle it
@@ -279,20 +339,35 @@ export class UserPromptsTreeProvider implements vscode.TreeDataProvider<PromptFi
       return;
     }
 
-    if (target.type === 'folder') {
+    if (target.type === 'category') {
+      // Dropped on a category - determine base path based on category
+      const draggedItem = draggedItems[0];
+      const draggedBasePath = this.getBasePath(draggedItem.filePath);
+      
+      // Use the category's base path
+      if (target.isPersonal) {
+        const personalPromptsPaths = getPersonalPromptsPaths();
+        targetFolderPath = personalPromptsPaths[0] || draggedBasePath;
+      } else {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (workspaceFolder) {
+          targetFolderPath = getPromptsPath(workspaceFolder.uri.fsPath, false);
+        } else {
+          targetFolderPath = draggedBasePath;
+        }
+      }
+    } else if (target.type === 'folder') {
       // Dropped on a folder
       const draggedItem = draggedItems[0];
       const draggedBasePath = this.getBasePath(draggedItem.filePath);
-      targetBasePath = draggedBasePath;
       
       // Extract the actual folder path
-      const folderName = target.fileName.replace('📁 ', '');
+      const folderName = target.fileName;
       targetFolderPath = path.join(draggedBasePath, target.folderPath || folderName);
     } else {
       // Dropped on a file - move to the same folder as the target file
       const targetDir = path.dirname(target.filePath);
       targetFolderPath = targetDir;
-      targetBasePath = this.getBasePath(target.filePath);
     }
 
     // Move each dragged file
@@ -331,15 +406,28 @@ export class UserPromptsTreeProvider implements vscode.TreeDataProvider<PromptFi
   /**
    * Get the base prompts path from a file path
    * @param filePath Full file path
-   * @returns Base prompts path (.cursor/prompts)
+   * @returns Base prompts path (.cursor/prompts or workspace/.cursor/prompts)
    */
   private getBasePath(filePath: string): string {
-    const paths = getPersonalPromptsPaths();
-    for (const basePath of paths) {
+    // Check personal prompts paths first
+    const personalPromptsPaths = getPersonalPromptsPaths();
+    for (const basePath of personalPromptsPaths) {
       if (filePath.startsWith(basePath)) {
         return basePath;
       }
     }
+    
+    // Check workspace prompts path
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const workspacePath = workspaceFolder.uri.fsPath;
+      const promptsPath = getPromptsPath(workspacePath, false);
+      
+      if (filePath.startsWith(promptsPath)) {
+        return promptsPath;
+      }
+    }
+    
     return '';
   }
 }
