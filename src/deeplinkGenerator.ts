@@ -11,7 +11,7 @@ const MAX_URL_LENGTH = 8000;
  */
 export async function generateDeeplink(
   filePath: string,
-  forcedType?: 'command' | 'rule' | 'prompt'
+  forcedType?: 'command' | 'rule' | 'prompt' | 'skill'
 ): Promise<string | null> {
   try {
     // Read configuration
@@ -50,19 +50,19 @@ export async function generateDeeplink(
     }
 
     // Detect or use forced type
-    let fileType: 'command' | 'rule' | 'prompt' | null;
+    let fileType: 'command' | 'rule' | 'prompt' | 'skill' | null;
     if (forcedType) {
       fileType = forcedType;
     } else {
       const detectedType = getFileTypeFromPath(filePath);
       // Filter out http and env types for deeplinks
-      if (detectedType === 'command' || detectedType === 'rule' || detectedType === 'prompt') {
+      if (detectedType === 'command' || detectedType === 'rule' || detectedType === 'prompt' || detectedType === 'skill') {
         fileType = detectedType;
       } else {
         fileType = null;
       }
       if (!fileType) {
-        vscode.window.showErrorMessage('File must be in .cursor/commands/, .claude/commands/, .cursor/rules/ or .cursor/prompts/');
+        vscode.window.showErrorMessage('File must be in .cursor/commands/, .claude/commands/, .cursor/rules/, .cursor/prompts/ or .cursor/skills/');
         return null;
       }
     }
@@ -93,7 +93,7 @@ export async function generateDeeplink(
  * Builds the deeplink based on file type
  */
 function buildDeeplink(
-  fileType: 'command' | 'rule' | 'prompt',
+  fileType: 'command' | 'rule' | 'prompt' | 'skill',
   filePath: string,
   content: string,
   linkType: string,
@@ -118,12 +118,23 @@ function buildDeeplink(
     return `${baseUrl}prompt?text=${encodedContent}`;
   }
 
-  // For command and rule, we need the name
-  const fileName = path.parse(filePath).name;
+  // For command, rule, and skill, we need the name
+  let fileName: string;
+  if (fileType === 'skill') {
+    // For skills, the name is the folder name (parent of SKILL.md)
+    const skillFolderPath = path.dirname(filePath);
+    fileName = path.basename(skillFolderPath);
+  } else {
+    fileName = path.parse(filePath).name;
+  }
   const sanitizedName = sanitizeFileName(fileName);
 
   if (fileType === 'command') {
     return `${baseUrl}command?name=${encodeURIComponent(sanitizedName)}&text=${encodedContent}`;
+  }
+
+  if (fileType === 'skill') {
+    return `${baseUrl}skill?name=${encodeURIComponent(sanitizedName)}&text=${encodedContent}`;
   }
 
   // rule

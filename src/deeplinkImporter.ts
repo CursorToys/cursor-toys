@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { decodeUrlParam, sanitizeFileName, getUserHomePath, getCommandsPath, getPromptsPath } from './utils';
+import { decodeUrlParam, sanitizeFileName, getUserHomePath, getCommandsPath, getPromptsPath, getSkillsPath } from './utils';
 
 interface DeeplinkParams {
-  type: 'prompt' | 'command' | 'rule';
+  type: 'prompt' | 'command' | 'rule' | 'skill';
   name?: string;
   text: string;
 }
@@ -20,10 +20,10 @@ export async function importDeeplink(url: string): Promise<void> {
       return;
     }
 
-    // For commands and prompts, ask if user wants to save as Project or Personal
+    // For commands, prompts, and skills, ask if user wants to save as Project or Personal
     let isPersonal = false;
-    if (params.type === 'command' || params.type === 'prompt') {
-      const itemType = params.type === 'command' ? 'command' : 'prompt';
+    if (params.type === 'command' || params.type === 'prompt' || params.type === 'skill') {
+      const itemType = params.type === 'command' ? 'command' : params.type === 'prompt' ? 'prompt' : 'skill';
       const itemLocation = await vscode.window.showQuickPick(
         [
           { label: `Personal ${itemType}s`, description: `Available in all projects (~/.cursor/${itemType}s)`, value: true },
@@ -51,47 +51,103 @@ export async function importDeeplink(url: string): Promise<void> {
 
     // Determine destination folder and file name
     const workspacePath = workspaceFolder?.uri.fsPath || '';
-    const { folderPath, fileName } = getDestinationPath(params, workspacePath, isPersonal);
+    const { folderPath, fileName, isSkillFolder } = getDestinationPath(params, workspacePath, isPersonal);
 
-    // Check if file already exists
-    const fileUri = vscode.Uri.file(path.join(folderPath, fileName));
-    let fileExists = false;
-    try {
-      await vscode.workspace.fs.stat(fileUri);
-      fileExists = true;
-    } catch {
-      // File doesn't exist, that's fine
-    }
-
-    if (fileExists) {
-      const overwrite = await vscode.window.showWarningMessage(
-        `File ${fileName} already exists. Do you want to overwrite it?`,
-        'Yes',
-        'No'
-      );
-      if (overwrite !== 'Yes') {
-        return;
+    if (isSkillFolder) {
+      // For skills, we need to create a folder and put SKILL.md inside
+      const skillFolderPath = folderPath;
+      const skillFileUri = vscode.Uri.file(path.join(skillFolderPath, 'SKILL.md'));
+      
+      // Check if skill folder already exists
+      const skillFolderUri = vscode.Uri.file(skillFolderPath);
+      let folderExists = false;
+      try {
+        await vscode.workspace.fs.stat(skillFolderUri);
+        folderExists = true;
+      } catch {
+        // Folder doesn't exist, that's fine
       }
+
+      if (folderExists) {
+        // Check if SKILL.md exists
+        let fileExists = false;
+        try {
+          await vscode.workspace.fs.stat(skillFileUri);
+          fileExists = true;
+        } catch {
+          // File doesn't exist, that's fine
+        }
+
+        if (fileExists) {
+          const overwrite = await vscode.window.showWarningMessage(
+            `Skill "${path.basename(skillFolderPath)}" already exists. Do you want to overwrite it?`,
+            'Yes',
+            'No'
+          );
+          if (overwrite !== 'Yes') {
+            return;
+          }
+        }
+      }
+
+      // Create skill folder if it doesn't exist
+      try {
+        await vscode.workspace.fs.stat(skillFolderUri);
+      } catch {
+        // Folder doesn't exist, create it
+        await vscode.workspace.fs.createDirectory(skillFolderUri);
+      }
+
+      // Create SKILL.md file
+      const content = Buffer.from(params.text, 'utf8');
+      await vscode.workspace.fs.writeFile(skillFileUri, content);
+
+      vscode.window.showInformationMessage(`Skill created: ${path.basename(skillFolderPath)}`);
+      
+      // Open file
+      const document = await vscode.workspace.openTextDocument(skillFileUri);
+      await vscode.window.showTextDocument(document);
+    } else {
+      // For regular files (commands, rules, prompts)
+      const fileUri = vscode.Uri.file(path.join(folderPath, fileName));
+      let fileExists = false;
+      try {
+        await vscode.workspace.fs.stat(fileUri);
+        fileExists = true;
+      } catch {
+        // File doesn't exist, that's fine
+      }
+
+      if (fileExists) {
+        const overwrite = await vscode.window.showWarningMessage(
+          `File ${fileName} already exists. Do you want to overwrite it?`,
+          'Yes',
+          'No'
+        );
+        if (overwrite !== 'Yes') {
+          return;
+        }
+      }
+
+      // Create folder if it doesn't exist
+      const folderUri = vscode.Uri.file(folderPath);
+      try {
+        await vscode.workspace.fs.stat(folderUri);
+      } catch {
+        // Folder doesn't exist, create it
+        await vscode.workspace.fs.createDirectory(folderUri);
+      }
+
+      // Create file
+      const content = Buffer.from(params.text, 'utf8');
+      await vscode.workspace.fs.writeFile(fileUri, content);
+
+      vscode.window.showInformationMessage(`File created: ${fileName}`);
+      
+      // Open file
+      const document = await vscode.workspace.openTextDocument(fileUri);
+      await vscode.window.showTextDocument(document);
     }
-
-    // Create folder if it doesn't exist
-    const folderUri = vscode.Uri.file(folderPath);
-    try {
-      await vscode.workspace.fs.stat(folderUri);
-    } catch {
-      // Folder doesn't exist, create it
-      await vscode.workspace.fs.createDirectory(folderUri);
-    }
-
-    // Create file
-    const content = Buffer.from(params.text, 'utf8');
-    await vscode.workspace.fs.writeFile(fileUri, content);
-
-    vscode.window.showInformationMessage(`File created: ${fileName}`);
-    
-    // Open file
-    const document = await vscode.workspace.openTextDocument(fileUri);
-    await vscode.window.showTextDocument(document);
   } catch (error) {
     vscode.window.showErrorMessage(`Error importing deeplink: ${error}`);
   }
@@ -126,7 +182,7 @@ function parseDeeplinkUrl(url: string): DeeplinkParams | null {
 
     // Extract type from pathname
     const pathname = urlObj.pathname;
-    let type: 'prompt' | 'command' | 'rule' | null = null;
+    let type: 'prompt' | 'command' | 'rule' | 'skill' | null = null;
 
     if (pathname.includes('/prompt') || pathname.endsWith('/prompt')) {
       type = 'prompt';
@@ -134,10 +190,12 @@ function parseDeeplinkUrl(url: string): DeeplinkParams | null {
       type = 'command';
     } else if (pathname.includes('/rule') || pathname.endsWith('/rule')) {
       type = 'rule';
+    } else if (pathname.includes('/skill') || pathname.endsWith('/skill')) {
+      type = 'skill';
     }
 
     if (!type) {
-      vscode.window.showErrorMessage('Deeplink type not recognized. Must be prompt, command, or rule.');
+      vscode.window.showErrorMessage('Deeplink type not recognized. Must be prompt, command, rule, or skill.');
       return null;
     }
 
@@ -163,7 +221,7 @@ function parseDeeplinkUrl(url: string): DeeplinkParams | null {
       return { type, text: decodedText, name: name ? decodeUrlParam(name) : undefined };
     }
 
-    // command and rule need name
+    // command, rule, and skill need name
     if (!name) {
       vscode.window.showErrorMessage(`Deeplink of type ${type} requires the "name" parameter.`);
       return null;
@@ -195,7 +253,7 @@ function getDestinationPath(
   params: DeeplinkParams,
   workspacePath: string,
   isPersonal: boolean = false
-): { folderPath: string; fileName: string } {
+): { folderPath: string; fileName: string; isSkillFolder?: boolean } {
   // Get allowed extensions configuration
   const config = vscode.workspace.getConfiguration('cursorToys');
   const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
@@ -203,6 +261,7 @@ function getDestinationPath(
 
   let folderPath: string;
   let fileName: string;
+  let isSkillFolder = false;
 
   switch (params.type) {
     case 'command':
@@ -235,8 +294,16 @@ function getDestinationPath(
         fileName = `${nameBase}.${defaultExtension}`;
       }
       break;
+    case 'skill':
+      // For skills, folderPath is the skill folder path, and fileName is 'SKILL.md'
+      folderPath = getSkillsPath(workspacePath, isPersonal);
+      const skillFolderName = params.name ? sanitizeFileName(params.name) : 'skill';
+      folderPath = path.join(folderPath, skillFolderName);
+      fileName = 'SKILL.md';
+      isSkillFolder = true;
+      break;
   }
 
-  return { folderPath, fileName };
+  return { folderPath, fileName, isSkillFolder };
 }
 

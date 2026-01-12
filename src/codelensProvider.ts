@@ -27,17 +27,25 @@ export class DeeplinkCodeLensProvider implements vscode.CodeLensProvider {
       return [];
     }
 
-    // Only show CodeLens for command, rule, and prompt files (not http or env)
-    if (fileType !== 'command' && fileType !== 'rule' && fileType !== 'prompt') {
+    // Only show CodeLens for command, rule, prompt, and skill files (not http or env)
+    if (fileType !== 'command' && fileType !== 'rule' && fileType !== 'prompt' && fileType !== 'skill') {
       return [];
     }
 
-    // Validate extension
-    const config = vscode.workspace.getConfiguration('cursorToys');
-    const allowedExtensions = config.get<string[]>('allowedExtensions', ['md']);
-    
-    if (!isAllowedExtension(filePath, allowedExtensions)) {
-      return [];
+    // For skills, check if file is SKILL.md
+    if (fileType === 'skill') {
+      const fileName = require('path').basename(filePath);
+      if (fileName !== 'SKILL.md') {
+        return [];
+      }
+    } else {
+      // Validate extension for other types
+      const config = vscode.workspace.getConfiguration('cursorToys');
+      const allowedExtensions = config.get<string[]>('allowedExtensions', ['md']);
+      
+      if (!isAllowedExtension(filePath, allowedExtensions)) {
+        return [];
+      }
     }
 
     // Determine the command and text based on type
@@ -62,6 +70,12 @@ export class DeeplinkCodeLensProvider implements vscode.CodeLensProvider {
       case 'prompt':
         deeplinkCommand = 'cursor-toys.generate-prompt';
         shareableCommand = 'cursor-toys.shareAsCursorToysPrompt';
+        deeplinkLabel = 'Share as Deeplink';
+        shareableLabel = 'Share as CursorToys';
+        break;
+      case 'skill':
+        deeplinkCommand = 'cursor-toys.generate-skill';
+        shareableCommand = 'cursor-toys.shareAsCursorToysSkill';
         deeplinkLabel = 'Share as Deeplink';
         shareableLabel = 'Share as CursorToys';
         break;

@@ -22,7 +22,7 @@ export function validateUrlLength(url: string): boolean {
 /**
  * Detects the file type based on the path
  */
-export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | null {
+export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | 'skill' | null {
   const normalizedPath = filePath.replace(/\\/g, '/');
   const baseFolderName = getBaseFolderName();
   const environmentsFolderName = getEnvironmentsFolderName();
@@ -92,6 +92,25 @@ export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'pro
     const fileName = path.basename(filePath);
     if (fileName.startsWith('.env')) {
       return 'env';
+    }
+  }
+  // Skills can be in .cursor/skills/, .claude/skills/, or custom base folder
+  // Check personal folder first (home directory)
+  if (normalizedPath.includes(`${normalizedHomePath}/.cursor/skills/`) || 
+      normalizedPath.includes(`${normalizedHomePath}/.claude/skills/`) ||
+      normalizedPath.includes(`${normalizedHomePath}/.${baseFolderName}/skills/`)) {
+    const fileName = path.basename(filePath);
+    if (fileName === 'SKILL.md') {
+      return 'skill';
+    }
+  }
+  // Check workspace folder
+  if (normalizedPath.includes(`/.cursor/skills/`) || 
+      normalizedPath.includes(`/.claude/skills/`) ||
+      normalizedPath.includes(`/.${baseFolderName}/skills/`)) {
+    const fileName = path.basename(filePath);
+    if (fileName === 'SKILL.md') {
+      return 'skill';
     }
   }
   
@@ -465,3 +484,54 @@ export function getPersonalHooksPath(): string {
   return path.join(homeDir, '.cursor', 'hooks.json');
 }
 
+/**
+ * Gets the full path to the skills folder
+ * @param workspacePath Optional workspace path (if not provided, returns user home path)
+ * @param isUser If true, returns path in user home directory; if false, returns workspace path
+ */
+export function getSkillsPath(workspacePath?: string, isUser: boolean = false): string {
+  const baseFolderName = getBaseFolderName();
+  
+  if (isUser || !workspacePath) {
+    return path.join(getUserHomePath(), `.${baseFolderName}`, 'skills');
+  }
+  
+  return path.join(workspacePath, `.${baseFolderName}`, 'skills');
+}
+
+/**
+ * Gets the paths to the skills folders to show in Personal Skills view
+ * @returns Array of folder paths (includes both .cursor and .claude for compatibility)
+ */
+export function getPersonalSkillsPaths(): string[] {
+  const homePath = getUserHomePath();
+  const baseFolderName = getBaseFolderName();
+  const paths: string[] = [];
+  
+  // Always include .cursor and .claude for skills (both are supported)
+  paths.push(path.join(homePath, '.cursor', 'skills'));
+  paths.push(path.join(homePath, '.claude', 'skills'));
+  
+  // Also include configured base folder if different
+  if (baseFolderName !== 'cursor' && baseFolderName !== 'claude') {
+    paths.push(path.join(homePath, `.${baseFolderName}`, 'skills'));
+  }
+  
+  return paths;
+}
+
+/**
+ * Checks if a folder contains a SKILL.md file
+ * @param folderPath The folder path to check
+ * @returns true if the folder contains SKILL.md
+ */
+export async function isSkillFolder(folderPath: string): Promise<boolean> {
+  try {
+    const skillFilePath = path.join(folderPath, 'SKILL.md');
+    const skillUri = vscode.Uri.file(skillFilePath);
+    await vscode.workspace.fs.stat(skillUri);
+    return true;
+  } catch {
+    return false;
+  }
+}

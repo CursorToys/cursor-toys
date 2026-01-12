@@ -14,7 +14,7 @@ const MAX_CONTENT_SIZE = 50 * 1024 * 1024; // 50MB limit for safety
  */
 export async function generateShareable(
   filePath: string,
-  forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan'
+  forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | 'skill'
 ): Promise<string | null> {
   try {
     // Read configuration
@@ -31,7 +31,7 @@ export async function generateShareable(
     }
 
     // Detect or use forced type
-    let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | null;
+    let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | 'skill' | null;
     if (forcedType) {
       fileType = forcedType;
     } else {
@@ -62,6 +62,13 @@ export async function generateShareable(
         vscode.window.showErrorMessage('Plan files must have .plan.md extension');
         return null;
       }
+    } else if (fileType === 'skill') {
+      // Skills must be SKILL.md files
+      const fileName = path.basename(filePath);
+      if (fileName !== 'SKILL.md') {
+        vscode.window.showErrorMessage('Skill files must be named SKILL.md');
+        return null;
+      }
     } else {
       // For command, rule, prompt, notepad - validate extension
       if (!isAllowedExtension(filePath, allowedExtensions)) {
@@ -85,13 +92,24 @@ export async function generateShareable(
     }
 
     // Get file name without extension
-    const fileName = path.parse(filePath).name;
+    let fileName: string;
+    if (fileType === 'skill') {
+      // For skills, the name is the folder name (parent of SKILL.md)
+      const skillFolderPath = path.dirname(filePath);
+      fileName = path.basename(skillFolderPath);
+    } else {
+      fileName = path.parse(filePath).name;
+    }
     const sanitizedName = sanitizeFileName(fileName);
 
     // Compress and encode content
     const compressedData = compressAndEncode(content);
 
-    // Build shareable URL
+    // Build shareable URL (fileType cannot be null here due to validation above)
+    if (!fileType) {
+      vscode.window.showErrorMessage('Unable to determine file type');
+      return null;
+    }
     const shareable = buildShareableUrl(fileType, sanitizedName, compressedData);
 
     return shareable;
@@ -133,7 +151,7 @@ export function compressAndEncode(content: string): string {
  * @returns Shareable URL
  */
 export function buildShareableUrl(
-  type: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan',
+  type: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | 'skill',
   fileName: string,
   compressedData: string
 ): string {
@@ -852,6 +870,104 @@ export async function generateShareableForPromptFolder(
 }
 
 /**
+ * Generates shareable bundle for all skill folders in a folder
+ * @param folderPath Skills folder path to share
+ * @returns Single shareable URL containing all skill folders as a bundle
+ */
+export async function generateShareableForSkillFolder(
+  folderPath: string
+): Promise<string | null> {
+  try {
+    // Check if folder exists
+    const folderUri = vscode.Uri.file(folderPath);
+    try {
+      const stat = await vscode.workspace.fs.stat(folderUri);
+      if (stat.type !== vscode.FileType.Directory) {
+        vscode.window.showErrorMessage('Selected path is not a folder');
+        return null;
+      }
+    } catch {
+      vscode.window.showErrorMessage(`Folder not found: ${folderPath}`);
+      return null;
+    }
+
+    const files: Array<{ name: string, content: string }> = [];
+
+    // Collect skill folders (folders containing SKILL.md)
+    const skillFolders = await collectSkillFoldersFromFolder(folderPath);
+    
+    if (skillFolders.length === 0) {
+      vscode.window.showWarningMessage('No skill folders found in folder');
+      return null;
+    }
+
+    for (const skillFolderPath of skillFolders) {
+      // Read SKILL.md content
+      const skillFilePath = path.join(skillFolderPath, 'SKILL.md');
+      const document = await vscode.workspace.openTextDocument(vscode.Uri.file(skillFilePath));
+      const content = document.getText();
+      
+      // Get skill folder name
+      const skillName = path.basename(skillFolderPath);
+      
+      files.push({
+        name: skillName,
+        content: content
+      });
+    }
+
+    // Create bundle object
+    const bundle = { files };
+
+    // Compress and encode the entire bundle
+    const bundleJson = JSON.stringify(bundle);
+    const compressedData = compressAndEncode(bundleJson);
+
+    // Build shareable URL: cursortoys://SKILL_BUNDLE:data
+    return `cursortoys://SKILL_BUNDLE:${compressedData}`;
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error generating skill bundle: ${error}`);
+    return null;
+  }
+}
+
+/**
+ * Collects all skill folders (folders containing SKILL.md) from a directory recursively
+ * @param folderPath Base folder path to search
+ * @returns Array of skill folder paths
+ */
+async function collectSkillFoldersFromFolder(folderPath: string): Promise<string[]> {
+  const skillFolders: string[] = [];
+  const folderUri = vscode.Uri.file(folderPath);
+
+  try {
+    const entries = await vscode.workspace.fs.readDirectory(folderUri);
+
+    for (const [name, type] of entries) {
+      const itemPath = path.join(folderPath, name);
+
+      if (type === vscode.FileType.Directory) {
+        // Check if this directory is a skill folder (contains SKILL.md)
+        const skillFilePath = path.join(itemPath, 'SKILL.md');
+        try {
+          await vscode.workspace.fs.stat(vscode.Uri.file(skillFilePath));
+          // This is a skill folder
+          skillFolders.push(itemPath);
+        } catch {
+          // Not a skill folder, recursively search subdirectories
+          const subSkillFolders = await collectSkillFoldersFromFolder(itemPath);
+          skillFolders.push(...subSkillFolders);
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Error reading directory ${folderPath}:`, error);
+  }
+
+  return skillFolders;
+}
+
+/**
  * Generates shareable bundle for all notepad files in a folder
  * @param folderPath Notepad folder path to share
  * @returns Single shareable URL containing all notepad files as a bundle
@@ -1188,7 +1304,7 @@ export async function generateShareableForProject(
  */
 export async function generateGistShareable(
   filePath: string,
-  forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan',
+  forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | 'skill',
   context?: vscode.ExtensionContext
 ): Promise<string | null> {
   try {
@@ -1225,7 +1341,7 @@ export async function generateGistShareable(
     }
 
     // Detect or use forced type
-    let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | null;
+    let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | 'skill' | null;
     if (forcedType) {
       fileType = forcedType;
     } else {

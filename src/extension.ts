@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { generateDeeplink } from './deeplinkGenerator';
 import { importDeeplink } from './deeplinkImporter';
-import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForEnvFolder, generateShareableForHttpFolderWithEnv, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
+import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForEnvFolder, generateShareableForHttpFolderWithEnv, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist } from './shareableImporter';
 import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
@@ -13,6 +13,7 @@ import { UserPromptsTreeProvider, PromptFileItem } from './userPromptsTreeProvid
 import { UserNotepadsTreeProvider, NotepadFileItem } from './userNotepadsTreeProvider';
 import { UserPlansTreeProvider, PlanFileItem } from './userPlansTreeProvider';
 import { UserHooksTreeProvider, HooksFileItem } from './userHooksTreeProvider';
+import { UserSkillsTreeProvider, SkillFileItem } from './userSkillsTreeProvider';
 import { createHooksFile, hooksFileExists, validateHooksFile } from './hooksManager';
 import { sendToChat, sendSelectionToChat, buildPromptDeeplink, MAX_DEEPLINK_LENGTH } from './sendToChat';
 import { AnnotationPanel, AnnotationParams } from './annotationPanel';
@@ -72,7 +73,7 @@ async function checkRecommendationsOnStartup(manager: RecommendationsManager): P
  */
 async function generateDeeplinkWithValidation(
   uri: vscode.Uri | undefined,
-  forcedType?: 'command' | 'rule' | 'prompt'
+  forcedType?: 'command' | 'rule' | 'prompt' | 'skill'
 ): Promise<void> {
   // If no URI, try to get from active editor
   let filePath: string;
@@ -113,7 +114,7 @@ async function generateDeeplinkWithValidation(
  */
 async function generateShareableWithValidation(
   uri: vscode.Uri | undefined,
-  forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'plan'
+  forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'plan' | 'skill'
 ): Promise<void> {
   // If no URI, try to get from active editor
   let filePath: string;
@@ -408,6 +409,14 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // Specific command to generate skill deeplink
+  const generateSkillSpecific = vscode.commands.registerCommand(
+    'cursor-toys.generate-skill',
+    async (uri?: vscode.Uri) => {
+      await generateDeeplinkWithValidation(uri, 'skill');
+    }
+  );
+
   // Specific command to generate command shareable
   const generateShareableCommandSpecific = vscode.commands.registerCommand(
     'cursor-toys.shareAsCursorToysCommand',
@@ -445,6 +454,14 @@ export function activate(context: vscode.ExtensionContext) {
     'cursor-toys.shareAsCursorToysPlan',
     async (uri?: vscode.Uri) => {
       await generateShareableWithValidation(uri, 'plan');
+    }
+  );
+
+  // Specific command to generate skill shareable
+  const generateShareableSkillSpecific = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysSkill',
+    async (uri?: vscode.Uri) => {
+      await generateShareableWithValidation(uri, 'skill');
     }
   );
 
@@ -680,6 +697,36 @@ export function activate(context: vscode.ExtensionContext) {
         }
       } catch (error) {
         vscode.window.showErrorMessage(`Error generating prompt bundle: ${error}`);
+      }
+    }
+  );
+
+  // Command to share skill folder as bundle
+  const shareSkillFolderCommand = vscode.commands.registerCommand(
+    'cursor-toys.shareAsCursorToysSkillFolder',
+    async (uri?: vscode.Uri) => {
+      try {
+        let folderPath: string;
+        
+        if (uri) {
+          const stat = await vscode.workspace.fs.stat(uri);
+          if (stat.type !== vscode.FileType.Directory) {
+            vscode.window.showErrorMessage('Please select a folder');
+            return;
+          }
+          folderPath = uri.fsPath;
+        } else {
+          vscode.window.showErrorMessage('Please select a folder');
+          return;
+        }
+
+        const shareable = await generateShareableForSkillFolder(folderPath);
+        if (shareable) {
+          await vscode.env.clipboard.writeText(shareable);
+          vscode.window.showInformationMessage('Skills bundle copied to clipboard!');
+        }
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error generating skill bundle: ${error}`);
       }
     }
   );
@@ -1495,6 +1542,213 @@ export function activate(context: vscode.ExtensionContext) {
     treeDataProvider: userHooksTreeProvider,
     showCollapseAll: false
   });
+
+  // Register User Skills Tree Provider
+  const userSkillsTreeProvider = new UserSkillsTreeProvider();
+  const userSkillsTreeView = vscode.window.createTreeView('cursor-toys.userSkills', {
+    treeDataProvider: userSkillsTreeProvider,
+    showCollapseAll: false,
+    dragAndDropController: userSkillsTreeProvider
+  });
+
+  /**
+   * Helper function to get URI from skills command argument (can be SkillFileItem or vscode.Uri)
+   */
+  function getSkillUriFromArgument(arg: SkillFileItem | vscode.Uri | undefined): vscode.Uri | null {
+    if (!arg) {
+      return null;
+    }
+    if (arg instanceof vscode.Uri) {
+      return arg;
+    }
+    if ('uri' in arg) {
+      return arg.uri;
+    }
+    return null;
+  }
+
+  /**
+   * Helper function to get file name from skills command argument
+   */
+  function getSkillFileNameFromArgument(arg: SkillFileItem | vscode.Uri | undefined): string {
+    if (!arg) {
+      return 'file';
+    }
+    if (arg instanceof vscode.Uri) {
+      return path.basename(arg.fsPath);
+    }
+    if ('fileName' in arg) {
+      return arg.fileName;
+    }
+    return 'file';
+  }
+
+  /**
+   * Helper function to get file path from skills command argument
+   */
+  function getSkillFilePathFromArgument(arg: SkillFileItem | vscode.Uri | undefined): string | null {
+    if (!arg) {
+      return null;
+    }
+    if (arg instanceof vscode.Uri) {
+      return arg.fsPath;
+    }
+    if ('filePath' in arg) {
+      return arg.filePath;
+    }
+    return null;
+  }
+
+  // Command to open skill file
+  const openSkill = vscode.commands.registerCommand(
+    'cursor-toys.openSkill',
+    async (arg?: SkillFileItem | vscode.Uri) => {
+      const uri = getSkillUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      try {
+        const document = await vscode.workspace.openTextDocument(uri);
+        await vscode.window.showTextDocument(document);
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error opening file: ${error}`);
+      }
+    }
+  );
+
+  // Command to generate deeplink for skill
+  const generateSkillDeeplink = vscode.commands.registerCommand(
+    'cursor-toys.generateSkillDeeplink',
+    async (arg?: SkillFileItem | vscode.Uri) => {
+      const uri = getSkillUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      await generateDeeplinkWithValidation(uri, 'skill');
+    }
+  );
+
+  // Command to delete skill
+  const deleteSkill = vscode.commands.registerCommand(
+    'cursor-toys.deleteSkill',
+    async (arg?: SkillFileItem | vscode.Uri) => {
+      const uri = getSkillUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      const fileName = getSkillFileNameFromArgument(arg);
+      const confirm = await vscode.window.showWarningMessage(
+        `Are you sure you want to delete "${fileName}"?`,
+        'Yes',
+        'No'
+      );
+      if (confirm !== 'Yes') {
+        return;
+      }
+      try {
+        // For skills, we need to delete the entire skill folder (parent of SKILL.md)
+        const skillFolderPath = path.dirname(uri.fsPath);
+        const skillFolderUri = vscode.Uri.file(skillFolderPath);
+        await vscode.workspace.fs.delete(skillFolderUri, { recursive: true });
+        vscode.window.showInformationMessage(`Skill "${path.basename(skillFolderPath)}" deleted successfully!`);
+        userSkillsTreeProvider.refresh();
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error deleting skill: ${error}`);
+      }
+    }
+  );
+
+  // Command to reveal skill in folder
+  const revealSkill = vscode.commands.registerCommand(
+    'cursor-toys.revealSkill',
+    async (arg?: SkillFileItem | vscode.Uri) => {
+      const uri = getSkillUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      // For skills, reveal the skill folder (parent of SKILL.md)
+      const skillFolderPath = path.dirname(uri.fsPath);
+      const skillFolderUri = vscode.Uri.file(skillFolderPath);
+      await vscode.commands.executeCommand('revealFileInOS', skillFolderUri);
+    }
+  );
+
+  // Command to rename skill
+  const renameSkill = vscode.commands.registerCommand(
+    'cursor-toys.renameSkill',
+    async (arg?: SkillFileItem | vscode.Uri) => {
+      const uri = getSkillUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      // For skills, rename the skill folder (parent of SKILL.md)
+      const skillFolderPath = path.dirname(uri.fsPath);
+      const currentName = path.basename(skillFolderPath);
+      const newName = await vscode.window.showInputBox({
+        prompt: 'Enter new skill name',
+        value: currentName,
+        validateInput: (value) => {
+          if (!value || value.trim().length === 0) {
+            return 'Skill name cannot be empty';
+          }
+          const sanitized = sanitizeFileName(value);
+          if (sanitized !== value) {
+            return 'Skill name contains invalid characters';
+          }
+          return null;
+        }
+      });
+      if (!newName) {
+        return;
+      }
+      try {
+        const skillFolderUri = vscode.Uri.file(skillFolderPath);
+        const parentDir = path.dirname(skillFolderPath);
+        const newSkillFolderPath = path.join(parentDir, newName);
+        const newSkillFolderUri = vscode.Uri.file(newSkillFolderPath);
+        
+        // Check if target already exists
+        try {
+          await vscode.workspace.fs.stat(newSkillFolderUri);
+          vscode.window.showErrorMessage(`Skill "${newName}" already exists`);
+          return;
+        } catch {
+          // Target doesn't exist, proceed
+        }
+        
+        await vscode.workspace.fs.rename(skillFolderUri, newSkillFolderUri, { overwrite: false });
+        vscode.window.showInformationMessage(`Skill renamed to "${newName}"`);
+        userSkillsTreeProvider.refresh();
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error renaming skill: ${error}`);
+      }
+    }
+  );
+
+  // Command to refresh skills
+  const refreshSkills = vscode.commands.registerCommand(
+    'cursor-toys.refreshSkills',
+    () => {
+      userSkillsTreeProvider.refresh();
+    }
+  );
+
+  // FileSystemWatcher for skills
+  const skillsWatcher = vscode.workspace.createFileSystemWatcher('**/.cursor/skills/**/SKILL.md');
+  skillsWatcher.onDidChange(() => userSkillsTreeProvider.refresh());
+  skillsWatcher.onDidCreate(() => userSkillsTreeProvider.refresh());
+  skillsWatcher.onDidDelete(() => userSkillsTreeProvider.refresh());
+
+  // Also watch .claude/skills for compatibility
+  const claudeSkillsWatcher = vscode.workspace.createFileSystemWatcher('**/.claude/skills/**/SKILL.md');
+  claudeSkillsWatcher.onDidChange(() => userSkillsTreeProvider.refresh());
+  claudeSkillsWatcher.onDidCreate(() => userSkillsTreeProvider.refresh());
+  claudeSkillsWatcher.onDidDelete(() => userSkillsTreeProvider.refresh());
 
   /**
    * Helper function to get URI from hooks command argument (can be HooksFileItem or vscode.Uri)
@@ -3218,8 +3472,10 @@ export function activate(context: vscode.ExtensionContext) {
     generateShareableCommandSpecific,
     generateShareableRuleSpecific,
     generateShareablePromptSpecific,
+    generateShareableSkillSpecific,
     generateShareableNotepadSpecific,
     generateShareablePlanSpecific,
+    generateSkillSpecific,
     generateShareableHttpSpecific,
     generateShareableEnvSpecific,
     generateShareableHttpWithPathSpecific,
@@ -3230,6 +3486,7 @@ export function activate(context: vscode.ExtensionContext) {
     shareCommandFolderCommand,
     shareRuleFolderCommand,
     sharePromptFolderCommand,
+    shareSkillFolderCommand,
     shareNotepadFolderCommand,
     sharePlanFolderCommand,
     shareProjectCommand,
@@ -3265,6 +3522,15 @@ export function activate(context: vscode.ExtensionContext) {
     revealPlan,
     renamePlan,
     refreshPlans,
+    userSkillsTreeView,
+    openSkill,
+    generateSkillDeeplink,
+    deleteSkill,
+    revealSkill,
+    renameSkill,
+    refreshSkills,
+    skillsWatcher,
+    claudeSkillsWatcher,
     userHooksTreeView,
     createHooksFileCommand,
     openHooksCommand,

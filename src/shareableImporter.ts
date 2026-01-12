@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import { sanitizeFileName, getCommandsPath, getPromptsPath, getRulesPath, getNotepadsPath, getPlansPath, getHttpPath, getEnvironmentsPath, getHooksPath } from './utils';
+import { sanitizeFileName, getCommandsPath, getPromptsPath, getRulesPath, getNotepadsPath, getPlansPath, getSkillsPath, getHttpPath, getEnvironmentsPath, getHooksPath } from './utils';
 import { GistManager, GistResponse, CursorToysMetadata } from './gistManager';
 
 interface ShareableParams {
-  type: 'command' | 'prompt' | 'rule' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan';
+  type: 'command' | 'prompt' | 'rule' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | 'skill';
   name: string;
   content: string; // Already decompressed
   relativePath?: string; // Optional: relative path for HTTP_PATH and ENV_PATH types
@@ -42,6 +42,10 @@ export async function importShareable(shareableUrl: string): Promise<void> {
       await importPlanBundle(shareableUrl);
       return;
     }
+    if (shareableUrl.startsWith('cursortoys://SKILL_BUNDLE:')) {
+      await importSkillBundle(shareableUrl);
+      return;
+    }
     if (shareableUrl.startsWith('cursortoys://PROJECT_BUNDLE:')) {
       await importProjectBundle(shareableUrl);
       return;
@@ -58,11 +62,11 @@ export async function importShareable(shareableUrl: string): Promise<void> {
       return;
     }
 
-    // For commands, prompts, and plans, ask if user wants to save as Project or Personal
+    // For commands, prompts, plans, and skills, ask if user wants to save as Project or Personal
     // Notepads and HTTP/ENV files are always saved in project workspace
     let isPersonal = false;
-    if (params.type === 'command' || params.type === 'prompt' || params.type === 'plan') {
-      const itemType = params.type === 'command' ? 'command' : params.type === 'prompt' ? 'prompt' : 'plan';
+    if (params.type === 'command' || params.type === 'prompt' || params.type === 'plan' || params.type === 'skill') {
+      const itemType = params.type === 'command' ? 'command' : params.type === 'prompt' ? 'prompt' : params.type === 'plan' ? 'plan' : 'skill';
       const itemLocation = await vscode.window.showQuickPick(
         [
           { 
@@ -134,7 +138,12 @@ export async function importShareable(shareableUrl: string): Promise<void> {
     const content = Buffer.from(params.content, 'utf8');
     await vscode.workspace.fs.writeFile(fileUri, content);
 
-    vscode.window.showInformationMessage(`File created: ${fileName}`);
+    // Show appropriate message based on type
+    if (params.type === 'skill') {
+      vscode.window.showInformationMessage(`Skill created: ${params.name}`);
+    } else {
+      vscode.window.showInformationMessage(`File created: ${fileName}`);
+    }
     
     // Open file
     const document = await vscode.workspace.openTextDocument(fileUri);
@@ -437,6 +446,80 @@ async function importPromptBundle(bundleUrl: string): Promise<void> {
     }
   } catch (error) {
     vscode.window.showErrorMessage(`Error importing prompt bundle: ${error}`);
+  }
+}
+
+/**
+ * Imports a bundle of skill folders
+ * @param bundleUrl Bundle URL in format: cursortoys://SKILL_BUNDLE:compressedData
+ */
+async function importSkillBundle(bundleUrl: string): Promise<void> {
+  try {
+    const withoutProtocol = bundleUrl.substring('cursortoys://SKILL_BUNDLE:'.length);
+    const decompressed = decodeAndDecompress(withoutProtocol);
+    const bundle = JSON.parse(decompressed);
+    
+    if (!bundle.files || !Array.isArray(bundle.files)) {
+      vscode.window.showErrorMessage('Invalid bundle format');
+      return;
+    }
+
+    // Ask if user wants to save as Project or Personal
+    const itemLocation = await vscode.window.showQuickPick(
+      [
+        { label: 'Personal skills', description: 'Available in all projects (~/.cursor/skills)', value: true },
+        { label: 'Project skills', description: 'Specific to this workspace', value: false }
+      ],
+      { placeHolder: 'Where do you want to save these skills?' }
+    );
+
+    if (itemLocation === undefined) {
+      return;
+    }
+
+    const isPersonal = itemLocation.value;
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    
+    if (!workspaceFolder && !isPersonal) {
+      vscode.window.showErrorMessage('No workspace open');
+      return;
+    }
+
+    const workspacePath = workspaceFolder?.uri.fsPath || '';
+    const skillsPath = getSkillsPath(workspacePath, isPersonal);
+    
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const file of bundle.files) {
+      try {
+        const { name, content } = file;
+        // For skills, create a folder with the skill name and put SKILL.md inside
+        const skillFolderPath = path.join(skillsPath, sanitizeFileName(name));
+        const skillFilePath = path.join(skillFolderPath, 'SKILL.md');
+        
+        // Create directory if needed
+        await createDirectoryRecursive(skillFolderPath);
+        
+        // Write SKILL.md file
+        const fileUri = vscode.Uri.file(skillFilePath);
+        const fileContent = Buffer.from(content, 'utf8');
+        await vscode.workspace.fs.writeFile(fileUri, fileContent);
+        
+        successCount++;
+      } catch (error) {
+        console.error(`Error importing skill ${file.name}:`, error);
+        errorCount++;
+      }
+    }
+
+    if (errorCount === 0) {
+      vscode.window.showInformationMessage(`Successfully imported ${successCount} skill(s)!`);
+    } else {
+      vscode.window.showWarningMessage(`Imported ${successCount} skill(s), ${errorCount} failed.`);
+    }
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error importing skill bundle: ${error}`);
   }
 }
 
@@ -863,7 +946,7 @@ export function parseShareableUrl(url: string): ShareableParams | null {
 
     // Extract type (handle both TYPE and TYPE_PATH)
     const typeStr = parts[0].toUpperCase();
-    let type: 'command' | 'prompt' | 'notepad' | 'rule' | 'http' | 'env' | 'hooks' | 'plan';
+    let type: 'command' | 'prompt' | 'notepad' | 'rule' | 'http' | 'env' | 'hooks' | 'plan' | 'skill';
     let hasPath = false;
     let relativePath: string | undefined;
     
@@ -883,6 +966,8 @@ export function parseShareableUrl(url: string): ShareableParams | null {
       type = 'hooks';
     } else if (typeStr === 'PLAN') {
       type = 'plan';
+    } else if (typeStr === 'SKILL') {
+      type = 'skill';
     } else if (typeStr === 'HTTP_PATH') {
       type = 'http';
       hasPath = true;
@@ -890,7 +975,7 @@ export function parseShareableUrl(url: string): ShareableParams | null {
       type = 'env';
       hasPath = true;
     } else {
-      vscode.window.showErrorMessage(`Invalid type: ${typeStr}. Must be COMMAND, PROMPT, NOTEPAD, RULE, HTTP, ENV, HOOKS, PLAN, HTTP_PATH, or ENV_PATH.`);
+      vscode.window.showErrorMessage(`Invalid type: ${typeStr}. Must be COMMAND, PROMPT, NOTEPAD, RULE, HTTP, ENV, HOOKS, PLAN, SKILL, HTTP_PATH, or ENV_PATH.`);
       return null;
     }
 
@@ -1055,6 +1140,12 @@ function getDestinationPath(
       folderPath = getPlansPath(workspacePath, isPersonal);
       fileName = `${params.name}.plan.md`;
       break;
+    case 'skill':
+      // Skills are folders containing SKILL.md
+      const skillsBasePath = getSkillsPath(workspacePath, isPersonal);
+      folderPath = path.join(skillsBasePath, sanitizeFileName(params.name));
+      fileName = 'SKILL.md';
+      break;
   }
 
   return { folderPath, fileName };
@@ -1181,7 +1272,7 @@ async function importSingleFileFromGist(
   }
 
   // Determine file type
-  let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan';
+  let fileType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | 'skill';
   
   if (metadata && metadata.cursortoys.type !== 'bundle') {
     fileType = metadata.cursortoys.type;
@@ -1260,6 +1351,7 @@ async function importSingleFileFromGist(
   
   // Determine destination path
   let folderPath: string;
+  let finalFileName = fileName;
   
   switch (fileType) {
     case 'command':
@@ -1286,16 +1378,21 @@ async function importSingleFileFromGist(
     case 'plan':
       folderPath = getPlansPath(workspacePath, isPersonal);
       break;
+    case 'skill':
+      // Skills are folders containing SKILL.md
+      const skillsBasePath = getSkillsPath(workspacePath, isPersonal);
+      folderPath = path.join(skillsBasePath, sanitizeFileName(fileName));
+      finalFileName = 'SKILL.md';
+      break;
   }
 
   // Create directory if needed
   await createDirectoryRecursive(folderPath);
 
   // For plans, ensure the file name ends with .plan.md
-  let finalFileName = fileName;
-  if (fileType === 'plan' && !fileName.endsWith('.plan.md')) {
+  if (fileType === 'plan' && !finalFileName.endsWith('.plan.md')) {
     // Remove any existing extension and add .plan.md
-    const nameWithoutExt = path.parse(fileName).name;
+    const nameWithoutExt = path.parse(finalFileName).name;
     finalFileName = `${nameWithoutExt}.plan.md`;
   }
 
