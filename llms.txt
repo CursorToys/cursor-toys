@@ -1,0 +1,835 @@
+---
+description: CursorToys - VS Code/Cursor Extension
+alwaysApply: true
+applyTo: "**"
+version: 1.6.0
+---
+
+# CursorToys
+CursorToys is a VS Code/Cursor extension that transforms Cursor AI into a collaborative productivity powerhouse. It provides utilities for sharing AI configurations, testing APIs, managing personal libraries, and enhancing team collaboration.
+
+- [CursorToys GitHub](https://github.com/CursorToys/cursor-toys)
+- [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Godrix.cursor-toys)
+- [Open VSX Registry](https://open-vsx.org/extension/godrix/cursor-toys)
+
+## Installation
+
+### VS Code Marketplace (Recommended)
+1. Open Extensions (`Cmd+Shift+X` / `Ctrl+Shift+X`)
+2. Search for **"Cursor Command Toys"**
+3. Click Install
+
+### Manual Installation via VSIX
+1. Download the latest `.vsix` from [GitHub Releases](https://github.com/CursorToys/cursor-toys/releases)
+2. Open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
+3. Run **"Extensions: Install from VSIX..."**
+4. Select the downloaded file
+
+### Development/Local Build
+```bash
+git clone https://github.com/CursorToys/cursor-toys.git
+cd cursor-toys
+npm install
+npm run compile
+npm run package
+```
+
+## Core Features
+
+### 1. Instant Sharing
+Share AI configurations (commands, rules, prompts, skills, hooks, plans, notepads) with one click.
+
+**Supported Formats:**
+- **Deeplink**: `cursor://godrix.cursor-toys/command?name=...&text=...` (traditional format, 8KB limit)
+- **CursorToys Format**: `cursortoys://COMMAND:filename:compressedData` (compressed format, no size limit)
+- **Web URL**: `https://cursor.com/link/...` (web-based deeplink)
+- **GitHub Gist**: Share via Gist for maximum compatibility and browser viewing
+
+**How to Share:**
+1. Right-click on any file in `.cursor/commands/`, `.cursor/rules/`, `.cursor/prompts/`, `.cursor/skills/`, etc.
+2. Select "CursorToys: Share as Deeplink" or "CursorToys: Share as CursorToys"
+3. Link is copied to clipboard automatically
+
+**How to Import:**
+1. Press `Cmd+Shift+I` (Mac) or `Ctrl+Shift+I` (Windows/Linux)
+2. Paste deeplink, CursorToys shareable, or GitHub Gist URL
+3. Choose Personal (available across all projects) or Project (workspace-specific) location
+4. File is created automatically in the appropriate folder
+
+**CodeLens Integration:**
+- Files show clickable "Share as Deeplink" and "Share as CursorToys" links at the top
+- Click directly in the editor to generate shareable links
+
+### 2. In-Editor API Testing
+Test HTTP requests without leaving Cursor/VS Code.
+
+**File Location:**
+- Create `.req` or `.request` files in `.cursor/http/` folder (or `.vscode/http/` if using VS Code)
+
+**Supported Formats:**
+- **cURL Commands**: Full cURL syntax support
+- **REST Client Format**: `METHOD URL` with headers and body (similar to VS Code REST Client extension)
+
+**Multiple Requests:**
+- Use markdown sections (`## Section Title`) to organize multiple requests in one file
+- Each section gets its own "Send Request" CodeLens link
+
+**Example cURL Format:**
+```http
+## Get All Users
+curl --request GET \
+  --url https://api.example.com/users \
+  --header 'Authorization: Bearer {{API_KEY}}'
+```
+
+**Example REST Client Format:**
+```http
+### Get All Users
+GET {{BASE_URL}}/api/users
+Authorization: Bearer {{API_KEY}}
+
+### Create User
+POST {{BASE_URL}}/api/users
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com"
+}
+```
+
+**Environment Variables:**
+- Store variables in `.cursor/http/.environments/` folder (or `environments/`, `__environments__/`, `_env/`)
+- Files: `.env`, `.env.dev`, `.env.staging`, `.env.prod`, etc.
+- Use `{{variableName}}` syntax in requests
+- Switch environments via Command Palette: "CursorToys: Select HTTP Environment"
+- Status bar shows current active environment
+
+**Inline Variables:**
+- Define variables directly in request files: `# @var VAR_NAME=value`
+- Global variables (before first `##` section) apply to all sections
+- Section-specific variables override global variables
+- Cascading behavior: section variables inherit from previous section or global
+
+**Helper Functions:**
+- `{{@prompt("label")}}` - Prompt user for input value
+- `{{@randomIn(min, max)}}` - Generate random integer
+- `{{@datetime}}` or `{{@datetime("format")}}` - Current date/time
+- `{{@uuid()}}` - Generate random UUID v4
+- `{{@randomString(length)}}` - Generate random alphanumeric string
+
+**Environment Decorators:**
+- Use `# @env environmentName` before sections to specify environment
+- Cascading: section-specific → previous section → global
+- Example:
+```http
+# @env prod
+
+## Request 1
+GET {{BASE_URL}}/api/users
+# Uses 'prod' environment
+
+# @env dev
+## Request 2
+POST {{BASE_URL}}/api/users
+# Uses 'dev' environment (explicit)
+
+## Request 3
+GET {{BASE_URL}}/api/posts
+# Uses 'dev' environment (inherited from previous section)
+```
+
+**Response Handling:**
+- Responses saved to `.res` or `.response` files (or preview-only mode)
+- Automatic JSON and XML formatting
+- Execution time displayed in response tab title
+- Syntax highlighting for both request and response files
+
+**Configuration:**
+- `cursorToys.httpRequestTimeout`: Timeout in seconds (default: 10)
+- `cursorToys.httpRequestSaveFile`: Save response to file or preview only (default: false)
+- `cursorToys.httpDefaultEnvironment`: Default environment name (default: "dev")
+- `cursorToys.environmentsFolder`: Folder name for environments (default: ".environments")
+
+### 3. Personal Libraries
+Build reusable libraries of commands, prompts, and skills that work across all projects.
+
+**Personal Commands:**
+- Location: `~/.cursor/commands/` or `~/.claude/commands/`
+- Available across all projects
+- Visual tree view in Explorer sidebar: "Commands"
+- Drag-and-drop support for organizing in folders
+- Context menu: Open, Share, Rename, Delete, Reveal
+
+**Personal Prompts:**
+- Location: `~/.cursor/prompts/`
+- Available across all projects
+- Visual tree view in Explorer sidebar: "Prompts"
+- Drag-and-drop support for organizing in folders
+- Context menu: Open, Share, Rename, Delete, Reveal
+
+**Personal Skills:**
+- Location: `~/.cursor/skills/` or `~/.claude/skills/`
+- Each skill is a folder containing `SKILL.md` file
+- Visual tree view in Explorer sidebar: "Skills"
+- Hierarchical structure: Category → Skill Folder → SKILL.md
+- Drag-and-drop support for organizing skills
+- Context menu: Open, Share, Rename, Delete, Reveal
+
+**Configuration:**
+- `cursorToys.commandsFolder`: Choose `cursor` (default) or `claude` for commands folder
+- `cursorToys.personalCommandsView`: Show `both`, `cursor`, or `claude` folders (default: both)
+- `cursorToys.baseFolder`: Customize base folder name (default: "cursor")
+
+### 4. Project Notepads
+Project-specific markdown documentation that stays with your project.
+
+**Location:**
+- `.cursor/notepads/` (workspace-specific, not personal)
+
+**Features:**
+- Visual tree view in Explorer sidebar: "Notepads"
+- Hierarchical folder structure with drag-and-drop
+- Create, rename, delete, and share notepads
+- Share individual notepads or entire folders as bundles
+- Share via CursorToys format or GitHub Gist
+
+**Use Cases:**
+- Project architecture documentation
+- Decision records
+- Team guides and tutorials
+- Project-specific notes
+
+### 5. Cursor Hooks Management
+Manage Cursor hooks configuration files for automating workflows.
+
+**Location:**
+- Personal: `~/.cursor/hooks.json` (all projects)
+- Project: `workspace/.cursor/hooks.json` (workspace-specific)
+
+**Features:**
+- Visual tree view in Explorer sidebar: "Cursor Hooks"
+- Shows hooks.json file and associated scripts
+- Create, open, share, delete hooks files
+- Share hooks via CursorToys format or GitHub Gist
+- Automatic detection of hook scripts from hooks.json content
+
+**Hooks File Structure:**
+```json
+{
+  "version": "1.0.0",
+  "hooks": {
+    "onFileSave": {
+      "command": "node scripts/format.js",
+      "files": "**/*.{js,ts}"
+    }
+  }
+}
+```
+
+### 6. Cursor Plans Management
+Manage Cursor plan files for project planning and documentation.
+
+**Location:**
+- Personal: `~/.cursor/plans/` (all projects)
+- Project: `workspace/.cursor/plans/` (workspace-specific)
+
+**Features:**
+- Visual tree view in Explorer sidebar: "Cursor Plans"
+- Files must have `.plan.md` extension
+- Create, open, share, rename, delete plans
+- Share plans via CursorToys format or GitHub Gist
+- Share plan folders as bundles
+
+### 7. Skills Management
+Complete support for Cursor Skills with visual tree view.
+
+**Location:**
+- Personal: `~/.cursor/skills/` or `~/.claude/skills/`
+- Project: `workspace/.cursor/skills/` or `workspace/.claude/skills/`
+
+**Structure:**
+- Each skill is a folder containing `SKILL.md` file
+- Hierarchical organization: Category → Skill Folder → SKILL.md
+
+**Features:**
+- Visual tree view in Explorer sidebar: "Skills"
+- Drag-and-drop support for organizing skills
+- Share individual skills via deeplink or CursorToys format
+- Share skills folders as bundles
+- CodeLens support for SKILL.md files
+- Import skills from deeplinks and shareables
+
+### 8. File Minification
+Optimize files and clipboard content to reduce file sizes.
+
+**Supported Formats:**
+- JSON, HTML, XML, CSS, SVG, JavaScript, TypeScript
+
+**File Minification:**
+- Right-click on file → "CursorToys: Minify File"
+- Or use editor title bar minify icon
+- Creates minified version with configurable suffix (default: `.min`)
+- Shows statistics: original size, minified size, savings percentage
+
+**Clipboard Minification:**
+- Command: "CursorToys: Trim & Minify Clipboard"
+- Auto-detects content type
+- Shows savings statistics
+- Alternative: "CursorToys: Trim & Minify Clipboard (Select Type)" for manual type selection
+
+**Configuration:**
+- `cursorToys.minify.outputSuffix`: Suffix for minified files (default: ".min")
+- `cursorToys.minify.preserveComments`: Preserve comments (future feature, default: false)
+
+### 9. Chat Integration
+Send code and text directly to Cursor chat without manual copy-paste.
+
+**Commands:**
+- `cursor-toys.sendSelectionToChat`: Send selected code to chat with file context
+- `cursor-toys.sendToChat`: Send custom text to chat
+- `cursor-toys.copySelectionAsPrompt`: Copy selected code as prompt deeplink with file context
+
+**Context Menu:**
+- Right-click on selected text → "Cursor Toys" submenu
+- Options: "Send Selection to Chat", "Copy as Prompt Deeplink"
+
+**Context Information:**
+- File path, language, and line numbers automatically included
+- Makes it easier for AI to understand code context
+
+### 10. GitHub Gist Integration
+Share files and bundles via GitHub Gist for maximum compatibility.
+
+**Features:**
+- Browser viewing without importing
+- Maximum compatibility (works with any editor)
+- Public or private Gist creation
+- Permanent links on GitHub
+- Version history tracking
+- Embedded viewing in documentation
+
+**Commands:**
+- `cursor-toys.shareViaGist`: Share single file as GitHub Gist
+- `cursor-toys.shareFolderViaGist`: Share entire folder as Gist bundle
+- `cursor-toys.importFromGist`: Import from GitHub Gist (also works via `Cmd+Shift+I`)
+
+**Token Management:**
+- `cursor-toys.configureGitHubToken`: Configure GitHub Personal Access Token
+- `cursor-toys.removeGitHubToken`: Remove stored GitHub token
+- Secure token storage using VS Code Secrets API
+
+**Configuration:**
+- `cursorToys.gistDefaultVisibility`: Default visibility (`public`, `private`, or `ask`)
+
+### 11. Smart Recommendations
+AI-powered suggestions for commands, prompts, and rules based on project context.
+
+**Features:**
+- Automatic project context detection (languages, frameworks, tools)
+- Marketplace browser with elegant visual interface
+- Tag-based search and filtering
+- Multi-select installation
+- YAML frontmatter support for metadata
+- Smart caching (memory and disk)
+
+**Supported Contexts:**
+- Languages: JavaScript, TypeScript, Python, Java, Go, Rust, Ruby, PHP, Elixir
+- Frameworks: React, Next.js, Vue, Angular, Svelte, Express, NestJS
+- Tools: Jest, Vitest, Playwright, Cypress, Docker, Kubernetes, Terraform
+
+**Commands:**
+- `cursor-toys.checkRecommendations`: Check recommendations for current project
+- `cursor-toys.browseRecommendations`: Open recommendations marketplace browser
+- `cursor-toys.refreshRecommendations`: Clear cache and refresh recommendations
+
+**Configuration:**
+- `cursorToys.recommendationsEnabled`: Enable/disable recommendations (default: true)
+- `cursorToys.recommendationsCheckOnStartup`: Check on workspace open (default: true)
+- `cursorToys.recommendationsSuggestInterval`: Days between suggestions (default: 7)
+- `cursorToys.recommendationsIndexUrl`: URL to remote recommendations index
+- `cursorToys.recommendationsIndexGistId`: Alternative Gist ID for recommendations index
+
+## Folder Structure
+
+### Base Folder Configuration
+The extension supports customizing the base folder name via `cursorToys.baseFolder` setting:
+- Default: `cursor` (creates `.cursor/` folder)
+- Options: `cursor`, `vscode`, `ai`, or any custom name
+- Applies to: commands, rules, prompts, HTTP, notepads, plans, skills, hooks
+
+**Note:** Rules and prompts are Cursor-specific features and may not work in VS Code.
+
+### Standard Folder Structure
+```
+workspace/
+├── .cursor/                    # Base folder (configurable)
+│   ├── commands/              # Project commands
+│   ├── rules/                 # Project rules (Cursor-specific)
+│   ├── prompts/               # Project prompts (Cursor-specific)
+│   ├── skills/                # Project skills
+│   ├── hooks.json             # Project hooks
+│   ├── plans/                 # Project plans
+│   ├── notepads/              # Project notepads
+│   └── http/                   # HTTP requests
+│       ├── api.req            # Request files
+│       └── .environments/     # Environment variables
+│           ├── .env           # Default environment
+│           ├── .env.dev       # Development environment
+│           └── .env.prod      # Production environment
+└── ~/.cursor/                  # Personal folder (home directory)
+    ├── commands/               # Personal commands (all projects)
+    ├── prompts/                # Personal prompts (all projects)
+    ├── skills/                 # Personal skills (all projects)
+    ├── hooks.json              # Personal hooks (all projects)
+    └── plans/                 # Personal plans (all projects)
+```
+
+### Alternative Folder Structure (Claude)
+If using `cursorToys.commandsFolder: "claude"`:
+- Personal commands: `~/.claude/commands/`
+- Project commands: `workspace/.claude/commands/`
+- Personal skills: `~/.claude/skills/`
+- Project skills: `workspace/.claude/skills/`
+
+## File Types and Extensions
+
+### Commands
+- **Location**: `.cursor/commands/` or `.claude/commands/`
+- **Extensions**: `.md`, `.mdc` (configurable via `cursorToys.allowedExtensions`)
+- **Personal**: `~/.cursor/commands/` or `~/.claude/commands/`
+- **Project**: `workspace/.cursor/commands/` or `workspace/.claude/commands/`
+
+### Rules
+- **Location**: `.cursor/rules/`
+- **Extensions**: `.md`, `.mdc` (`.mdc` recommended for metadata support)
+- **Note**: Cursor-specific feature, may not work in VS Code
+- **Project only**: No personal rules folder
+
+### Prompts
+- **Location**: `.cursor/prompts/`
+- **Extensions**: `.md`, `.mdc`
+- **Note**: Cursor-specific feature, may not work in VS Code
+- **Personal**: `~/.cursor/prompts/`
+- **Project**: `workspace/.cursor/prompts/`
+
+### Skills
+- **Location**: `.cursor/skills/` or `.claude/skills/`
+- **Structure**: Folder containing `SKILL.md` file
+- **Personal**: `~/.cursor/skills/` or `~/.claude/skills/`
+- **Project**: `workspace/.cursor/skills/` or `workspace/.claude/skills/`
+
+### Hooks
+- **Location**: `.cursor/hooks.json`
+- **Personal**: `~/.cursor/hooks.json`
+- **Project**: `workspace/.cursor/hooks.json`
+
+### Plans
+- **Location**: `.cursor/plans/`
+- **Extensions**: `.plan.md` (required)
+- **Personal**: `~/.cursor/plans/`
+- **Project**: `workspace/.cursor/plans/`
+
+### Notepads
+- **Location**: `.cursor/notepads/`
+- **Extensions**: `.md`, `.mdc`
+- **Project only**: No personal notepads folder
+
+### HTTP Requests
+- **Location**: `.cursor/http/`
+- **Extensions**: `.req`, `.request`
+- **Project only**: No personal HTTP folder
+
+### Environment Files
+- **Location**: `.cursor/http/.environments/` (or `environments/`, `__environments__/`, `_env/`)
+- **Extensions**: `.env`, `.env.*` (e.g., `.env.dev`, `.env.prod`)
+- **Project only**: No personal environments folder
+
+## Sharing Formats
+
+### Deeplink Format
+Traditional format with URL encoding:
+- Protocol: `cursor://godrix.cursor-toys/` or `https://cursor.com/link/`
+- Format: `cursor://godrix.cursor-toys/{type}?name={name}&text={encodedContent}`
+- Size limit: 8,000 characters
+- Best for: Small files, quick sharing, clickable links
+
+### CursorToys Format
+Compressed format with no size limit:
+- Protocol: `cursortoys://`
+- Format: `cursortoys://{TYPE}:filename:compressedData`
+- Compression: Gzip + Base64 encoding
+- Size reduction: 60-80% compared to URL-encoded deeplinks
+- Best for: Large files, team distribution, no URL length limits
+
+**Supported Types:**
+- `COMMAND`, `RULE`, `PROMPT`, `SKILL`, `HOOKS`, `PLAN`, `NOTEPAD`
+- `HTTP`, `ENV` (environment files)
+- `COMMAND_BUNDLE`, `RULE_BUNDLE`, `PROMPT_BUNDLE`, `SKILL_BUNDLE`, `PLAN_BUNDLE`, `NOTEPAD_BUNDLE`
+- `HTTP_BUNDLE`, `ENV_BUNDLE`, `HTTP_ENV_BUNDLE`
+- `PROJECT_BUNDLE` (complete project bundle)
+
+### GitHub Gist Format
+Maximum compatibility format:
+- Browser viewing without importing
+- Works with any editor
+- Public or private Gists
+- Permanent links on GitHub
+- Version history tracking
+
+**Gist Structure:**
+- Single file: One file per Gist
+- Bundle: Multiple files in one Gist
+- Metadata: CursorToys metadata embedded in Gist description
+
+## Configuration Options
+
+### Link Generation
+- `cursorToys.linkType`: Type of link to generate (`deeplink`, `web`, `custom`)
+- `cursorToys.customBaseUrl`: Custom base URL (only used when linkType is `custom`)
+
+### File Extensions
+- `cursorToys.allowedExtensions`: Allowed file extensions (default: `["md", "mdc"]`)
+
+### Folder Configuration
+- `cursorToys.baseFolder`: Base folder name (default: `"cursor"`)
+- `cursorToys.commandsFolder`: Commands folder (`cursor` or `claude`, default: `cursor`)
+- `cursorToys.personalCommandsView`: Show commands from (`both`, `cursor`, `claude`, default: `both`)
+- `cursorToys.environmentsFolder`: Environments folder name (default: `".environments"`)
+
+### HTTP Request Settings
+- `cursorToys.httpRequestTimeout`: Timeout in seconds (default: `10`)
+- `cursorToys.httpRequestSaveFile`: Save response to file or preview only (default: `false`)
+- `cursorToys.httpDefaultEnvironment`: Default environment name (default: `"dev"`)
+
+### Minification Settings
+- `cursorToys.minify.outputSuffix`: Suffix for minified files (default: `".min"`)
+- `cursorToys.minify.preserveComments`: Preserve comments (default: `false`, not yet implemented)
+
+### GitHub Gist Settings
+- `cursorToys.gistDefaultVisibility`: Default visibility (`public`, `private`, `ask`, default: `ask`)
+
+### Recommendations Settings
+- `cursorToys.recommendationsEnabled`: Enable recommendations (default: `true`)
+- `cursorToys.recommendationsCheckOnStartup`: Check on workspace open (default: `true`)
+- `cursorToys.recommendationsSuggestInterval`: Days between suggestions (default: `7`)
+- `cursorToys.recommendationsIndexUrl`: URL to remote recommendations index
+- `cursorToys.recommendationsIndexGistId`: Alternative Gist ID for recommendations index
+
+## Commands Reference
+
+### Sharing Commands
+- `cursor-toys.generate-command`: Share as Deeplink (Command)
+- `cursor-toys.generate-rule`: Share as Deeplink (Rule)
+- `cursor-toys.generate-prompt`: Share as Deeplink (Prompt)
+- `cursor-toys.generate-skill`: Share as Deeplink (Skill)
+- `cursor-toys.shareAsCursorToysCommand`: Share as CursorToys (Command)
+- `cursor-toys.shareAsCursorToysRule`: Share as CursorToys (Rule)
+- `cursor-toys.shareAsCursorToysPrompt`: Share as CursorToys (Prompt)
+- `cursor-toys.shareAsCursorToysSkill`: Share as CursorToys (Skill)
+- `cursor-toys.shareAsCursorToysHttp`: Share as CursorToys (HTTP Request)
+- `cursor-toys.shareAsCursorToysEnv`: Share as CursorToys (Environment)
+- `cursor-toys.shareAsCursorToysNotepad`: Share as CursorToys (Notepad)
+- `cursor-toys.shareAsCursorToysPlan`: Share as CursorToys (Plan)
+- `cursor-toys.shareAsCursorToysHttpFolder`: Share Folder as CursorToys (HTTP Requests)
+- `cursor-toys.shareAsCursorToysHttpFolderWithEnv`: Share Folder as CursorToys (HTTP + Environments)
+- `cursor-toys.shareAsCursorToysCommandFolder`: Share Folder as CursorToys (Commands Bundle)
+- `cursor-toys.shareAsCursorToysRuleFolder`: Share Folder as CursorToys (Rules Bundle)
+- `cursor-toys.shareAsCursorToysPromptFolder`: Share Folder as CursorToys (Prompts Bundle)
+- `cursor-toys.shareAsCursorToysSkillFolder`: Share Folder as CursorToys (Skills Bundle)
+- `cursor-toys.shareAsCursorToysNotepadFolder`: Share Folder as CursorToys (Notepads Bundle)
+- `cursor-toys.shareAsCursorToysPlanFolder`: Share Folder as CursorToys (Plans Bundle)
+- `cursor-toys.shareAsCursorToysProject`: Share Project as CursorToys (Complete Bundle)
+- `cursor-toys.shareViaGist`: Share via GitHub Gist
+- `cursor-toys.shareFolderViaGist`: Share Folder via GitHub Gist
+
+### Import Commands
+- `cursor-toys.import`: Import from Link (supports: files, bundles, deeplinks, Gists) - Shortcut: `Cmd+Shift+I` / `Ctrl+Shift+I`
+- `cursor-toys.importFromGist`: Import from GitHub Gist
+
+### HTTP Request Commands
+- `cursor-toys.sendHttpRequest`: Execute HTTP Request
+- `cursor-toys.selectEnvironment`: Select HTTP Environment
+- `cursor-toys.openEnvironments`: Open HTTP Environments Folder
+- `cursor-toys.createEnvironment`: Create New HTTP Environment
+- `cursor-toys.initializeEnvironments`: Create Environments Folder
+- `cursor-toys.copyCurlCommand`: Copy as cURL Command
+
+### Personal Libraries Commands
+- `cursor-toys.save-as-user-command`: Save as Personal Command
+- `cursor-toys.save-as-user-prompt`: Save as Personal Prompt
+- `cursor-toys.openUserCommand`: Open Command
+- `cursor-toys.generateUserCommandDeeplink`: Generate Command Share Link
+- `cursor-toys.deleteUserCommand`: Delete Command
+- `cursor-toys.renameUserCommand`: Rename Command
+- `cursor-toys.revealUserCommand`: Reveal Command in Folder
+- `cursor-toys.refreshUserCommands`: Refresh Commands
+- `cursor-toys.openUserPrompt`: Open Prompt
+- `cursor-toys.generateUserPromptDeeplink`: Generate Prompt Share Link
+- `cursor-toys.deleteUserPrompt`: Delete Prompt
+- `cursor-toys.renameUserPrompt`: Rename Prompt
+- `cursor-toys.revealUserPrompt`: Reveal Prompt in Folder
+- `cursor-toys.refreshUserPrompts`: Refresh Prompts
+
+### Skills Commands
+- `cursor-toys.openSkill`: Open Skill
+- `cursor-toys.generateSkillDeeplink`: Generate Skill Share Link
+- `cursor-toys.shareAsCursorToysSkill`: Share as CursorToys (Skill)
+- `cursor-toys.deleteSkill`: Delete Skill
+- `cursor-toys.renameSkill`: Rename Skill
+- `cursor-toys.revealSkill`: Reveal Skill in Folder
+- `cursor-toys.refreshSkills`: Refresh Skills
+
+### Notepads Commands
+- `cursor-toys.createNotepad`: Create New Notepad
+- `cursor-toys.openNotepad`: Open Notepad
+- `cursor-toys.generateNotepadShareable`: Share Notepad
+- `cursor-toys.deleteNotepad`: Delete Notepad
+- `cursor-toys.renameNotepad`: Rename Notepad
+- `cursor-toys.revealNotepad`: Reveal Notepad in Folder
+- `cursor-toys.refreshNotepads`: Refresh Notepads
+
+### Plans Commands
+- `cursor-toys.openPlan`: Open Plan
+- `cursor-toys.generatePlanShareable`: Share Plan
+- `cursor-toys.deletePlan`: Delete Plan
+- `cursor-toys.renamePlan`: Rename Plan
+- `cursor-toys.revealPlan`: Reveal Plan in Folder
+- `cursor-toys.refreshPlans`: Refresh Plans
+
+### Hooks Commands
+- `cursor-toys.createHooksFile`: Create Hooks File
+- `cursor-toys.openHooks`: Open Hooks
+- `cursor-toys.shareHooks`: Share Hooks
+- `cursor-toys.shareHooksViaGist`: Share Hooks via GitHub Gist
+- `cursor-toys.deleteHooks`: Delete Hooks
+- `cursor-toys.revealHooks`: Reveal Hooks in Folder
+- `cursor-toys.refreshHooks`: Refresh Hooks
+- `cursor-toys.openHookScript`: Open Hook Script
+- `cursor-toys.shareHookScript`: Share Hook Script
+- `cursor-toys.shareHookScriptViaGist`: Share Hook Script via GitHub Gist
+- `cursor-toys.revealHookScript`: Reveal Hook Script in Folder
+- `cursor-toys.deleteHookScript`: Delete Hook Script
+
+### Minification Commands
+- `cursor-toys.minifyFile`: Minify File
+- `cursor-toys.trimClipboard`: Trim & Minify Clipboard
+- `cursor-toys.trimClipboardWithPrompt`: Trim & Minify Clipboard (Select Type)
+
+### Chat Integration Commands
+- `cursor-toys.sendToChat`: Send Text to Chat
+- `cursor-toys.sendSelectionToChat`: Send Selection to Chat
+- `cursor-toys.copySelectionAsPrompt`: Copy Selection as Prompt Link
+
+### Recommendations Commands
+- `cursor-toys.checkRecommendations`: Check Recommendations for this Project
+- `cursor-toys.browseRecommendations`: Browse Recommendations Marketplace
+- `cursor-toys.refreshRecommendations`: Refresh Recommendations Cache
+
+### GitHub Gist Commands
+- `cursor-toys.configureGitHubToken`: Configure GitHub Token
+- `cursor-toys.removeGitHubToken`: Remove GitHub Token
+
+## Usage Examples
+
+### Example 1: Share a Command
+1. Create `.cursor/commands/my-command.md` with your command content
+2. Right-click on the file → "CursorToys: Share as Deeplink (Command)"
+3. Link is copied to clipboard
+4. Share the link with your team
+5. Team members press `Cmd+Shift+I` and paste the link
+6. File is automatically created in their `.cursor/commands/` folder
+
+### Example 2: Test an API
+1. Create `.cursor/http/api-test.req`:
+```http
+## Get User
+GET https://api.github.com/users/octocat
+```
+2. Click "Send Request" CodeLens link that appears above the request
+3. Response opens in a new tab with formatted output
+4. Execution time is shown in the tab title
+
+### Example 3: Use Environment Variables
+1. Create `.cursor/http/.environments/.env.dev`:
+```env
+BASE_URL=http://localhost:3000
+API_KEY=dev-key-123
+```
+2. Create `.cursor/http/api.req`:
+```http
+## Get Users
+GET {{BASE_URL}}/api/users
+Authorization: Bearer {{API_KEY}}
+```
+3. Switch environment via Command Palette: "CursorToys: Select HTTP Environment"
+4. Select `dev` environment
+5. Click "Send Request" - variables are automatically substituted
+
+### Example 4: Share Complete Project Setup
+1. Right-click on `.cursor` folder
+2. Select "CursorToys: Share Project as CursorToys (Complete Bundle)"
+3. All commands, rules, prompts, HTTP requests, and environments are bundled
+4. Share the link with your team
+5. Team members import with `Cmd+Shift+I` and get the complete setup
+
+### Example 5: Use Inline Variables
+1. Create `.cursor/http/api.req`:
+```http
+# @var API_BASE=https://api.example.com
+# @var USER_ID=12345
+
+## Get User
+GET {{API_BASE}}/users/{{USER_ID}}
+
+# @var USER_ID=67890
+## Get Another User
+GET {{API_BASE}}/users/{{USER_ID}}
+```
+2. Variables are substituted from file-level definitions
+3. Section-specific variables override global variables
+
+### Example 6: Use Helper Functions
+1. Create `.cursor/http/api.req`:
+```http
+## Create User with Random Data
+POST {{BASE_URL}}/api/users
+Content-Type: application/json
+
+{
+  "id": "{{@uuid()}}",
+  "name": "User{{@randomString(8)}}",
+  "age": {{@randomIn(18, 65)}},
+  "createdAt": "{{@datetime}}",
+  "email": "{{@prompt("Enter email")}}"
+}
+```
+2. Helper functions generate dynamic values at request time
+3. `@prompt()` shows input dialog for user-provided values
+
+## Best Practices
+
+### Sharing
+1. **Use Deeplinks for small files** (< 2KB) - faster and more compatible
+2. **Use CursorToys format for large files** (> 5KB) - no size limits
+3. **Use GitHub Gist for maximum compatibility** - works with any editor, browser viewable
+4. **Share bundles for team setups** - one link for multiple files
+5. **Use project bundles for complete setups** - share entire `.cursor` folder structure
+
+### HTTP Requests
+1. **Organize requests by feature** - use markdown sections (`## Feature Name`)
+2. **Use environment variables** - avoid hardcoding URLs and keys
+3. **Create multiple environments** - dev, staging, prod
+4. **Use inline variables for request-specific values** - `# @var` decorators
+5. **Use helper functions for dynamic data** - `@uuid()`, `@datetime`, etc.
+6. **Use environment decorators** - `# @env` for section-specific environments
+
+### Personal Libraries
+1. **Save reusable commands as personal** - available across all projects
+2. **Use folders to organize** - drag-and-drop support in tree view
+3. **Share personal commands with team** - build a shared library
+4. **Use both .cursor and .claude folders** - if working with both editors
+
+### File Organization
+1. **Use consistent naming** - descriptive file names
+2. **Organize in folders** - hierarchical structure
+3. **Use allowed extensions** - `.md` or `.mdc` for commands/rules/prompts
+4. **Keep HTTP requests in `.cursor/http/`** - centralized API testing
+
+### Configuration
+1. **Set base folder** - customize if using VS Code or other editors
+2. **Configure commands folder** - choose `.cursor` or `.claude`
+3. **Set default environment** - for HTTP requests
+4. **Configure Gist visibility** - public or private by default
+
+## Troubleshooting
+
+### Import Not Working
+- Check URL format (deeplink, CursorToys, or Gist)
+- Verify file extension is allowed (`cursorToys.allowedExtensions`)
+- Check if file already exists (will prompt for overwrite)
+
+### HTTP Request Not Executing
+- Verify `curl` is installed and in PATH
+- Check file is in `.cursor/http/` folder
+- Verify file extension is `.req` or `.request`
+- Check environment variables are defined if using `{{variable}}` syntax
+
+### Environment Variables Not Resolving
+- Verify environment file exists in `.cursor/http/.environments/`
+- Check environment name matches (case-insensitive)
+- Verify variable name matches exactly (case-insensitive)
+- Check active environment in status bar
+- Use `# @env` decorator for section-specific environments
+
+### CodeLens Not Showing
+- Verify file is in correct folder (`.cursor/commands/`, `.cursor/rules/`, etc.)
+- Check file extension is allowed
+- Reload window: `Cmd+Shift+P` → "Developer: Reload Window"
+
+### Tree View Not Updating
+- Click refresh button in tree view title
+- Or use refresh command from context menu
+- File system watchers should auto-update (check if folders exist)
+
+## Technical Details
+
+### Architecture
+- **Language**: TypeScript (strict mode)
+- **Target**: ES2020
+- **Modules**: CommonJS
+- **Extension API**: VS Code Extension API
+- **Activation**: `onStartupFinished` (ensures all commands available)
+
+### File Structure
+```
+src/
+├── extension.ts                 # Main entry point, command registration
+├── deeplinkGenerator.ts         # Generate deeplinks
+├── deeplinkImporter.ts         # Import deeplinks
+├── shareableGenerator.ts       # Generate CursorToys shareables
+├── shareableImporter.ts         # Import CursorToys shareables
+├── codelensProvider.ts         # CodeLens for commands/rules/prompts
+├── httpCodeLensProvider.ts     # CodeLens for HTTP requests
+├── envCodeLensProvider.ts      # CodeLens for environment files
+├── httpRequestExecutor.ts      # Execute HTTP requests
+├── httpEnvironmentProviders.ts # Environment variable providers
+├── environmentManager.ts       # Environment variable management
+├── userCommandsTreeProvider.ts # Tree view for personal commands
+├── userPromptsTreeProvider.ts  # Tree view for personal prompts
+├── userNotepadsTreeProvider.ts # Tree view for project notepads
+├── userPlansTreeProvider.ts    # Tree view for plans
+├── userHooksTreeProvider.ts    # Tree view for hooks
+├── userSkillsTreeProvider.ts   # Tree view for skills
+├── hooksManager.ts             # Hooks file management
+├── recommendationsManager.ts   # Recommendations system
+├── recommendationsBrowserPanel.ts # Recommendations UI
+├── gistManager.ts             # GitHub Gist integration
+├── minifier.ts                # File minification
+├── clipboardProcessor.ts      # Clipboard processing
+├── sendToChat.ts             # Chat integration
+├── annotationPanel.ts         # Annotation panel
+└── utils.ts                  # Utility functions
+```
+
+### Key Functions
+- `getFileTypeFromPath()`: Detect file type from path
+- `getBaseFolderName()`: Get configured base folder
+- `getCommandsPath()`: Get commands folder path
+- `sanitizeFileName()`: Sanitize file names
+- `validateUrlLength()`: Validate URL length (8KB limit)
+
+### Dependencies
+- VS Code API: `^1.74.0`
+- Node.js: Built-in modules (fs, path, zlib, etc.)
+- No external dependencies required
+
+## License
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Contributing
+Contributions welcome! See [Contributing Guide](CONTRIBUTING.md) for details.
+
+## Support
+- [GitHub Issues](https://github.com/CursorToys/cursor-toys/issues)
+- [GitHub Discussions](https://github.com/CursorToys/cursor-toys/discussions)

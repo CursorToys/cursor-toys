@@ -2,6 +2,134 @@
 
 All notable changes to the "CursorToys" extension will be documented in this file.
 
+## [1.7.0] - 2026-01-23
+
+### Added
+
+#### 🤖 **AI-Powered Text Refinement**
+- **AI Text Refiner**: Refine text and code using AI providers
+  - New command `cursor-toys.refineSelectionWithAI`: Refine selected text in editor with AI
+  - New command `cursor-toys.refineClipboardWithAI`: Refine clipboard text with AI
+  - Keyboard shortcuts: `Cmd+Shift+R` (selection) and `Cmd+Alt+Shift+R` (clipboard)
+  - Support for multiple AI providers (currently Google Gemini)
+  - Configurable AI model and refinement prompt
+  - Secure API key storage using VS Code Secrets API
+- **AI Provider Commands**:
+  - `cursor-toys.configureAIProvider`: Configure AI provider and API key
+  - `cursor-toys.removeAIProviderKey`: Remove stored API key
+- **Gemini Provider**: Complete integration with Google Gemini API
+  - Support for Gemini 2.5 Flash and Pro models
+  - Automatic model selection (defaults to gemini-2.5-flash)
+  - Safety settings optimized for code and text refinement
+  - Configurable request timeout (default: 30 seconds)
+  - Comprehensive error handling with user-friendly messages
+- **AI Configuration Options**:
+  - `cursorToys.aiProvider`: Choose AI provider (default: "gemini")
+  - `cursorToys.aiModel`: Specify AI model (e.g., "gemini-2.5-flash", "gemini-2.5-pro")
+  - `cursorToys.aiRefinePrompt`: Customize refinement prompt
+  - `cursorToys.aiRequestTimeout`: Set request timeout in seconds (default: 30)
+
+### Changed
+- **HTTP Environment Management**: Enhanced environment folder creation
+  - Automatically creates HTTP folder with llms.txt when environments are initialized
+  - llms.txt provides comprehensive documentation on HTTP features and usage
+  - Includes examples for cURL, REST Client format, variables, and helper functions
+  - Updates to environment manager ensure HTTP folder exists before operations
+
+### Technical Details
+
+#### New Files
+- **`src/textRefiner.ts`**: Core text refinement system
+  - `refineClipboard()`: Refine clipboard text with AI
+  - `refineSelectedText()`: Refine selected text in editor
+  - `getAIProvider()`: Factory function for AI provider instances
+  - Progress indicators and error handling
+  - Automatic API key configuration flow
+- **`src/aiProviders/index.ts`**: AI provider interface and types
+  - `AIProvider` interface: Standard interface for all AI providers
+  - `AIProviderType`: Type union for supported providers
+  - Provider discovery and validation
+- **`src/aiProviders/geminiProvider.ts`**: Google Gemini implementation
+  - Singleton pattern for global access
+  - API key management with VS Code Secrets
+  - Text refinement with safety settings
+  - Model validation and configuration
+  - Comprehensive error handling
+
+#### Enhanced Files
+- **`src/extension.ts`**:
+  - Registered AI refinement commands
+  - Added keyboard shortcuts for refinement
+  - Integrated AI provider configuration commands
+  - Added context menu items for text refinement
+- **`src/environmentManager.ts`**:
+  - Enhanced `createEnvironment()` to create HTTP folder and llms.txt
+  - Enhanced `initializeDefaultEnvironments()` to ensure HTTP folder exists
+  - Enhanced `createFileWatcher()` to create HTTP folder when needed
+  - Automatic llms.txt creation for HTTP documentation
+- **`src/utils.ts`**:
+  - Added `createHttpLlmsFile()`: Creates comprehensive HTTP documentation
+  - llms.txt includes all HTTP features: cURL, REST Client, variables, helpers
+- **`package.json`**:
+  - Version bumped from 1.6.0 to 1.7.0
+  - Added AI refinement commands
+  - Added AI configuration options
+  - Added keyboard shortcuts for refinement
+  - Added context menu items for selection refinement
+  - Added dependency: `@google/genai` for Gemini integration
+
+#### New Commands
+- `cursor-toys.refineSelectionWithAI`: Refine selected text with AI
+- `cursor-toys.refineClipboardWithAI`: Refine clipboard text with AI
+- `cursor-toys.configureAIProvider`: Configure AI provider and API key
+- `cursor-toys.removeAIProviderKey`: Remove stored AI provider key
+
+#### Configuration Options Added
+- `cursorToys.aiProvider`: AI provider to use (default: "gemini")
+- `cursorToys.aiModel`: AI model to use (optional, provider default if empty)
+- `cursorToys.aiRefinePrompt`: Prompt for text refinement
+- `cursorToys.aiRequestTimeout`: Request timeout in seconds (default: 30)
+
+#### Keyboard Shortcuts
+- `Cmd+Shift+R` / `Ctrl+Shift+R`: Refine selected text
+- `Cmd+Alt+Shift+R` / `Ctrl+Alt+Shift+R`: Refine clipboard text
+
+#### Dependencies Added
+- `@google/genai`: Google Gemini API client (version ^1.38.0)
+
+### Use Cases
+
+**Refining Text in Editor:**
+1. Select text or code in editor
+2. Press `Cmd+Shift+R` or use Command Palette: "CursorToys: Refine Selection with AI"
+3. Text is refined and replaced in place
+4. First-time use prompts for API key configuration
+
+**Refining Clipboard Text:**
+1. Copy text to clipboard
+2. Press `Cmd+Alt+Shift+R` or use Command Palette: "CursorToys: Refine Clipboard Text with AI"
+3. Clipboard is updated with refined text
+4. Paste refined text anywhere
+
+**Configuring AI Provider:**
+1. Use Command Palette: "CursorToys: Configure AI Provider"
+2. Enter your Google Gemini API key (get from https://aistudio.google.com/apikey)
+3. Key is securely stored using VS Code Secrets API
+4. Optional: Configure AI model in settings (e.g., "gemini-2.5-pro")
+
+**Customizing Refinement Prompt:**
+1. Open VS Code settings
+2. Search for "CursorToys AI Refine Prompt"
+3. Customize the prompt (e.g., "Make this more concise and professional")
+4. Refinement uses your custom prompt
+
+**Benefits:**
+1. **Improve Code Quality**: Fix typos, improve clarity, enhance documentation
+2. **Enhance Writing**: Refine commit messages, comments, and documentation
+3. **Quick Cleanup**: Clean up messy text from external sources
+4. **Context Preservation**: AI maintains original language and context
+5. **Seamless Workflow**: Refine without leaving Cursor/VS Code
+
 ## [1.6.0] - 2026-01-XX
 
 ### Added

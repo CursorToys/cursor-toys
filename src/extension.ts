@@ -4,7 +4,7 @@ import { generateDeeplink } from './deeplinkGenerator';
 import { importDeeplink } from './deeplinkImporter';
 import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForEnvFolder, generateShareableForHttpFolderWithEnv, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist } from './shareableImporter';
-import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { EnvCodeLensProvider } from './envCodeLensProvider';
@@ -25,6 +25,8 @@ import { trimClipboardAuto, trimClipboardWithPrompt } from './clipboardProcessor
 import { GistManager } from './gistManager';
 import { RecommendationsManager } from './recommendationsManager';
 import { RecommendationsBrowserPanel } from './recommendationsBrowserPanel';
+import { refineSelectedText, refineClipboard, getAIProvider } from './textRefiner';
+import { AIProviderType } from './aiProviders';
 import * as fs from 'fs';
 
 /**
@@ -614,19 +616,46 @@ export function activate(context: vscode.ExtensionContext) {
   // Command to share command folder as bundle
   const shareCommandFolderCommand = vscode.commands.registerCommand(
     'cursor-toys.shareAsCursorToysCommandFolder',
-    async (uri?: vscode.Uri) => {
+    async (arg?: CommandFileItem | vscode.Uri) => {
       try {
         let folderPath: string;
         
-        if (uri) {
-          const stat = await vscode.workspace.fs.stat(uri);
+        if (!arg) {
+          vscode.window.showErrorMessage('Please select a folder');
+          return;
+        }
+
+        // Handle CommandFileItem (from tree view)
+        if ('type' in arg && (arg.type === 'category' || arg.type === 'folder')) {
+          // For category items, get the actual folder path
+          if (arg.type === 'category') {
+            // For personal category, use the first personal commands path
+            if (arg.isPersonal) {
+              const personalPaths = getPersonalCommandsPaths();
+              folderPath = personalPaths[0];
+            } else {
+              // For workspace category, get workspace commands path
+              const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+              if (!workspaceFolder) {
+                vscode.window.showErrorMessage('No workspace folder found');
+                return;
+              }
+              folderPath = getCommandsPath(workspaceFolder.uri.fsPath, false);
+            }
+          } else {
+            // For folder items, construct full path from filePath
+            folderPath = arg.filePath;
+          }
+        } else if (arg instanceof vscode.Uri) {
+          // Handle Uri (from file explorer)
+          const stat = await vscode.workspace.fs.stat(arg);
           if (stat.type !== vscode.FileType.Directory) {
             vscode.window.showErrorMessage('Please select a folder');
             return;
           }
-          folderPath = uri.fsPath;
+          folderPath = arg.fsPath;
         } else {
-          vscode.window.showErrorMessage('Please select a folder');
+          vscode.window.showErrorMessage('Invalid argument type');
           return;
         }
 
@@ -674,19 +703,46 @@ export function activate(context: vscode.ExtensionContext) {
   // Command to share prompt folder as bundle
   const sharePromptFolderCommand = vscode.commands.registerCommand(
     'cursor-toys.shareAsCursorToysPromptFolder',
-    async (uri?: vscode.Uri) => {
+    async (arg?: PromptFileItem | vscode.Uri) => {
       try {
         let folderPath: string;
         
-        if (uri) {
-          const stat = await vscode.workspace.fs.stat(uri);
+        if (!arg) {
+          vscode.window.showErrorMessage('Please select a folder');
+          return;
+        }
+
+        // Handle PromptFileItem (from tree view)
+        if ('type' in arg && (arg.type === 'category' || arg.type === 'folder')) {
+          // For category items, get the actual folder path
+          if (arg.type === 'category') {
+            // For personal category, use the first personal prompts path
+            if (arg.isPersonal) {
+              const personalPaths = getPersonalPromptsPaths();
+              folderPath = personalPaths[0];
+            } else {
+              // For workspace category, get workspace prompts path
+              const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+              if (!workspaceFolder) {
+                vscode.window.showErrorMessage('No workspace folder found');
+                return;
+              }
+              folderPath = getPromptsPath(workspaceFolder.uri.fsPath, false);
+            }
+          } else {
+            // For folder items, construct full path from filePath
+            folderPath = arg.filePath;
+          }
+        } else if (arg instanceof vscode.Uri) {
+          // Handle Uri (from file explorer)
+          const stat = await vscode.workspace.fs.stat(arg);
           if (stat.type !== vscode.FileType.Directory) {
             vscode.window.showErrorMessage('Please select a folder');
             return;
           }
-          folderPath = uri.fsPath;
+          folderPath = arg.fsPath;
         } else {
-          vscode.window.showErrorMessage('Please select a folder');
+          vscode.window.showErrorMessage('Invalid argument type');
           return;
         }
 
@@ -704,19 +760,47 @@ export function activate(context: vscode.ExtensionContext) {
   // Command to share skill folder as bundle
   const shareSkillFolderCommand = vscode.commands.registerCommand(
     'cursor-toys.shareAsCursorToysSkillFolder',
-    async (uri?: vscode.Uri) => {
+    async (arg?: SkillFileItem | vscode.Uri) => {
       try {
         let folderPath: string;
         
-        if (uri) {
-          const stat = await vscode.workspace.fs.stat(uri);
+        if (!arg) {
+          vscode.window.showErrorMessage('Please select a folder');
+          return;
+        }
+
+        // Handle SkillFileItem (from tree view)
+        if ('type' in arg && (arg.type === 'category' || arg.type === 'folder')) {
+          // For category items, get the actual folder path
+          if (arg.type === 'category') {
+            // For personal category, use the first personal skills path
+            if (arg.isPersonal) {
+              const personalPaths = getPersonalSkillsPaths();
+              folderPath = personalPaths[0];
+            } else {
+              // For workspace category, get workspace skills path
+              const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+              if (!workspaceFolder) {
+                vscode.window.showErrorMessage('No workspace folder found');
+                return;
+              }
+              const baseFolderName = getBaseFolderName();
+              folderPath = path.join(workspaceFolder.uri.fsPath, `.${baseFolderName}`, 'skills');
+            }
+          } else {
+            // For folder items, construct full path from filePath
+            folderPath = arg.filePath;
+          }
+        } else if (arg instanceof vscode.Uri) {
+          // Handle Uri (from file explorer)
+          const stat = await vscode.workspace.fs.stat(arg);
           if (stat.type !== vscode.FileType.Directory) {
             vscode.window.showErrorMessage('Please select a folder');
             return;
           }
-          folderPath = uri.fsPath;
+          folderPath = arg.fsPath;
         } else {
-          vscode.window.showErrorMessage('Please select a folder');
+          vscode.window.showErrorMessage('Invalid argument type');
           return;
         }
 
@@ -734,19 +818,29 @@ export function activate(context: vscode.ExtensionContext) {
   // Command to share notepad folder as bundle
   const shareNotepadFolderCommand = vscode.commands.registerCommand(
     'cursor-toys.shareAsCursorToysNotepadFolder',
-    async (uri?: vscode.Uri) => {
+    async (arg?: NotepadFileItem | vscode.Uri) => {
       try {
         let folderPath: string;
         
-        if (uri) {
-          const stat = await vscode.workspace.fs.stat(uri);
+        if (!arg) {
+          vscode.window.showErrorMessage('Please select a folder');
+          return;
+        }
+
+        // Handle NotepadFileItem (from tree view)
+        if ('type' in arg && arg.type === 'folder') {
+          // Notepads don't have categories (only workspace), just folders
+          folderPath = arg.filePath;
+        } else if (arg instanceof vscode.Uri) {
+          // Handle Uri (from file explorer)
+          const stat = await vscode.workspace.fs.stat(arg);
           if (stat.type !== vscode.FileType.Directory) {
             vscode.window.showErrorMessage('Please select a folder');
             return;
           }
-          folderPath = uri.fsPath;
+          folderPath = arg.fsPath;
         } else {
-          vscode.window.showErrorMessage('Please select a folder');
+          vscode.window.showErrorMessage('Invalid argument type');
           return;
         }
 
@@ -764,19 +858,46 @@ export function activate(context: vscode.ExtensionContext) {
   // Command to share plan folder as bundle
   const sharePlanFolderCommand = vscode.commands.registerCommand(
     'cursor-toys.shareAsCursorToysPlanFolder',
-    async (uri?: vscode.Uri) => {
+    async (arg?: PlanFileItem | vscode.Uri) => {
       try {
         let folderPath: string;
         
-        if (uri) {
-          const stat = await vscode.workspace.fs.stat(uri);
+        if (!arg) {
+          vscode.window.showErrorMessage('Please select a folder');
+          return;
+        }
+
+        // Handle PlanFileItem (from tree view)
+        if ('type' in arg && (arg.type === 'category' || arg.type === 'folder')) {
+          // For category items, get the actual folder path
+          if (arg.type === 'category') {
+            // For personal category, use the first personal plans path
+            if (arg.isPersonal) {
+              const personalPaths = getPersonalPlansPaths();
+              folderPath = personalPaths[0];
+            } else {
+              // For workspace category, get workspace plans path
+              const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+              if (!workspaceFolder) {
+                vscode.window.showErrorMessage('No workspace folder found');
+                return;
+              }
+              folderPath = getPlansPath(workspaceFolder.uri.fsPath, false);
+            }
+          } else {
+            // For folder items, construct full path from filePath
+            folderPath = arg.filePath;
+          }
+        } else if (arg instanceof vscode.Uri) {
+          // Handle Uri (from file explorer)
+          const stat = await vscode.workspace.fs.stat(arg);
           if (stat.type !== vscode.FileType.Directory) {
             vscode.window.showErrorMessage('Please select a folder');
             return;
           }
-          folderPath = uri.fsPath;
+          folderPath = arg.fsPath;
         } else {
-          vscode.window.showErrorMessage('Please select a folder');
+          vscode.window.showErrorMessage('Invalid argument type');
           return;
         }
 
@@ -3051,46 +3172,121 @@ export function activate(context: vscode.ExtensionContext) {
   // Command to share folder via GitHub Gist
   const shareFolderViaGistCommand = vscode.commands.registerCommand(
     'cursor-toys.shareFolderViaGist',
-    async (uri?: vscode.Uri) => {
+    async (arg?: CommandFileItem | PromptFileItem | PlanFileItem | SkillFileItem | NotepadFileItem | vscode.Uri) => {
       try {
-        if (!uri) {
+        let folderPath: string;
+        let bundleType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'project' | 'plan' | null = null;
+
+        if (!arg) {
           vscode.window.showErrorMessage('Please select a folder');
           return;
         }
 
-        // Check if it's a folder
-        const stat = await vscode.workspace.fs.stat(uri);
-        if (stat.type !== vscode.FileType.Directory) {
-          vscode.window.showErrorMessage('Please select a folder');
-          return;
-        }
+        // Handle tree view items (CommandFileItem, PromptFileItem, etc.)
+        if ('type' in arg && (arg.type === 'category' || arg.type === 'folder')) {
+          // Determine bundle type and folder path based on the tree view
+          if ('fileName' in arg && arg.fileName.includes('workspace')) {
+            // Workspace category
+            const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+            if (!workspaceFolder) {
+              vscode.window.showErrorMessage('No workspace folder found');
+              return;
+            }
+            
+            // Detect bundle type based on tree view context
+            if ('uri' in arg && arg.uri.fsPath.includes('/commands')) {
+              bundleType = 'command';
+              folderPath = getCommandsPath(workspaceFolder.uri.fsPath, false);
+            } else if ('uri' in arg && arg.uri.fsPath.includes('/prompts')) {
+              bundleType = 'prompt';
+              folderPath = getPromptsPath(workspaceFolder.uri.fsPath, false);
+            } else if ('uri' in arg && arg.uri.fsPath.includes('/plans')) {
+              bundleType = 'plan';
+              folderPath = getPlansPath(workspaceFolder.uri.fsPath, false);
+            } else if ('uri' in arg && arg.uri.fsPath.includes('/skills')) {
+              // Skills don't have gist bundles yet, fallback
+              vscode.window.showErrorMessage('Skill bundles via Gist not yet supported');
+              return;
+            } else {
+              folderPath = workspaceFolder.uri.fsPath;
+            }
+          } else if (arg.type === 'category' && arg.isPersonal) {
+            // Personal category
+            if ('fileName' in arg && arg.fileName.includes('Commands')) {
+              bundleType = 'command';
+              const personalPaths = getPersonalCommandsPaths();
+              folderPath = personalPaths[0];
+            } else if ('fileName' in arg && arg.fileName.includes('Prompts')) {
+              bundleType = 'prompt';
+              const personalPaths = getPersonalPromptsPaths();
+              folderPath = personalPaths[0];
+            } else if ('fileName' in arg && arg.fileName.includes('Plans')) {
+              bundleType = 'plan';
+              const personalPaths = getPersonalPlansPaths();
+              folderPath = personalPaths[0];
+            } else if ('fileName' in arg && arg.fileName.includes('Skills')) {
+              vscode.window.showErrorMessage('Skill bundles via Gist not yet supported');
+              return;
+            } else {
+              vscode.window.showErrorMessage('Unable to determine folder type');
+              return;
+            }
+          } else {
+            // Folder item
+            folderPath = arg.filePath;
+            
+            // Detect type from path
+            if (folderPath.includes('/commands')) {
+              bundleType = 'command';
+            } else if (folderPath.includes('/prompts')) {
+              bundleType = 'prompt';
+            } else if (folderPath.includes('/plans')) {
+              bundleType = 'plan';
+            } else if (folderPath.includes('/notepads')) {
+              bundleType = 'notepad';
+            }
+          }
+        } else if (arg instanceof vscode.Uri) {
+          // Handle Uri (from file explorer)
+          const stat = await vscode.workspace.fs.stat(arg);
+          if (stat.type !== vscode.FileType.Directory) {
+            vscode.window.showErrorMessage('Please select a folder');
+            return;
+          }
 
-        const folderPath = uri.fsPath;
-        const folderName = path.basename(folderPath);
+          folderPath = arg.fsPath;
+          const folderName = path.basename(folderPath);
 
-        // Determine bundle type based on folder name/location
-        let bundleType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'project' | null = null;
-        
-        if (folderName === 'commands' || folderPath.includes('/commands')) {
-          bundleType = 'command';
-        } else if (folderName === 'rules' || folderPath.includes('/rules')) {
-          bundleType = 'rule';
-        } else if (folderName === 'prompts' || folderPath.includes('/prompts')) {
-          bundleType = 'prompt';
-        } else if (folderName === 'notepads' || folderPath.includes('/notepads')) {
-          bundleType = 'notepad';
-        } else if (folderName === 'http' || folderPath.includes('/http')) {
-          bundleType = 'http';
-        } else if (folderName === '.cursor' || folderName === '.vscode' || folderPath.endsWith('/.cursor') || folderPath.endsWith('/.vscode')) {
-          bundleType = 'project';
+          // Determine bundle type based on folder name/location
+          if (folderName === 'commands' || folderPath.includes('/commands')) {
+            bundleType = 'command';
+          } else if (folderName === 'rules' || folderPath.includes('/rules')) {
+            bundleType = 'rule';
+          } else if (folderName === 'prompts' || folderPath.includes('/prompts')) {
+            bundleType = 'prompt';
+          } else if (folderName === 'notepads' || folderPath.includes('/notepads')) {
+            bundleType = 'notepad';
+          } else if (folderName === 'http' || folderPath.includes('/http')) {
+            bundleType = 'http';
+          } else if (folderName === 'plans' || folderPath.includes('/plans')) {
+            bundleType = 'plan';
+          } else if (folderName === '.cursor' || folderName === '.vscode' || folderPath.endsWith('/.cursor') || folderPath.endsWith('/.vscode')) {
+            bundleType = 'project';
+          }
         } else {
-          // Ask user to select type
+          vscode.window.showErrorMessage('Invalid argument type');
+          return;
+        }
+
+        // If type still not determined, ask user
+        if (!bundleType) {
           const choice = await vscode.window.showQuickPick(
             [
               { label: 'Commands Bundle', value: 'command' as const },
               { label: 'Rules Bundle', value: 'rule' as const },
               { label: 'Prompts Bundle', value: 'prompt' as const },
               { label: 'Notepads Bundle', value: 'notepad' as const },
+              { label: 'Plans Bundle', value: 'plan' as const },
               { label: 'HTTP Bundle', value: 'http' as const },
               { label: 'Project Bundle', value: 'project' as const }
             ],
@@ -3197,6 +3393,57 @@ export function activate(context: vscode.ExtensionContext) {
   const refreshRecommendationsCommand = vscode.commands.registerCommand('cursor-toys.refreshRecommendations', async () => {
     await recsManager.clearCache();
   });
+
+  // AI Text Refinement Commands
+  const refineSelectionCommand = vscode.commands.registerCommand(
+    'cursor-toys.refineSelectionWithAI',
+    async () => {
+      await refineSelectedText(context);
+    }
+  );
+
+  const refineClipboardCommand = vscode.commands.registerCommand(
+    'cursor-toys.refineClipboardWithAI',
+    async () => {
+      await refineClipboard(context);
+    }
+  );
+
+  const configureAIProviderCommand = vscode.commands.registerCommand(
+    'cursor-toys.configureAIProvider',
+    async () => {
+      try {
+        const config = vscode.workspace.getConfiguration('cursorToys');
+        const providerType = config.get<AIProviderType>('aiProvider', 'gemini');
+        
+        const provider = getAIProvider(providerType, context);
+        const key = await provider.promptForApiKey();
+        
+        if (key) {
+          vscode.window.showInformationMessage(`${provider.displayName} API key configured successfully!`);
+        }
+      } catch (error: any) {
+        vscode.window.showErrorMessage(`Failed to configure AI provider: ${error.message}`);
+      }
+    }
+  );
+
+  const removeAIProviderKeyCommand = vscode.commands.registerCommand(
+    'cursor-toys.removeAIProviderKey',
+    async () => {
+      try {
+        const config = vscode.workspace.getConfiguration('cursorToys');
+        const providerType = config.get<AIProviderType>('aiProvider', 'gemini');
+        
+        const provider = getAIProvider(providerType, context);
+        await provider.removeApiKey();
+        
+        vscode.window.showInformationMessage(`${provider.displayName} API key removed successfully!`);
+      } catch (error: any) {
+        vscode.window.showErrorMessage(`Failed to remove API key: ${error.message}`);
+      }
+    }
+  );
 
   // Check recommendations on workspace open (delayed)
   if (vscode.workspace.workspaceFolders) {
@@ -3572,6 +3819,12 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push({
     dispose: () => decorationProvider.dispose()
   });
+
+  // Register AI refinement commands
+  context.subscriptions.push(refineSelectionCommand);
+  context.subscriptions.push(refineClipboardCommand);
+  context.subscriptions.push(configureAIProviderCommand);
+  context.subscriptions.push(removeAIProviderKeyCommand);
 }
 
 export function deactivate() {

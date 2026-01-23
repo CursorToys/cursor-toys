@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import { sanitizeFileName, getCommandsPath, getPromptsPath, getRulesPath, getNotepadsPath, getPlansPath, getSkillsPath, getHttpPath, getEnvironmentsPath, getHooksPath } from './utils';
+import { sanitizeFileName, getCommandsPath, getPromptsPath, getRulesPath, getNotepadsPath, getPlansPath, getSkillsPath, getHttpPath, getEnvironmentsPath, getHooksPath, createHttpLlmsFile } from './utils';
 import { GistManager, GistResponse, CursorToysMetadata } from './gistManager';
 
 interface ShareableParams {
@@ -180,6 +180,21 @@ async function importHttpBundle(bundleUrl: string): Promise<void> {
 
     const workspacePath = workspaceFolder.uri.fsPath;
     const httpBasePath = getHttpPath(workspacePath);
+    
+    // Create HTTP folder and llms.txt if needed
+    let httpFolderCreated = false;
+    try {
+      await vscode.workspace.fs.stat(vscode.Uri.file(httpBasePath));
+    } catch {
+      // HTTP folder doesn't exist, create it
+      await createDirectoryRecursive(httpBasePath);
+      httpFolderCreated = true;
+    }
+    
+    // Create llms.txt in HTTP folder if it was just created or doesn't exist
+    if (httpFolderCreated) {
+      await createHttpLlmsFile(httpBasePath);
+    }
     
     let successCount = 0;
     let errorCount = 0;
@@ -786,6 +801,21 @@ async function importProjectBundle(bundleUrl: string): Promise<void> {
     if (bundle.http && Array.isArray(bundle.http)) {
       const httpBasePath = getHttpPath(workspacePath);
       
+      // Create HTTP folder and llms.txt if needed
+      let httpFolderCreated = false;
+      try {
+        await vscode.workspace.fs.stat(vscode.Uri.file(httpBasePath));
+      } catch {
+        // HTTP folder doesn't exist, create it
+        await createDirectoryRecursive(httpBasePath);
+        httpFolderCreated = true;
+      }
+      
+      // Create llms.txt in HTTP folder if it was just created or doesn't exist
+      if (httpFolderCreated) {
+        await createHttpLlmsFile(httpBasePath);
+      }
+      
       for (const file of bundle.http) {
         try {
           const fullPath = path.join(httpBasePath, file.relativePath);
@@ -1388,6 +1418,11 @@ async function importSingleFileFromGist(
 
   // Create directory if needed
   await createDirectoryRecursive(folderPath);
+  
+  // Create llms.txt in HTTP folder if importing HTTP file
+  if (fileType === 'http') {
+    await createHttpLlmsFile(folderPath);
+  }
 
   // For plans, ensure the file name ends with .plan.md
   if (fileType === 'plan' && !finalFileName.endsWith('.plan.md')) {
@@ -1512,6 +1547,12 @@ async function importBundleFromGist(
       // Create directory if needed
       const dirPath = path.dirname(destPath);
       await createDirectoryRecursive(dirPath);
+      
+      // Create llms.txt in HTTP folder if importing HTTP file
+      if (bundleType === 'http_bundle' || fileName.endsWith('.req') || fileName.endsWith('.request')) {
+        const httpPath = getHttpPath(workspacePath);
+        await createHttpLlmsFile(httpPath);
+      }
 
       // Write file
       const fileUri = vscode.Uri.file(destPath);

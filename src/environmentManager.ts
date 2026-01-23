@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getEnvironmentsPath } from './utils';
+import { getEnvironmentsPath, getHttpPath, createHttpLlmsFile } from './utils';
 
 /**
  * Environment Manager - Gerencia variáveis de environment através de arquivos .env
@@ -319,6 +319,20 @@ export class EnvironmentManager {
    */
   private createFileWatcher(workspacePath: string): void {
     const envDir = getEnvironmentsPath(workspacePath);
+    const httpPath = getHttpPath(workspacePath);
+    
+    // Create HTTP folder and llms.txt if needed
+    if (!fs.existsSync(httpPath)) {
+      try {
+        fs.mkdirSync(httpPath, { recursive: true });
+        // Create llms.txt asynchronously (don't await to avoid blocking)
+        createHttpLlmsFile(httpPath).catch(err => {
+          console.warn(`Failed to create llms.txt in HTTP folder: ${httpPath}`, err);
+        });
+      } catch (error) {
+        console.warn(`Failed to create HTTP directory: ${httpPath}`, error);
+      }
+    }
     
     // Create directory if it doesn't exist (watcher needs it to exist)
     if (!fs.existsSync(envDir)) {
@@ -390,6 +404,13 @@ export class EnvironmentManager {
    */
   public async createEnvironment(envName: string, workspacePath: string): Promise<boolean> {
     const envDir = getEnvironmentsPath(workspacePath);
+    const httpPath = getHttpPath(workspacePath);
+    
+    // Create HTTP folder and llms.txt if needed
+    if (!fs.existsSync(httpPath)) {
+      fs.mkdirSync(httpPath, { recursive: true });
+      await createHttpLlmsFile(httpPath);
+    }
     
     // Criar diretório se não existir
     if (!fs.existsSync(envDir)) {
@@ -428,6 +449,13 @@ TIMEOUT=10000
    */
   public async initializeDefaultEnvironments(workspacePath: string): Promise<void> {
     const envDir = getEnvironmentsPath(workspacePath);
+    const httpPath = getHttpPath(workspacePath);
+    
+    // Create HTTP folder and llms.txt if needed
+    if (!fs.existsSync(httpPath)) {
+      fs.mkdirSync(httpPath, { recursive: true });
+      await createHttpLlmsFile(httpPath);
+    }
     
     // Verificar se diretório já existe e tem arquivos
     if (fs.existsSync(envDir)) {

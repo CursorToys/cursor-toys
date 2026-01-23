@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -66,7 +66,9 @@
     "onCommand:cursor-toys.sendHttpRequest",
     "onCommand:cursor-toys.minifyFile",
     "onCommand:cursor-toys.trimClipboard",
-    "onCommand:cursor-toys.trimClipboardWithPrompt"
+    "onCommand:cursor-toys.trimClipboardWithPrompt",
+    "onCommand:cursor-toys.refineSelectionWithAI",
+    "onCommand:cursor-toys.refineClipboardWithAI"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -461,6 +463,22 @@
         "command": "cursor-toys.refreshRecommendations",
         "title": "CursorToys: Refresh Recommendations Cache",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.refineSelectionWithAI",
+        "title": "CursorToys: Refine Selection with AI"
+      },
+      {
+        "command": "cursor-toys.refineClipboardWithAI",
+        "title": "CursorToys: Refine Clipboard Text with AI"
+      },
+      {
+        "command": "cursor-toys.configureAIProvider",
+        "title": "CursorToys: Configure AI Provider"
+      },
+      {
+        "command": "cursor-toys.removeAIProviderKey",
+        "title": "CursorToys: Remove AI Provider Key"
       }
     ],
     "submenus": [
@@ -589,6 +607,16 @@
           "group": "2_actions"
         },
         {
+          "command": "cursor-toys.shareAsCursorToysCommandFolder",
+          "when": "view == cursor-toys.userCommands && (viewItem == commandCategory || viewItem == userCommandFolder)",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareFolderViaGist",
+          "when": "view == cursor-toys.userCommands && (viewItem == commandCategory || viewItem == userCommandFolder)",
+          "group": "1_actions"
+        },
+        {
           "command": "cursor-toys.openUserPrompt",
           "when": "view == cursor-toys.userPrompts && viewItem == userPromptFile",
           "group": "inline"
@@ -619,6 +647,16 @@
           "group": "2_actions"
         },
         {
+          "command": "cursor-toys.shareAsCursorToysPromptFolder",
+          "when": "view == cursor-toys.userPrompts && (viewItem == promptCategory || viewItem == userPromptFolder)",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareFolderViaGist",
+          "when": "view == cursor-toys.userPrompts && (viewItem == promptCategory || viewItem == userPromptFolder)",
+          "group": "1_actions"
+        },
+        {
           "command": "cursor-toys.openNotepad",
           "when": "view == cursor-toys.userNotepads && viewItem == userNotepadFile",
           "group": "inline"
@@ -642,6 +680,16 @@
           "command": "cursor-toys.deleteNotepad",
           "when": "view == cursor-toys.userNotepads && viewItem == userNotepadFile",
           "group": "2_actions"
+        },
+        {
+          "command": "cursor-toys.shareAsCursorToysNotepadFolder",
+          "when": "view == cursor-toys.userNotepads && viewItem == userNotepadFolder",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareFolderViaGist",
+          "when": "view == cursor-toys.userNotepads && viewItem == userNotepadFolder",
+          "group": "1_actions"
         },
         {
           "command": "cursor-toys.openPlan",
@@ -674,6 +722,16 @@
           "group": "2_actions"
         },
         {
+          "command": "cursor-toys.shareAsCursorToysPlanFolder",
+          "when": "view == cursor-toys.userPlans && (viewItem == planCategory || viewItem == userPlanFolder)",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareFolderViaGist",
+          "when": "view == cursor-toys.userPlans && (viewItem == planCategory || viewItem == userPlanFolder)",
+          "group": "1_actions"
+        },
+        {
           "command": "cursor-toys.openSkill",
           "when": "view == cursor-toys.userSkills && viewItem == userSkillFile",
           "group": "inline"
@@ -702,6 +760,16 @@
           "command": "cursor-toys.deleteSkill",
           "when": "view == cursor-toys.userSkills && viewItem == userSkillFile",
           "group": "2_actions"
+        },
+        {
+          "command": "cursor-toys.shareAsCursorToysSkillFolder",
+          "when": "view == cursor-toys.userSkills && (viewItem == skillCategory || viewItem == userSkillFolder)",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareFolderViaGist",
+          "when": "view == cursor-toys.userSkills && (viewItem == skillCategory || viewItem == userSkillFolder)",
+          "group": "1_actions"
         },
         {
           "command": "cursor-toys.openHooks",
@@ -1078,6 +1146,32 @@
           "type": "string",
           "default": "",
           "description": "Gist ID containing recommendations index (e.g., 'username/gistid' or just 'gistid'). Alternative to recommendationsIndexUrl for private/custom indexes."
+        },
+        "cursorToys.aiProvider": {
+          "type": "string",
+          "enum": [
+            "gemini"
+          ],
+          "enumDescriptions": [
+            "Google Gemini API"
+          ],
+          "default": "gemini",
+          "description": "AI provider to use for text refinement (more providers coming soon)"
+        },
+        "cursorToys.aiModel": {
+          "type": "string",
+          "default": "",
+          "description": "AI model to use (leave empty for provider default). Gemini: 'gemini-2.5-flash' or 'gemini-2.5-pro'"
+        },
+        "cursorToys.aiRefinePrompt": {
+          "type": "string",
+          "default": "Refine the following text: fix typos, improve clarity, and enhance the flow while maintaining the original language and context.",
+          "description": "Default prompt used for text refinement with AI"
+        },
+        "cursorToys.aiRequestTimeout": {
+          "type": "number",
+          "default": 30,
+          "description": "Timeout in seconds for AI requests (default: 30 seconds)"
         }
       }
     },
@@ -1122,6 +1216,17 @@
         "command": "cursor-toys.import",
         "key": "ctrl+shift+i",
         "mac": "cmd+shift+i"
+      },
+      {
+        "command": "cursor-toys.refineSelectionWithAI",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r",
+        "when": "editorHasSelection"
+      },
+      {
+        "command": "cursor-toys.refineClipboardWithAI",
+        "key": "ctrl+alt+shift+r",
+        "mac": "cmd+alt+shift+r"
       }
     ],
     "uriHandlers": [
@@ -1143,6 +1248,9 @@
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
     "publish": "vsce publish"
+  },
+  "dependencies": {
+    "@google/genai": "^1.38.0"
   },
   "devDependencies": {
     "@types/vscode": "^1.74.0",
