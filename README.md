@@ -23,14 +23,31 @@
 
 ## 🔨 Utilities
 
-CursorToys includes over 9 utility categories to optimize your Cursor AI workflow:
+CursorToys includes over 10 utility categories to optimize your Cursor AI workflow:
 
 |   |   |   |
 |---|---|---|
-| [🎯 Smart Recommendations](#-smart-recommendations) | [🔗 Instant Sharing](#-instant-sharing) | [🌐 In-Editor API Testing](#-in-editor-api-testing) |
-| [📚 Personal Libraries](#-personal-libraries) | [📓 Project Notepads](#-project-notepads) | [🪝 Cursor Hooks](#-cursor-hooks) |
-| [🎓 Skills Management](#-skills-management) | [🗜️ File Minification](#️-file-minification) | [💬 Chat Integration](#-chat-integration) |
-| [🌐 GitHub Gist Integration](#-github-gist-integration) | | |
+| [🤖 AI Text Refinement](#-ai-text-refinement) | [🎯 Smart Recommendations](#-smart-recommendations) | [🔗 Instant Sharing](#-instant-sharing) |
+| [🌐 In-Editor API Testing](#-in-editor-api-testing) | [📚 Personal Libraries](#-personal-libraries) | [📓 Project Notepads](#-project-notepads) |
+| [🪝 Cursor Hooks](#-cursor-hooks) | [🎓 Skills Management](#-skills-management) | [🗜️ File Minification](#️-file-minification) |
+| [💬 Chat Integration](#-chat-integration) | [🌐 GitHub Gist Integration](#-github-gist-integration) | |
+
+### 🤖 AI Text Refinement
+
+**Enhance text and code quality with AI** — Powered by Google Gemini.
+
+- ✨ **Smart Refinement** — Fix typos, improve clarity, enhance flow automatically
+- ⌨️ **Keyboard Shortcuts** — `Cmd+Shift+R` for selection, `Cmd+Alt+Shift+R` for clipboard
+- 🔐 **Secure Storage** — API keys stored using VS Code Secrets API
+- 🎯 **Context Preservation** — Maintains original language and intent
+- ⚙️ **Configurable** — Custom prompts and model selection (Gemini 2.5 Flash/Pro)
+- 📋 **Clipboard Support** — Refine clipboard text and paste anywhere
+- 🚀 **Fast & Reliable** — Optimized for code, comments, and documentation
+
+**Quick Start:**
+1. Select text in editor → Press `Cmd+Shift+R`
+2. Text is refined in place instantly
+3. First use prompts for API key (get free key at [Google AI Studio](https://aistudio.google.com/apikey))
 
 ### 🎯 Smart Recommendations
 
@@ -228,6 +245,8 @@ Click the "Send Request" link that appears above → See formatted response!
 
 | Command | Shortcut | Description |
 |:--------|:---------|:------------|
+| **CursorToys: Refine Selection with AI** | `Ctrl+Shift+R` / `Cmd+Shift+R` | Refine selected text with AI |
+| **CursorToys: Refine Clipboard with AI** | `Ctrl+Alt+Shift+R` / `Cmd+Alt+Shift+R` | Refine clipboard text with AI |
 | **CursorToys: Import from Link** | `Ctrl+Shift+I` / `Cmd+Shift+I` | Import deeplink, CursorToys, or GitHub Gist |
 | **CursorToys: Check Recommendations** | — | Check recommendations for the project |
 | **CursorToys: Browse Marketplace** | — | Browse recommendations marketplace |
@@ -241,9 +260,19 @@ Click the "Send Request" link that appears above → See formatted response!
 
 ## ✨ What's New
 
-**Version 1.6.0 (January 2026)**
+**Version 1.7.0 (January 2026)**
 
 For a detailed look at the latest changes, visit the [CHANGELOG](CHANGELOG.md).
+
+**✨ Highlights**
+
+- ✅ **AI Text Refinement** — Enhance text and code quality with Google Gemini
+- ✅ **Keyboard Shortcuts** — `Cmd+Shift+R` (selection) and `Cmd+Alt+Shift+R` (clipboard)
+- ✅ **Secure API Storage** — API keys stored using VS Code Secrets API
+- ✅ **HTTP Documentation** — Auto-generated llms.txt with comprehensive HTTP features guide
+- ✅ **Configurable AI** — Custom prompts and model selection (Gemini 2.5 Flash/Pro)
+
+**Version 1.6.0 (January 2026)**
 
 **✨ Highlights**
 
@@ -251,6 +280,15 @@ For a detailed look at the latest changes, visit the [CHANGELOG](CHANGELOG.md).
 - ✅ **UI Improvements** — Enhanced Personal Commands and Prompts views with category organization
 - ✅ **Skills Sharing** — Share skills via deeplinks, CursorToys format, or GitHub Gist
 - ✅ **Skills CodeLens** — Direct sharing from SKILL.md files
+
+### AI Text Refinement
+- Refine selected text or clipboard content with Google Gemini
+- Keyboard shortcuts: `Cmd+Shift+R` (selection), `Cmd+Alt+Shift+R` (clipboard)
+- Support for Gemini 2.5 Flash and Pro models
+- Secure API key storage using VS Code Secrets API
+- Configurable refinement prompts and models
+- Context-preserving refinement (maintains language and intent)
+- Progress indicators and comprehensive error handling
 
 **Version 1.5.0 (January 2026)**
 
