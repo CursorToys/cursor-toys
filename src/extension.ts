@@ -22,7 +22,7 @@ import { EnvironmentManager } from './environmentManager';
 import { HttpVariableHoverProvider, HttpEnvironmentCompletionProvider, HttpEnvironmentDecorationProvider } from './httpEnvironmentProviders';
 import { minifyFile, formatMinificationStats, detectFileType } from './minifier';
 import { trimClipboardAuto, trimClipboardWithPrompt } from './clipboardProcessor';
-import { refineSelectedText, refineClipboard, configureAIProvider, removeAIProviderKey } from './textRefiner';
+import { refineSelectedText, refineClipboard, processWithPrompt, configureGeminiApiKey, removeGeminiApiKey } from './textRefiner';
 import { GistManager } from './gistManager';
 import { RecommendationsManager } from './recommendationsManager';
 import { RecommendationsBrowserPanel } from './recommendationsBrowserPanel';
@@ -232,6 +232,11 @@ export function activate(context: vscode.ExtensionContext) {
           detail: 'Notepads'
         },
         {
+          label: '$(sparkle) Create Skill',
+          description: 'Create a new skill template',
+          detail: 'Skills'
+        },
+        {
           label: '$(file-zip) Minify File',
           description: 'Minify current file (JSON, HTML, CSS, JS, etc)',
           detail: 'Tools'
@@ -259,6 +264,7 @@ export function activate(context: vscode.ExtensionContext) {
         'Check Recommendations': 'cursor-toys.checkRecommendations',
         'Import from URL': 'cursor-toys.import',
         'New Notepad': 'cursor-toys.createNotepad',
+        'Create Skill': 'cursor-toys.createSkill',
         'Minify File': 'cursor-toys.minifyFile',
         'Trim Clipboard': 'cursor-toys.trimClipboard'
       };
@@ -3464,19 +3470,27 @@ Detailed instructions for the agent.
     }
   );
 
-  // Command to configure AI provider
-  const configureAIProviderCommand = vscode.commands.registerCommand(
-    'cursor-toys.configureAIProvider',
+  // Command to process text with a prompt
+  const processWithPromptCommand = vscode.commands.registerCommand(
+    'cursor-toys.processWithPrompt',
     async () => {
-      await configureAIProvider(context);
+      await processWithPrompt(context);
     }
   );
 
-  // Command to remove AI provider key
-  const removeAIProviderKeyCommand = vscode.commands.registerCommand(
-    'cursor-toys.removeAIProviderKey',
+  // Command to configure Gemini API key
+  const configureGeminiApiKeyCommand = vscode.commands.registerCommand(
+    'cursor-toys.configureGeminiApiKey',
     async () => {
-      await removeAIProviderKey(context);
+      await configureGeminiApiKey(context);
+    }
+  );
+
+  // Command to remove Gemini API key
+  const removeGeminiApiKeyCommand = vscode.commands.registerCommand(
+    'cursor-toys.removeGeminiApiKey',
+    async () => {
+      await removeGeminiApiKey(context);
     }
   );
 
@@ -4108,8 +4122,9 @@ Detailed instructions for the agent.
     trimClipboardWithPromptCommand,
     refineSelectionWithAICommand,
     refineClipboardWithAICommand,
-    configureAIProviderCommand,
-    removeAIProviderKeyCommand,
+    processWithPromptCommand,
+    configureGeminiApiKeyCommand,
+    removeGeminiApiKeyCommand,
     shareViaGistCommand,
     shareFolderViaGistCommand,
     configureGitHubTokenCommand,

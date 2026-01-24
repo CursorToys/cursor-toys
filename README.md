@@ -37,17 +37,25 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 **Enhance text and code quality with AI** — Powered by Google Gemini.
 
 - ✨ **Smart Refinement** — Fix typos, improve clarity, enhance flow automatically
+- 🎯 **Process with Custom Prompts** — Use any prompt from your library to process text
 - ⌨️ **Keyboard Shortcuts** — `Cmd+Shift+R` for selection, `Cmd+Alt+Shift+R` for clipboard
 - 🔐 **Secure Storage** — API keys stored using VS Code Secrets API
 - 🎯 **Context Preservation** — Maintains original language and intent
 - ⚙️ **Configurable** — Custom prompts and model selection (Gemini 2.5 Flash/Pro)
 - 📋 **Clipboard Support** — Refine clipboard text and paste anywhere
-- 🚀 **Fast & Reliable** — Optimized for code, comments, and documentation
+- 🚀 **Fast & Reliable** — Native implementation, no external dependencies, optimized performance
+- 📚 **Prompt Library Integration** — Access prompts from both personal and project folders
 
 **Quick Start:**
 1. Select text in editor → Press `Cmd+Shift+R`
 2. Text is refined in place instantly
 3. First use prompts for API key (get free key at [Google AI Studio](https://aistudio.google.com/apikey))
+
+**Process with Custom Prompts:**
+1. Select text or copy to clipboard
+2. Run "CursorToys: Process with Prompt" command
+3. Choose a prompt from your library (personal or project)
+4. Text is processed and replaced/clipped automatically
 
 ### 🎯 Smart Recommendations
 
@@ -247,6 +255,7 @@ Click the "Send Request" link that appears above → See formatted response!
 |:--------|:---------|:------------|
 | **CursorToys: Refine Selection with AI** | `Ctrl+Shift+R` / `Cmd+Shift+R` | Refine selected text with AI |
 | **CursorToys: Refine Clipboard with AI** | `Ctrl+Alt+Shift+R` / `Cmd+Alt+Shift+R` | Refine clipboard text with AI |
+| **CursorToys: Process with Prompt** | — | Process text using a custom prompt from your library |
 | **CursorToys: Import from Link** | `Ctrl+Shift+I` / `Cmd+Shift+I` | Import deeplink, CursorToys, or GitHub Gist |
 | **CursorToys: Check Recommendations** | — | Check recommendations for the project |
 | **CursorToys: Browse Marketplace** | — | Browse recommendations marketplace |
@@ -267,9 +276,23 @@ For a detailed look at the latest changes, visit the [CHANGELOG](CHANGELOG.md).
 **✨ Highlights**
 
 - ✅ **Enhanced Skills Management** — Create skills, move to personal library, improved sharing
-- ✅ **AI Provider Refactoring** — Simplified architecture, better error handling
+- ✅ **AI Architecture Refactoring** — Simplified implementation, removed external dependencies, better performance
+- ✅ **Process with Custom Prompts** — New command to process text using prompts from your library
 - ✅ **Improved Command Organization** — Better context menus and command titles
 - ✅ **Keyboard Shortcuts** — Improved global shortcut support for text refinement
+
+### Enhanced Skills Management
+- **Create Skills**: New command to create skill templates from Skills view
+- **Move to Personal Library**: Move project skills to personal folder for reuse across projects
+- **Improved Sharing**: Share personal commands and prompts as CursorToys format directly from tree view
+- **Folder-Based Structure**: Skills now displayed as folders matching actual file structure
+
+### AI Text Refinement Improvements
+- **Simplified Architecture**: Refactored to use direct Gemini API implementation (no external dependencies)
+- **Process with Prompt**: New command to process text using any prompt from your personal or project library
+- **Better Performance**: Removed `@google/genai` dependency, using native `fetch` for faster execution
+- **Improved Error Handling**: Enhanced error messages and timeout management
+- **Streamlined Configuration**: Simplified API key management with clearer command names
 
 **Version 1.7.0 (January 2026)**
 

@@ -23,9 +23,10 @@ All notable changes to the "CursorToys" extension will be documented in this fil
 ### Changed
 
 #### 🔧 **AI Provider Architecture Refactoring**
-- **Simplified AI Provider Interface**: Refactored from abstract base class to direct implementation
-  - Removed `BaseAIProvider` abstract class in favor of simpler interface-based approach
-  - `GeminiProvider` now implements `AIProvider` interface directly
+- **Simplified AI Implementation**: Refactored from abstract provider system to direct API implementation
+  - Removed `BaseAIProvider` abstract class and `aiProviders` module
+  - Added direct Gemini API implementation (`geminiApi.ts`) using native `fetch`
+  - Removed `@google/genai` dependency for lighter bundle size
   - Reduced code complexity and improved maintainability
 - **Improved Error Handling**: Enhanced error messages and timeout handling
   - Better error messages for API key validation
@@ -33,7 +34,8 @@ All notable changes to the "CursorToys" extension will be documented in this fil
   - Enhanced quota/rate limit error handling with retry time extraction
   - More detailed error context for debugging
 - **API Key Management**: Streamlined API key management
-  - Simplified API key storage and retrieval
+  - Renamed commands: `configureAIProvider` → `configureGeminiApiKey`, `removeAIProviderKey` → `removeGeminiApiKey`
+  - Simplified API key storage and retrieval using VS Code Secrets API directly
   - Improved validation flow
   - Better error messages for configuration issues
 
@@ -56,28 +58,42 @@ All notable changes to the "CursorToys" extension will be documented in this fil
   - Shortcut now works globally, not just when text is selected
   - More consistent behavior with other refinement commands
 
+### Changed
+
+#### 🤖 **AI Text Refinement Refactoring**
+- **Simplified Architecture**: Refactored AI text refinement to use direct API implementation
+  - Replaced abstract provider system with direct Gemini API calls (`geminiApi.ts`)
+  - Removed `@google/genai` dependency in favor of native `fetch` implementation
+  - Simplified API key management (renamed `configureAIProvider` → `configureGeminiApiKey`)
+  - Updated configuration settings (`aiProvider`, `aiModel`, `aiRefinePrompt`, `aiRequestTimeout` → `geminiModel`, `geminiRefinePrompt`, `geminiRequestTimeout`)
+  - Improved error handling and timeout management
+  - Added new `processWithPrompt` command for custom prompt processing
+
 ### Technical Details
 
 #### Enhanced Files
-- **`src/aiProviders/geminiProvider.ts`**:
-  - Refactored from abstract base class to direct implementation
-  - Simplified API key management methods
+- **`src/geminiApi.ts`** (NEW):
+  - New direct Gemini API implementation using native `fetch`
+  - No external dependencies (removed `@google/genai`)
   - Improved error handling with detailed error messages
-  - Better timeout handling with retry information
+  - Better timeout handling with AbortController
   - Enhanced quota/rate limit error detection
-- **`src/aiProviders/index.ts`**:
-  - Removed `BaseAIProvider` abstract class
-  - Simplified `AIProvider` interface
-  - Updated `getAIProvider()` factory function
-  - Added `RefinementOptions` interface for better type safety
+- **`src/aiProviders/geminiProvider.ts`** (REMOVED):
+  - Removed in favor of direct API implementation
+- **`src/aiProviders/index.ts`** (REMOVED):
+  - Removed abstract provider system
 - **`src/textRefiner.ts`**:
-  - Updated to use new simplified provider interface
+  - Refactored to use direct `callGeminiApi` function
+  - Added `processWithPrompt` function for custom prompt processing
   - Improved error handling flow
-  - Better integration with new provider architecture
+  - Better integration with new direct API architecture
+  - Added support for reading prompts from project and personal folders
 - **`src/extension.ts`**:
   - Added `save-as-user-skill` command registration
   - Added `createSkill` command registration
   - Added `shareUserCommandAsCursorToys` and `shareUserPromptAsCursorToys` commands
+  - Added `processWithPrompt` command registration
+  - Updated AI command registrations (renamed `configureAIProvider` → `configureGeminiApiKey`, `removeAIProviderKey` → `removeGeminiApiKey`)
   - Updated Skills tree provider integration
   - Improved context menu organization
   - Updated command titles for consistency
@@ -93,10 +109,12 @@ All notable changes to the "CursorToys" extension will be documented in this fil
   - Better integration with new commands
 - **`package.json`**:
   - Version bumped from 1.7.0 to 1.8.0
-  - Added new activation events for Skills commands
+  - Added new activation events for Skills commands and `processWithPrompt`
+  - Updated activation events for AI commands (renamed `configureAIProvider` → `configureGeminiApiKey`)
+  - Updated configuration settings (`aiProvider`, `aiModel`, `aiRefinePrompt`, `aiRequestTimeout` → `geminiModel`, `geminiRefinePrompt`, `geminiRequestTimeout`)
+  - Removed `@google/genai` dependency (replaced with native fetch implementation)
   - Updated command titles for consistency
   - Reorganized command palette entries
-  - Updated AI provider configuration descriptions
   - Improved keyboard shortcut configuration
 
 #### New Commands
@@ -104,6 +122,11 @@ All notable changes to the "CursorToys" extension will be documented in this fil
 - `cursor-toys.createSkill`: Create new skill folder with SKILL.md
 - `cursor-toys.shareUserCommandAsCursorToys`: Share personal command as CursorToys format
 - `cursor-toys.shareUserPromptAsCursorToys`: Share personal prompt as CursorToys format
+- `cursor-toys.processWithPrompt`: Process text with a custom prompt from your prompts library
+
+#### Renamed Commands
+- `cursor-toys.configureAIProvider` → `cursor-toys.configureGeminiApiKey`: Configure Gemini API key
+- `cursor-toys.removeAIProviderKey` → `cursor-toys.removeGeminiApiKey`: Remove Gemini API key
 
 ### Use Cases
 
@@ -124,6 +147,12 @@ All notable changes to the "CursorToys" extension will be documented in this fil
 2. Select "Share as CursorToys"
 3. Shareable link is copied to clipboard
 4. Share with team members
+
+**Processing Text with Custom Prompts:**
+1. Select text in editor or copy to clipboard
+2. Run "CursorToys: Process with Prompt" command
+3. Select a prompt from your personal or project prompts library
+4. Text is processed with the selected prompt and replaced/clipped
 
 ## [1.7.0] - 2026-01-23
 
