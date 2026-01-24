@@ -1,170 +1,146 @@
 import * as vscode from 'vscode';
 import { GoogleGenAI } from '@google/genai';
-import { BaseAIProvider } from './index';
+import { AIProvider, RefinementOptions } from './index';
 
 /**
- * Google Gemini AI provider implementation
+ * Google Gemini AI Provider implementation
  */
-export class GeminiProvider extends BaseAIProvider {
-  private static instance: GeminiProvider | null = null;
+export class GeminiProvider implements AIProvider {
+  private readonly context: vscode.ExtensionContext;
+  private readonly SECRET_KEY = 'cursorToys.geminiApiKey';
 
-  name = 'gemini';
-  displayName = 'Google Gemini';
-
-  private constructor(context: vscode.ExtensionContext) {
-    super(context);
+  constructor(context: vscode.ExtensionContext) {
+    this.context = context;
   }
 
   /**
-   * Gets the singleton instance of GeminiProvider
-   * @param context VS Code extension context
-   * @returns GeminiProvider instance
+   * Gets the API key from secret storage
    */
-  public static getInstance(context: vscode.ExtensionContext): GeminiProvider {
-    if (!GeminiProvider.instance) {
-      GeminiProvider.instance = new GeminiProvider(context);
-    }
-    return GeminiProvider.instance;
-  }
-
-  /**
-   * Prompts the user to enter their Gemini API key
-   * @returns The API key or null if cancelled
-   */
-  async promptForApiKey(): Promise<string | null> {
-    const key = await vscode.window.showInputBox({
-      prompt: 'Enter your Google Gemini API Key',
-      password: true,
-      placeHolder: 'AIzaSy...',
-      ignoreFocusOut: true,
-      validateInput: (value) => {
-        if (!value || value.trim().length === 0) {
-          return 'API key cannot be empty';
-        }
-        if (value.length < 30) {
-          return 'API key seems too short. Please verify.';
-        }
-        return null;
-      }
-    });
-
-    if (!key) {
-      return null;
-    }
-
-    // Validate the key
-    const isValid = await this.validateApiKey(key);
-    if (!isValid) {
-      vscode.window.showErrorMessage('Invalid Google Gemini API key. Please check and try again.');
-      return null;
-    }
-
-    // Save key
-    await this.setApiKey(key);
-    return key;
-  }
-
-  /**
-   * Validates the API key by making a test call
-   * @param key API key to validate
-   * @returns true if valid, false otherwise
-   */
-  async validateApiKey(key: string): Promise<boolean> {
+  private async getApiKey(): Promise<string | null> {
     try {
-      const ai = new GoogleGenAI({ apiKey: key });
-      
-      // Make a minimal test call to verify the key works
-      await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: 'Hello',
-      });
-
-      return true;
-    } catch (error: any) {
-      console.error('Gemini API key validation failed:', error);
-      
-      // Check for specific error types
-      if (error.message?.includes('API key') || error.message?.includes('authentication')) {
-        return false;
-      }
-      
-      // If it's another type of error (rate limit, network, etc.), assume key might be valid
-      // but there's a temporary issue
-      return true;
+      const secret = await this.context.secrets.get(this.SECRET_KEY);
+      return secret || null;
+    } catch (error) {
+      console.error('Error getting API key:', error);
+      return null;
     }
   }
 
   /**
-   * Refines text using Google Gemini
-   * @param text Text to refine
-   * @param prompt System prompt for refinement
-   * @param model Optional model (defaults to gemini-2.5-flash)
-   * @returns Refined text
+   * Stores the API key in secret storage
    */
-  async refineText(text: string, prompt: string, model?: string): Promise<string> {
+  async setApiKey(apiKey: string): Promise<void> {
+    try {
+      await this.context.secrets.store(this.SECRET_KEY, apiKey);
+    } catch (error) {
+      console.error('Error storing API key:', error);
+      throw new Error('Failed to store API key');
+    }
+  }
+
+  /**
+   * Removes the API key from secret storage
+   */
+  async removeApiKey(): Promise<void> {
+    try {
+      await this.context.secrets.delete(this.SECRET_KEY);
+    } catch (error) {
+      console.error('Error removing API key:', error);
+      throw new Error('Failed to remove API key');
+    }
+  }
+
+  /**
+   * Checks if API key is configured
+   */
+  async hasApiKey(): Promise<boolean> {
+    const apiKey = await this.getApiKey();
+    return apiKey !== null && apiKey.length > 0;
+  }
+
+  /**
+   * Refines text using Google Gemini API
+   */
+  async refineText(text: string, options?: RefinementOptions): Promise<string> {
     const apiKey = await this.getApiKey();
     if (!apiKey) {
-      throw new Error('Google Gemini API key not configured');
+      throw new Error('Gemini API key not configured. Please configure it first.');
     }
 
-    const ai = new GoogleGenAI({ apiKey });
-    const selectedModel = model || this.getDefaultModel();
+    const config = vscode.workspace.getConfiguration('cursorToys');
+    const defaultPrompt = config.get<string>(
+      'aiRefinePrompt',
+      'You must return ONLY the refined text, nothing else. Do not add introductions like "Here\'s the refined version" or "Okay, here is". Do not add markdown separators (---). Do not add explanations or notes. Just return the improved text directly.\n\nFix typos, improve clarity, and enhance the flow of the following text:'
+    );
+    const defaultTimeout = config.get<number>('aiRequestTimeout', 30);
+    const defaultModel = config.get<string>('aiModel', '');
+
+    const prompt = options?.prompt || defaultPrompt;
+    const timeout = options?.timeout || defaultTimeout;
+    // Use gemini-2.5-flash as default (more stable and available in free tier)
+    // If user specified a model, use it; otherwise use config or default
+    const modelName = options?.model || defaultModel || 'gemini-2.5-flash';
 
     try {
-      // Get timeout from configuration
-      const config = vscode.workspace.getConfiguration('cursorToys');
-      const timeoutSeconds = config.get<number>('aiRequestTimeout', 30);
+      const genAI = new GoogleGenAI({ apiKey });
+      
+      const fullPrompt = `${prompt}\n\n${text}`;
 
-      // Create a timeout promise
+      // Create a promise with timeout
+      const requestPromise = genAI.models.generateContent({
+        model: modelName,
+        contents: fullPrompt
+      });
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timed out')), timeoutSeconds * 1000);
+        setTimeout(() => {
+          reject(new Error(`Request timeout after ${timeout} seconds`));
+        }, timeout * 1000);
       });
 
-      // Race between API call and timeout
-      const response = await Promise.race([
-        ai.models.generateContent({
-          model: selectedModel,
-          contents: `${prompt}\n\n---\n\n${text}`,
-        }),
-        timeoutPromise
-      ]);
+      const response = await Promise.race([requestPromise, timeoutPromise]);
+      const refinedText = response.text || '';
 
-      if (!response.text) {
-        throw new Error('No text in response');
+      if (!refinedText || refinedText.trim().length === 0) {
+        throw new Error('Empty response from AI');
       }
 
-      return response.text;
+      return refinedText.trim();
     } catch (error: any) {
-      console.error('Gemini API error:', error);
-
-      // Provide user-friendly error messages
-      if (error.message?.includes('timed out')) {
-        throw new Error('Request timed out. Try increasing the timeout in settings or check your internet connection.');
-      } else if (error.message?.includes('API key')) {
-        throw new Error('Invalid API key. Please reconfigure using "CursorToys: Configure AI Provider".');
-      } else if (error.message?.includes('quota') || error.message?.includes('limit')) {
-        throw new Error('API quota exceeded. Please check your Gemini API usage limits.');
-      } else if (error.message?.includes('network') || error.message?.includes('ENOTFOUND')) {
-        throw new Error('Network error. Please check your internet connection.');
-      } else {
-        throw new Error(`Failed to refine text: ${error.message || 'Unknown error'}`);
+      // Handle timeout errors
+      if (error.message?.includes('timeout')) {
+        throw new Error(`Request timeout after ${timeout} seconds`);
       }
+      
+      // Extract error details - handle both direct error and nested error.error structure
+      const errorObj = error.error || error;
+      const errorCode = errorObj.code || error.code;
+      const errorStatus = errorObj.status || error.status;
+      const errorMessage = errorObj.message || error.message || String(error);
+      
+      // Handle API key errors
+      if (errorMessage?.includes('API key') || errorCode === 401 || errorCode === 403) {
+        throw new Error('Invalid API key. Please check your Gemini API key.');
+      }
+      
+      // Handle quota/rate limit errors (429 or RESOURCE_EXHAUSTED)
+      if (errorCode === 429 || errorStatus === 'RESOURCE_EXHAUSTED' || 
+          errorMessage?.includes('quota') || errorMessage?.includes('Quota exceeded') ||
+          errorMessage?.includes('RESOURCE_EXHAUSTED')) {
+        // Try to extract retry time from error message
+        const retryMatch = errorMessage.match(/retry in ([\d.]+)s/i);
+        const retryAfter = retryMatch ? retryMatch[1] : null;
+        
+        let message = 'API quota exceeded. ';
+        if (retryAfter) {
+          const seconds = Math.ceil(parseFloat(retryAfter));
+          message += `Please retry in ${seconds} second${seconds !== 1 ? 's' : ''}. `;
+        }
+        message += 'You may need to check your Google AI Studio quota or wait before trying again.';
+        throw new Error(message);
+      }
+      
+      // Handle other errors
+      throw new Error(`Failed to refine text: ${errorMessage}`);
     }
-  }
-
-  /**
-   * Gets available Gemini models
-   * @returns Array of model identifiers
-   */
-  getAvailableModels(): string[] {
-    return ['gemini-2.5-flash', 'gemini-2.5-pro'];
-  }
-
-  /**
-   * Gets the default Gemini model
-   * @returns Default model identifier
-   */
-  getDefaultModel(): string {
-    return 'gemini-2.5-flash';
   }
 }
