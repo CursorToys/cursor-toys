@@ -260,9 +260,18 @@ Click the "Send Request" link that appears above → See formatted response!
 
 ## ✨ What's New
 
-**Version 1.7.0 (January 2026)**
+**Version 1.8.0 (January 2026)**
 
 For a detailed look at the latest changes, visit the [CHANGELOG](CHANGELOG.md).
+
+**✨ Highlights**
+
+- ✅ **Enhanced Skills Management** — Create skills, move to personal library, improved sharing
+- ✅ **AI Provider Refactoring** — Simplified architecture, better error handling
+- ✅ **Improved Command Organization** — Better context menus and command titles
+- ✅ **Keyboard Shortcuts** — Improved global shortcut support for text refinement
+
+**Version 1.7.0 (January 2026)**
 
 **✨ Highlights**
 

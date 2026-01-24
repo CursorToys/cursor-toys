@@ -2,6 +2,129 @@
 
 All notable changes to the "CursorToys" extension will be documented in this file.
 
+## [1.8.0] - 2026-01-24
+
+### Added
+
+#### 🎓 **Enhanced Skills Management**
+- **Save as Personal Skill**: New command `cursor-toys.save-as-user-skill` to move skills from project to personal folder
+  - Available via context menu for skill folders
+  - Moves skills to `~/.cursor/skills/` or `~/.claude/skills/` based on configuration
+  - Automatically creates personal skills folder if needed
+- **Create Skill Command**: New command `cursor-toys.createSkill` to create new skills
+  - Available from Skills view title bar and context menu
+  - Creates new skill folder with SKILL.md file
+  - Supports both personal and project skills
+- **Enhanced Sharing for Commands and Prompts**:
+  - New command `cursor-toys.shareUserCommandAsCursorToys`: Share personal commands as CursorToys format
+  - New command `cursor-toys.shareUserPromptAsCursorToys`: Share personal prompts as CursorToys format
+  - Available in context menu for Commands and Prompts views
+
+### Changed
+
+#### 🔧 **AI Provider Architecture Refactoring**
+- **Simplified AI Provider Interface**: Refactored from abstract base class to direct implementation
+  - Removed `BaseAIProvider` abstract class in favor of simpler interface-based approach
+  - `GeminiProvider` now implements `AIProvider` interface directly
+  - Reduced code complexity and improved maintainability
+- **Improved Error Handling**: Enhanced error messages and timeout handling
+  - Better error messages for API key validation
+  - Improved timeout error messages with retry information
+  - Enhanced quota/rate limit error handling with retry time extraction
+  - More detailed error context for debugging
+- **API Key Management**: Streamlined API key management
+  - Simplified API key storage and retrieval
+  - Improved validation flow
+  - Better error messages for configuration issues
+
+#### 🎯 **Skills Management Improvements**
+- **Folder-Based Structure**: Updated Skills tree view to use folder-based structure
+  - Skills are now displayed as folders (not individual files)
+  - Context menu actions work on skill folders
+  - Better visual organization matching actual file structure
+- **Command Title Consistency**: Updated command titles for better clarity
+  - "Generate Deeplink" commands now consistently named
+  - "Share as CursorToys" commands clearly distinguished from deeplinks
+  - Improved command palette organization
+- **Context Menu Organization**: Improved context menu structure
+  - Removed category-level share actions from Commands and Prompts views
+  - Better organization of sharing options
+  - Clearer separation between deeplink and CursorToys sharing
+
+#### ⌨️ **Keyboard Shortcuts**
+- **Refine Selection Shortcut**: Removed `when` clause from `refineSelectionWithAI` shortcut
+  - Shortcut now works globally, not just when text is selected
+  - More consistent behavior with other refinement commands
+
+### Technical Details
+
+#### Enhanced Files
+- **`src/aiProviders/geminiProvider.ts`**:
+  - Refactored from abstract base class to direct implementation
+  - Simplified API key management methods
+  - Improved error handling with detailed error messages
+  - Better timeout handling with retry information
+  - Enhanced quota/rate limit error detection
+- **`src/aiProviders/index.ts`**:
+  - Removed `BaseAIProvider` abstract class
+  - Simplified `AIProvider` interface
+  - Updated `getAIProvider()` factory function
+  - Added `RefinementOptions` interface for better type safety
+- **`src/textRefiner.ts`**:
+  - Updated to use new simplified provider interface
+  - Improved error handling flow
+  - Better integration with new provider architecture
+- **`src/extension.ts`**:
+  - Added `save-as-user-skill` command registration
+  - Added `createSkill` command registration
+  - Added `shareUserCommandAsCursorToys` and `shareUserPromptAsCursorToys` commands
+  - Updated Skills tree provider integration
+  - Improved context menu organization
+  - Updated command titles for consistency
+- **`src/shareableGenerator.ts`**:
+  - Enhanced to support new sharing commands for Commands and Prompts
+  - Improved validation for Skills sharing
+- **`src/shareableImporter.ts`**:
+  - Enhanced Skills import flow
+  - Improved folder structure handling for Skills
+- **`src/userSkillsTreeProvider.ts`**:
+  - Updated to handle folder-based items correctly
+  - Improved context value handling for skill folders
+  - Better integration with new commands
+- **`package.json`**:
+  - Version bumped from 1.7.0 to 1.8.0
+  - Added new activation events for Skills commands
+  - Updated command titles for consistency
+  - Reorganized command palette entries
+  - Updated AI provider configuration descriptions
+  - Improved keyboard shortcut configuration
+
+#### New Commands
+- `cursor-toys.save-as-user-skill`: Move skill from project to personal folder
+- `cursor-toys.createSkill`: Create new skill folder with SKILL.md
+- `cursor-toys.shareUserCommandAsCursorToys`: Share personal command as CursorToys format
+- `cursor-toys.shareUserPromptAsCursorToys`: Share personal prompt as CursorToys format
+
+### Use Cases
+
+**Moving Skills to Personal Library:**
+1. Right-click on skill folder in Skills view
+2. Select "Move to Personal Skills"
+3. Skill is moved to `~/.cursor/skills/` or `~/.claude/skills/`
+4. Skill is now available across all projects
+
+**Creating New Skills:**
+1. Click "Create Skill" button in Skills view title bar
+2. Enter skill name
+3. Choose Personal or Project location
+4. SKILL.md file is created and opened in editor
+
+**Sharing Personal Commands/Prompts:**
+1. Right-click on command or prompt in tree view
+2. Select "Share as CursorToys"
+3. Shareable link is copied to clipboard
+4. Share with team members
+
 ## [1.7.0] - 2026-01-23
 
 ### Added
