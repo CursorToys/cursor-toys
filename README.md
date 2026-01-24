@@ -1,12 +1,9 @@
 <p align="center">
     <picture>
       <source media="(prefers-color-scheme: light)" srcset="./resources/icon.png" width="200" />
-      <img src="./resources/icon.png" width="200" />
+      <img src="./.github/assets/cursortoys_horizontal.png" width="200" alt="CursorToys" />
   </picture>
 </p>
-<h1 align="center">
-  <span>CursorToys</span>
-</h1>
 <p align="center">
   <span align="center">A powerful collection of utilities that transform Cursor AI into a collaborative productivity powerhouse.</span>
 </p>
