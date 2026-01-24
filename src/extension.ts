@@ -4,7 +4,7 @@ import { generateDeeplink } from './deeplinkGenerator';
 import { importDeeplink } from './deeplinkImporter';
 import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForEnvFolder, generateShareableForHttpFolderWithEnv, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist } from './shareableImporter';
-import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { EnvCodeLensProvider } from './envCodeLensProvider';
@@ -22,11 +22,10 @@ import { EnvironmentManager } from './environmentManager';
 import { HttpVariableHoverProvider, HttpEnvironmentCompletionProvider, HttpEnvironmentDecorationProvider } from './httpEnvironmentProviders';
 import { minifyFile, formatMinificationStats, detectFileType } from './minifier';
 import { trimClipboardAuto, trimClipboardWithPrompt } from './clipboardProcessor';
+import { refineSelectedText, refineClipboard, configureAIProvider, removeAIProviderKey } from './textRefiner';
 import { GistManager } from './gistManager';
 import { RecommendationsManager } from './recommendationsManager';
 import { RecommendationsBrowserPanel } from './recommendationsBrowserPanel';
-import { refineSelectedText, refineClipboard, getAIProvider } from './textRefiner';
-import { AIProviderType } from './aiProviders';
 import * as fs from 'fs';
 
 /**
@@ -1096,6 +1095,185 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // Command to save skill folder as user skill (in ~/.cursor/skills)
+  const saveAsUserSkill = vscode.commands.registerCommand(
+    'cursor-toys.save-as-user-skill',
+    async (arg?: SkillFileItem | vscode.Uri) => {
+      try {
+        // Get skill folder path
+        let skillFolderPath: string;
+        
+        if (arg) {
+          if (arg instanceof vscode.Uri) {
+            // If it's a URI, check if it's a folder or file
+            const stat = await vscode.workspace.fs.stat(arg);
+            if (stat.type === vscode.FileType.Directory) {
+              skillFolderPath = arg.fsPath;
+            } else {
+              // It's a file (SKILL.md), get parent folder
+              skillFolderPath = path.dirname(arg.fsPath);
+            }
+          } else {
+            // It's a SkillFileItem
+            const skillItem = arg as SkillFileItem;
+            if (skillItem.type === 'folder') {
+              skillFolderPath = skillItem.filePath;
+            } else {
+              // It's a file, get parent folder
+              skillFolderPath = path.dirname(skillItem.filePath);
+            }
+          }
+        } else {
+          // No argument, try to get from active editor
+          const editor = vscode.window.activeTextEditor;
+          if (!editor) {
+            vscode.window.showErrorMessage('No skill selected');
+            return;
+          }
+          const filePath = editor.document.uri.fsPath;
+          const normalizedPath = filePath.replace(/\\/g, '/');
+          
+          // Verify file is in skills folder
+          const baseFolderName = getBaseFolderName();
+          const isInSkillsFolder = normalizedPath.includes('/.cursor/skills/') || 
+                                   normalizedPath.includes('/.claude/skills/') ||
+                                   normalizedPath.includes(`/.${baseFolderName}/skills/`);
+          
+          if (!isInSkillsFolder || !normalizedPath.endsWith('/SKILL.md')) {
+            vscode.window.showErrorMessage('This command can only be used on SKILL.md files in skills folder');
+            return;
+          }
+          
+          skillFolderPath = path.dirname(filePath);
+        }
+
+        const normalizedPath = skillFolderPath.replace(/\\/g, '/');
+        
+        // Verify it's a project skill (not personal)
+        const baseFolderName = getBaseFolderName();
+        const personalPaths = getPersonalSkillsPaths();
+        const isPersonalSkill = personalPaths.some(p => skillFolderPath.startsWith(p));
+        
+        if (isPersonalSkill) {
+          vscode.window.showErrorMessage('This skill is already in personal folder. Use it from project folder to move it.');
+          return;
+        }
+        
+        const isInSkillsFolder = normalizedPath.includes('/.cursor/skills/') || 
+                                 normalizedPath.includes('/.claude/skills/') ||
+                                 normalizedPath.includes(`/.${baseFolderName}/skills/`);
+        
+        if (!isInSkillsFolder) {
+          vscode.window.showErrorMessage('This command can only be used on skills in project skills folder');
+          return;
+        }
+
+        // Get workspace folder
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+          vscode.window.showErrorMessage('No workspace open');
+          return;
+        }
+
+        // Get skill folder name
+        const skillFolderName = path.basename(skillFolderPath);
+        
+        // Determine destination path using configuration (~/.cursor/skills or ~/.claude/skills)
+        const userSkillsPath = getSkillsPath(undefined, true);
+        const destinationPath = path.join(userSkillsPath, skillFolderName);
+        const destinationUri = vscode.Uri.file(destinationPath);
+
+        // Check if skill folder already exists in destination
+        let folderExists = false;
+        try {
+          await vscode.workspace.fs.stat(destinationUri);
+          folderExists = true;
+        } catch {
+          // Folder doesn't exist, that's fine
+        }
+
+        if (folderExists) {
+          const overwrite = await vscode.window.showWarningMessage(
+            `Skill "${skillFolderName}" already exists in ~/.cursor/skills. Do you want to overwrite it?`,
+            'Yes',
+            'No'
+          );
+          if (overwrite !== 'Yes') {
+            return;
+          }
+          // Delete existing folder
+          await vscode.workspace.fs.delete(destinationUri, { recursive: true });
+        }
+
+        // Create destination folder if it doesn't exist
+        const folderUri = vscode.Uri.file(userSkillsPath);
+        try {
+          await vscode.workspace.fs.stat(folderUri);
+        } catch {
+          // Folder doesn't exist, create it
+          await vscode.workspace.fs.createDirectory(folderUri);
+        }
+
+        // Copy entire skill folder recursively
+        const sourceUri = vscode.Uri.file(skillFolderPath);
+        
+        // Read all files from source folder
+        async function copyDirectory(source: vscode.Uri, dest: vscode.Uri): Promise<void> {
+          const entries = await vscode.workspace.fs.readDirectory(source);
+          
+          // Create destination directory
+          try {
+            await vscode.workspace.fs.stat(dest);
+          } catch {
+            await vscode.workspace.fs.createDirectory(dest);
+          }
+          
+          for (const [name, type] of entries) {
+            const sourcePath = vscode.Uri.file(path.join(source.fsPath, name));
+            const destPath = vscode.Uri.file(path.join(dest.fsPath, name));
+            
+            if (type === vscode.FileType.Directory) {
+              await copyDirectory(sourcePath, destPath);
+            } else {
+              const content = await vscode.workspace.fs.readFile(sourcePath);
+              await vscode.workspace.fs.writeFile(destPath, content);
+            }
+          }
+        }
+        
+        await copyDirectory(sourceUri, destinationUri);
+
+        vscode.window.showInformationMessage(`Skill "${skillFolderName}" saved to ~/.cursor/skills/`);
+
+        // Ask if user wants to remove the original folder
+        const removeOriginal = await vscode.window.showWarningMessage(
+          'Do you want to remove the original skill from the workspace?',
+          'Yes',
+          'No'
+        );
+
+        if (removeOriginal === 'Yes') {
+          try {
+            await vscode.workspace.fs.delete(sourceUri, { recursive: true });
+            vscode.window.showInformationMessage('Original skill removed from workspace');
+            userSkillsTreeProvider.refresh();
+          } catch (error) {
+            vscode.window.showErrorMessage(`Error removing original skill: ${error}`);
+          }
+        } else {
+          userSkillsTreeProvider.refresh();
+        }
+
+        // Open the SKILL.md file
+        const skillFileUri = vscode.Uri.file(path.join(destinationPath, 'SKILL.md'));
+        const document = await vscode.workspace.openTextDocument(skillFileUri);
+        await vscode.window.showTextDocument(document);
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error saving as user skill: ${error}`);
+      }
+    }
+  );
+
   // Command to save prompt file as user prompt (in ~/.cursor/prompts)
   const saveAsUserPrompt = vscode.commands.registerCommand(
     'cursor-toys.save-as-user-prompt',
@@ -1283,6 +1461,19 @@ export function activate(context: vscode.ExtensionContext) {
         return;
       }
       await generateDeeplinkWithValidation(uri, 'command');
+    }
+  );
+
+  // Command to share user command via CursorToys
+  const shareUserCommandAsCursorToys = vscode.commands.registerCommand(
+    'cursor-toys.shareUserCommandAsCursorToys',
+    async (arg?: CommandFileItem | vscode.Uri) => {
+      const uri = getUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      await generateShareableWithValidation(uri, 'command');
     }
   );
 
@@ -1507,6 +1698,19 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // Command to share user prompt via CursorToys
+  const shareUserPromptAsCursorToys = vscode.commands.registerCommand(
+    'cursor-toys.shareUserPromptAsCursorToys',
+    async (arg?: PromptFileItem | vscode.Uri) => {
+      const uri = getPromptUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      await generateShareableWithValidation(uri, 'prompt');
+    }
+  );
+
   // Command to delete user prompt
   const deleteUserPrompt = vscode.commands.registerCommand(
     'cursor-toys.deleteUserPrompt',
@@ -1674,16 +1878,26 @@ export function activate(context: vscode.ExtensionContext) {
 
   /**
    * Helper function to get URI from skills command argument (can be SkillFileItem or vscode.Uri)
+   * For skill folders, returns the SKILL.md file URI
    */
   function getSkillUriFromArgument(arg: SkillFileItem | vscode.Uri | undefined): vscode.Uri | null {
     if (!arg) {
       return null;
     }
     if (arg instanceof vscode.Uri) {
-      return arg;
+      // If it's a folder URI, get the SKILL.md inside it
+      const skillFilePath = path.join(arg.fsPath, 'SKILL.md');
+      return vscode.Uri.file(skillFilePath);
     }
     if ('uri' in arg) {
-      return arg.uri;
+      const skillItem = arg as SkillFileItem;
+      // If it's a folder type, get the SKILL.md from children or construct path
+      if (skillItem.type === 'folder') {
+        const skillFilePath = path.join(skillItem.filePath, 'SKILL.md');
+        return vscode.Uri.file(skillFilePath);
+      }
+      // If it's a file type, return the URI directly
+      return skillItem.uri;
     }
     return null;
   }
@@ -1735,19 +1949,6 @@ export function activate(context: vscode.ExtensionContext) {
       } catch (error) {
         vscode.window.showErrorMessage(`Error opening file: ${error}`);
       }
-    }
-  );
-
-  // Command to generate deeplink for skill
-  const generateSkillDeeplink = vscode.commands.registerCommand(
-    'cursor-toys.generateSkillDeeplink',
-    async (arg?: SkillFileItem | vscode.Uri) => {
-      const uri = getSkillUriFromArgument(arg);
-      if (!uri) {
-        vscode.window.showErrorMessage('No file selected');
-        return;
-      }
-      await generateDeeplinkWithValidation(uri, 'skill');
     }
   );
 
@@ -1856,6 +2057,123 @@ export function activate(context: vscode.ExtensionContext) {
     'cursor-toys.refreshSkills',
     () => {
       userSkillsTreeProvider.refresh();
+    }
+  );
+
+  // Command to create skill
+  const createSkillCommand = vscode.commands.registerCommand(
+    'cursor-toys.createSkill',
+    async () => {
+      try {
+        // Ask if user wants personal or project skill
+        const location = await vscode.window.showQuickPick(
+          [
+            { 
+              label: 'Personal skill', 
+              description: 'Available in all projects (~/.cursor/skills)', 
+              value: true 
+            },
+            { 
+              label: 'Project skill', 
+              description: 'Specific to this workspace', 
+              value: false 
+            }
+          ],
+          { placeHolder: 'Where do you want to create the skill?' }
+        );
+
+        if (location === undefined) {
+          return;
+        }
+
+        const isPersonal = location.value;
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        
+        if (!workspaceFolder && !isPersonal) {
+          vscode.window.showErrorMessage('No workspace open');
+          return;
+        }
+
+        // Ask for skill name
+        const skillName = await vscode.window.showInputBox({
+          prompt: 'Enter skill name (lowercase, numbers, and hyphens only)',
+          placeHolder: 'my-skill',
+          validateInput: (value) => {
+            if (!value || value.trim().length === 0) {
+              return 'Skill name cannot be empty';
+            }
+            if (!/^[a-z0-9-]+$/.test(value)) {
+              return 'Skill name can only contain lowercase letters, numbers, and hyphens';
+            }
+            return null;
+          }
+        });
+
+        if (!skillName) {
+          return;
+        }
+
+        const workspacePath = workspaceFolder?.uri.fsPath || '';
+        const skillsPath = getSkillsPath(workspacePath, isPersonal);
+        const skillFolderPath = path.join(skillsPath, sanitizeFileName(skillName));
+        const skillFilePath = path.join(skillFolderPath, 'SKILL.md');
+
+        // Check if skill already exists
+        const skillFolderUri = vscode.Uri.file(skillFolderPath);
+        let skillExists = false;
+        try {
+          await vscode.workspace.fs.stat(skillFolderUri);
+          skillExists = true;
+        } catch {
+          // Skill doesn't exist, that's fine
+        }
+
+        if (skillExists) {
+          const overwrite = await vscode.window.showWarningMessage(
+            `Skill "${skillName}" already exists. Do you want to overwrite it?`,
+            'Yes',
+            'No'
+          );
+          if (overwrite !== 'Yes') {
+            return;
+          }
+        }
+
+        // Create skill folder
+        await vscode.workspace.fs.createDirectory(skillFolderUri);
+
+        // Create SKILL.md with template
+        const skillTemplate = `---
+name: ${skillName}
+description: Short description of what this skill does and when to use it.
+---
+# ${skillName.charAt(0).toUpperCase() + skillName.slice(1).replace(/-/g, ' ')}
+Detailed instructions for the agent.
+
+## When to Use
+- Use this skill when...
+- This skill is helpful for...
+
+## Instructions
+- Step-by-step guidance for the agent
+- Domain-specific conventions
+- Best practices and patterns
+`;
+
+        const skillFileUri = vscode.Uri.file(skillFilePath);
+        await vscode.workspace.fs.writeFile(skillFileUri, Buffer.from(skillTemplate, 'utf8'));
+
+        vscode.window.showInformationMessage(`Skill "${skillName}" created successfully!`);
+        
+        // Refresh tree view
+        userSkillsTreeProvider.refresh();
+        
+        // Open file
+        const document = await vscode.workspace.openTextDocument(skillFileUri);
+        await vscode.window.showTextDocument(document);
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error creating skill: ${error}`);
+      }
     }
   );
 
@@ -3130,6 +3448,38 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // Command to refine selected text with AI
+  const refineSelectionWithAICommand = vscode.commands.registerCommand(
+    'cursor-toys.refineSelectionWithAI',
+    async () => {
+      await refineSelectedText(context);
+    }
+  );
+
+  // Command to refine clipboard text with AI
+  const refineClipboardWithAICommand = vscode.commands.registerCommand(
+    'cursor-toys.refineClipboardWithAI',
+    async () => {
+      await refineClipboard(context);
+    }
+  );
+
+  // Command to configure AI provider
+  const configureAIProviderCommand = vscode.commands.registerCommand(
+    'cursor-toys.configureAIProvider',
+    async () => {
+      await configureAIProvider(context);
+    }
+  );
+
+  // Command to remove AI provider key
+  const removeAIProviderKeyCommand = vscode.commands.registerCommand(
+    'cursor-toys.removeAIProviderKey',
+    async () => {
+      await removeAIProviderKey(context);
+    }
+  );
+
   // Command to share file via GitHub Gist
   const shareViaGistCommand = vscode.commands.registerCommand(
     'cursor-toys.shareViaGist',
@@ -3393,57 +3743,6 @@ export function activate(context: vscode.ExtensionContext) {
   const refreshRecommendationsCommand = vscode.commands.registerCommand('cursor-toys.refreshRecommendations', async () => {
     await recsManager.clearCache();
   });
-
-  // AI Text Refinement Commands
-  const refineSelectionCommand = vscode.commands.registerCommand(
-    'cursor-toys.refineSelectionWithAI',
-    async () => {
-      await refineSelectedText(context);
-    }
-  );
-
-  const refineClipboardCommand = vscode.commands.registerCommand(
-    'cursor-toys.refineClipboardWithAI',
-    async () => {
-      await refineClipboard(context);
-    }
-  );
-
-  const configureAIProviderCommand = vscode.commands.registerCommand(
-    'cursor-toys.configureAIProvider',
-    async () => {
-      try {
-        const config = vscode.workspace.getConfiguration('cursorToys');
-        const providerType = config.get<AIProviderType>('aiProvider', 'gemini');
-        
-        const provider = getAIProvider(providerType, context);
-        const key = await provider.promptForApiKey();
-        
-        if (key) {
-          vscode.window.showInformationMessage(`${provider.displayName} API key configured successfully!`);
-        }
-      } catch (error: any) {
-        vscode.window.showErrorMessage(`Failed to configure AI provider: ${error.message}`);
-      }
-    }
-  );
-
-  const removeAIProviderKeyCommand = vscode.commands.registerCommand(
-    'cursor-toys.removeAIProviderKey',
-    async () => {
-      try {
-        const config = vscode.workspace.getConfiguration('cursorToys');
-        const providerType = config.get<AIProviderType>('aiProvider', 'gemini');
-        
-        const provider = getAIProvider(providerType, context);
-        await provider.removeApiKey();
-        
-        vscode.window.showInformationMessage(`${provider.displayName} API key removed successfully!`);
-      } catch (error: any) {
-        vscode.window.showErrorMessage(`Failed to remove API key: ${error.message}`);
-      }
-    }
-  );
 
   // Check recommendations on workspace open (delayed)
   if (vscode.workspace.workspaceFolders) {
@@ -3740,9 +4039,11 @@ export function activate(context: vscode.ExtensionContext) {
     importCommand,
     saveAsUserCommand,
     saveAsUserPrompt,
+    saveAsUserSkill,
     userCommandsTreeView,
     openUserCommand,
     generateUserCommandDeeplink,
+    shareUserCommandAsCursorToys,
     deleteUserCommand,
     revealUserCommand,
     renameUserCommand,
@@ -3750,6 +4051,7 @@ export function activate(context: vscode.ExtensionContext) {
     userPromptsTreeView,
     openUserPrompt,
     generateUserPromptDeeplink,
+    shareUserPromptAsCursorToys,
     deleteUserPrompt,
     revealUserPrompt,
     renameUserPrompt,
@@ -3771,11 +4073,11 @@ export function activate(context: vscode.ExtensionContext) {
     refreshPlans,
     userSkillsTreeView,
     openSkill,
-    generateSkillDeeplink,
     deleteSkill,
     revealSkill,
     renameSkill,
     refreshSkills,
+    createSkillCommand,
     skillsWatcher,
     claudeSkillsWatcher,
     userHooksTreeView,
@@ -3804,6 +4106,10 @@ export function activate(context: vscode.ExtensionContext) {
     minifyFileCommand,
     trimClipboardCommand,
     trimClipboardWithPromptCommand,
+    refineSelectionWithAICommand,
+    refineClipboardWithAICommand,
+    configureAIProviderCommand,
+    removeAIProviderKeyCommand,
     shareViaGistCommand,
     shareFolderViaGistCommand,
     configureGitHubTokenCommand,
@@ -3819,12 +4125,6 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push({
     dispose: () => decorationProvider.dispose()
   });
-
-  // Register AI refinement commands
-  context.subscriptions.push(refineSelectionCommand);
-  context.subscriptions.push(refineClipboardCommand);
-  context.subscriptions.push(configureAIProviderCommand);
-  context.subscriptions.push(removeAIProviderKeyCommand);
 }
 
 export function deactivate() {

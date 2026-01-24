@@ -58,7 +58,8 @@ export class UserSkillsTreeProvider implements vscode.TreeDataProvider<SkillFile
         vscode.TreeItemCollapsibleState.Collapsed
       );
       treeItem.iconPath = vscode.ThemeIcon.Folder;
-      treeItem.contextValue = 'userSkillFolder';
+      // Add context value based on whether it's personal or not
+      treeItem.contextValue = element.isPersonal ? 'userSkillFolderPersonal' : 'userSkillFolder';
       return treeItem;
     } else {
       // SKILL.md file item

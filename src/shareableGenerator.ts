@@ -97,6 +97,23 @@ export async function generateShareable(
       // For skills, the name is the folder name (parent of SKILL.md)
       const skillFolderPath = path.dirname(filePath);
       fileName = path.basename(skillFolderPath);
+      
+      // Collect all files from the skill folder
+      const skillFiles = await collectSkillFiles(skillFolderPath);
+      
+      // Create structured data with all files
+      const skillData = {
+        skillName: fileName,
+        files: skillFiles
+      };
+      
+      // Compress and encode the structured data
+      const skillDataJson = JSON.stringify(skillData);
+      const compressedData = compressAndEncode(skillDataJson);
+      
+      // Build shareable URL
+      const sanitizedName = sanitizeFileName(fileName);
+      return buildShareableUrl(fileType, sanitizedName, compressedData);
     } else {
       fileName = path.parse(filePath).name;
     }
@@ -891,7 +908,7 @@ export async function generateShareableForSkillFolder(
       return null;
     }
 
-    const files: Array<{ name: string, content: string }> = [];
+    const skills: Array<{ name: string; files: Array<{ path: string; content: string }> }> = [];
 
     // Collect skill folders (folders containing SKILL.md)
     const skillFolders = await collectSkillFoldersFromFolder(folderPath);
@@ -902,22 +919,20 @@ export async function generateShareableForSkillFolder(
     }
 
     for (const skillFolderPath of skillFolders) {
-      // Read SKILL.md content
-      const skillFilePath = path.join(skillFolderPath, 'SKILL.md');
-      const document = await vscode.workspace.openTextDocument(vscode.Uri.file(skillFilePath));
-      const content = document.getText();
-      
       // Get skill folder name
       const skillName = path.basename(skillFolderPath);
       
-      files.push({
+      // Collect all files from the skill folder
+      const skillFiles = await collectSkillFiles(skillFolderPath);
+      
+      skills.push({
         name: skillName,
-        content: content
+        files: skillFiles
       });
     }
 
-    // Create bundle object
-    const bundle = { files };
+    // Create bundle object with new structure
+    const bundle = { skills };
 
     // Compress and encode the entire bundle
     const bundleJson = JSON.stringify(bundle);
@@ -929,6 +944,62 @@ export async function generateShareableForSkillFolder(
     vscode.window.showErrorMessage(`Error generating skill bundle: ${error}`);
     return null;
   }
+}
+
+/**
+ * Collects all files from a skill folder recursively
+ * @param skillFolderPath Path to the skill folder
+ * @returns Array of files with relative paths and contents
+ */
+async function collectSkillFiles(skillFolderPath: string): Promise<Array<{ path: string; content: string }>> {
+  const files: Array<{ path: string; content: string }> = [];
+  const skillFolderUri = vscode.Uri.file(skillFolderPath);
+  
+  // Directories to ignore
+  const ignoredDirs = ['.git', 'node_modules', '.DS_Store'];
+  
+  async function collectRecursive(currentPath: string, relativeBase: string = ''): Promise<void> {
+    try {
+      const currentUri = vscode.Uri.file(currentPath);
+      const entries = await vscode.workspace.fs.readDirectory(currentUri);
+      
+      for (const [name, type] of entries) {
+        // Skip hidden files and ignored directories
+        if (name.startsWith('.') && !ignoredDirs.includes(name)) {
+          continue;
+        }
+        if (ignoredDirs.includes(name)) {
+          continue;
+        }
+        
+        const itemPath = path.join(currentPath, name);
+        const relativePath = relativeBase ? path.join(relativeBase, name) : name;
+        
+        if (type === vscode.FileType.Directory) {
+          // Recursively collect files from subdirectories
+          await collectRecursive(itemPath, relativePath);
+        } else if (type === vscode.FileType.File) {
+          // Read file content
+          try {
+            const fileUri = vscode.Uri.file(itemPath);
+            const fileContent = await vscode.workspace.fs.readFile(fileUri);
+            const content = Buffer.from(fileContent).toString('utf8');
+            files.push({
+              path: relativePath.replace(/\\/g, '/'), // Normalize to forward slashes
+              content: content
+            });
+          } catch (error) {
+            console.error(`Error reading file ${itemPath}:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Error reading directory ${currentPath}:`, error);
+    }
+  }
+  
+  await collectRecursive(skillFolderPath);
+  return files;
 }
 
 /**

@@ -125,29 +125,68 @@ export async function importShareable(shareableUrl: string): Promise<void> {
       }
     }
 
-    // Create folder structure if it doesn't exist (recursively)
-    const folderUri = vscode.Uri.file(folderPath);
-    try {
-      await vscode.workspace.fs.stat(folderUri);
-    } catch {
-      // Folder doesn't exist, create it recursively
-      await createDirectoryRecursive(folderPath);
-    }
-
-    // Create file
-    const content = Buffer.from(params.content, 'utf8');
-    await vscode.workspace.fs.writeFile(fileUri, content);
-
-    // Show appropriate message based on type
+    // Handle skills specially - check if it's new structure (with files) or old structure (just content)
     if (params.type === 'skill') {
-      vscode.window.showInformationMessage(`Skill created: ${params.name}`);
+      // Try to parse as JSON to check if it's new structure
+      let skillData: { skillName: string; files: Array<{ path: string; content: string }> } | null = null;
+      try {
+        const parsed = JSON.parse(params.content);
+        if (parsed.skillName && Array.isArray(parsed.files)) {
+          skillData = parsed;
+        }
+      } catch {
+        // Not JSON, treat as old format (just SKILL.md content)
+      }
+      
+      if (skillData) {
+        // New format: create skill with full structure
+        await createSkillFromStructure(folderPath, skillData.files);
+        vscode.window.showInformationMessage(`Skill created: ${params.name}`);
+        
+        // Open SKILL.md file
+        const skillFileUri = vscode.Uri.file(path.join(folderPath, 'SKILL.md'));
+        const document = await vscode.workspace.openTextDocument(skillFileUri);
+        await vscode.window.showTextDocument(document);
+      } else {
+        // Old format: just create SKILL.md with content
+        const folderUri = vscode.Uri.file(folderPath);
+        try {
+          await vscode.workspace.fs.stat(folderUri);
+        } catch {
+          // Folder doesn't exist, create it recursively
+          await createDirectoryRecursive(folderPath);
+        }
+        
+        // Create SKILL.md file
+        const content = Buffer.from(params.content, 'utf8');
+        await vscode.workspace.fs.writeFile(fileUri, content);
+        vscode.window.showInformationMessage(`Skill created: ${params.name}`);
+        
+        // Open file
+        const document = await vscode.workspace.openTextDocument(fileUri);
+        await vscode.window.showTextDocument(document);
+      }
     } else {
+      // For other types, create file normally
+      // Create folder structure if it doesn't exist (recursively)
+      const folderUri = vscode.Uri.file(folderPath);
+      try {
+        await vscode.workspace.fs.stat(folderUri);
+      } catch {
+        // Folder doesn't exist, create it recursively
+        await createDirectoryRecursive(folderPath);
+      }
+
+      // Create file
+      const content = Buffer.from(params.content, 'utf8');
+      await vscode.workspace.fs.writeFile(fileUri, content);
+
       vscode.window.showInformationMessage(`File created: ${fileName}`);
+      
+      // Open file
+      const document = await vscode.workspace.openTextDocument(fileUri);
+      await vscode.window.showTextDocument(document);
     }
-    
-    // Open file
-    const document = await vscode.workspace.openTextDocument(fileUri);
-    await vscode.window.showTextDocument(document);
   } catch (error) {
     vscode.window.showErrorMessage(`Error importing shareable: ${error}`);
   }
@@ -474,7 +513,19 @@ async function importSkillBundle(bundleUrl: string): Promise<void> {
     const decompressed = decodeAndDecompress(withoutProtocol);
     const bundle = JSON.parse(decompressed);
     
-    if (!bundle.files || !Array.isArray(bundle.files)) {
+    // Check if it's new format (with skills array) or old format (with files array)
+    let skills: Array<{ name: string; files: Array<{ path: string; content: string }> }> = [];
+    
+    if (bundle.skills && Array.isArray(bundle.skills)) {
+      // New format: skills array with files
+      skills = bundle.skills;
+    } else if (bundle.files && Array.isArray(bundle.files)) {
+      // Old format: files array with name and content (just SKILL.md)
+      skills = bundle.files.map((file: { name: string; content: string }) => ({
+        name: file.name,
+        files: [{ path: 'SKILL.md', content: file.content }]
+      }));
+    } else {
       vscode.window.showErrorMessage('Invalid bundle format');
       return;
     }
@@ -506,24 +557,17 @@ async function importSkillBundle(bundleUrl: string): Promise<void> {
     let successCount = 0;
     let errorCount = 0;
 
-    for (const file of bundle.files) {
+    for (const skill of skills) {
       try {
-        const { name, content } = file;
-        // For skills, create a folder with the skill name and put SKILL.md inside
-        const skillFolderPath = path.join(skillsPath, sanitizeFileName(name));
-        const skillFilePath = path.join(skillFolderPath, 'SKILL.md');
+        const skillName = sanitizeFileName(skill.name);
+        const skillFolderPath = path.join(skillsPath, skillName);
         
-        // Create directory if needed
-        await createDirectoryRecursive(skillFolderPath);
-        
-        // Write SKILL.md file
-        const fileUri = vscode.Uri.file(skillFilePath);
-        const fileContent = Buffer.from(content, 'utf8');
-        await vscode.workspace.fs.writeFile(fileUri, fileContent);
+        // Create skill with full structure
+        await createSkillFromStructure(skillFolderPath, skill.files);
         
         successCount++;
       } catch (error) {
-        console.error(`Error importing skill ${file.name}:`, error);
+        console.error(`Error importing skill ${skill.name}:`, error);
         errorCount++;
       }
     }
@@ -1179,6 +1223,35 @@ function getDestinationPath(
   }
 
   return { folderPath, fileName };
+}
+
+/**
+ * Creates a skill from a structured file list
+ * @param skillPath Path where the skill folder should be created
+ * @param files Array of files with relative paths and contents
+ */
+async function createSkillFromStructure(
+  skillPath: string,
+  files: Array<{ path: string; content: string }>
+): Promise<void> {
+  // Create skill folder if it doesn't exist
+  await createDirectoryRecursive(skillPath);
+  
+  // Create all files preserving directory structure
+  for (const file of files) {
+    const filePath = path.join(skillPath, file.path);
+    const dirPath = path.dirname(filePath);
+    
+    // Create directory if needed
+    if (dirPath !== skillPath) {
+      await createDirectoryRecursive(dirPath);
+    }
+    
+    // Write file
+    const fileUri = vscode.Uri.file(filePath);
+    const fileContent = Buffer.from(file.content, 'utf8');
+    await vscode.workspace.fs.writeFile(fileUri, fileContent);
+  }
 }
 
 /**
