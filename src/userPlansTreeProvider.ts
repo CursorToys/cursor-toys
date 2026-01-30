@@ -63,7 +63,6 @@ export class UserPlansTreeProvider implements vscode.TreeDataProvider<PlanFileIt
     } else {
       // File item
       const treeItem = new vscode.TreeItem(element.fileName, vscode.TreeItemCollapsibleState.None);
-      treeItem.resourceUri = element.uri;
       treeItem.command = {
         command: 'cursor-toys.openPlan',
         title: 'Open Plan',

@@ -64,7 +64,6 @@ export class UserSkillsTreeProvider implements vscode.TreeDataProvider<SkillFile
     } else {
       // SKILL.md file item
       const treeItem = new vscode.TreeItem(element.fileName, vscode.TreeItemCollapsibleState.None);
-      treeItem.resourceUri = element.uri;
       treeItem.command = {
         command: 'cursor-toys.openSkill',
         title: 'Open Skill',

@@ -1891,7 +1891,12 @@ export function activate(context: vscode.ExtensionContext) {
       return null;
     }
     if (arg instanceof vscode.Uri) {
-      // If it's a folder URI, get the SKILL.md inside it
+      // If it's already a SKILL.md file URI, return it as-is.
+      // Otherwise, treat it as a folder URI and resolve SKILL.md inside it.
+      const baseName = path.basename(arg.fsPath);
+      if (baseName === 'SKILL.md') {
+        return arg;
+      }
       const skillFilePath = path.join(arg.fsPath, 'SKILL.md');
       return vscode.Uri.file(skillFilePath);
     }
