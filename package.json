@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -428,6 +428,10 @@
       {
         "command": "cursor-toys.initializeEnvironments",
         "title": "CursorToys: Create Environments Folder"
+      },
+      {
+        "command": "cursor-toys.generateHttpLlms",
+        "title": "CursorToys: Generate llms.txt"
       },
       {
         "command": "cursor-toys.minifyFile",
@@ -950,6 +954,10 @@
           "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]http($|[\\\\/])/"
         },
         {
+          "command": "cursor-toys.generateHttpLlms",
+          "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]http($|[\\\\/])/"
+        },
+        {
           "command": "cursor-toys.shareViaGist",
           "when": "(resourceExtname =~ /\\.(md|mdc|req|request)$/ || resourceFilename =~ /^\\.env/) && !explorerResourceIsFolder"
         },
@@ -1167,15 +1175,10 @@
           "minimum": 1,
           "description": "Days between recommendation suggestions (default: 7)"
         },
-        "cursorToys.recommendationsIndexUrl": {
+        "cursorToys.skillsRegistryUrl": {
           "type": "string",
-          "default": "https://raw.githubusercontent.com/CursorToys/marketplace/refs/heads/main/recommendations-index.json",
-          "description": "URL to remote recommendations index (raw file URL from GitHub or Gist). Default: CursorToys official marketplace (contributions via PR)"
-        },
-        "cursorToys.recommendationsIndexGistId": {
-          "type": "string",
-          "default": "",
-          "description": "Gist ID containing recommendations index (e.g., 'username/gistid' or just 'gistid'). Alternative to recommendationsIndexUrl for private/custom indexes."
+          "default": "https://raw.githubusercontent.com/tech-leads-club/agent-skills/refs/heads/main/packages/skills-catalog/skills-registry.json",
+          "description": "URL to Agent Skills registry from Tech Leads Club. Contains community-driven skills catalog for AI coding assistants."
         },
         "cursorToys.geminiModel": {
           "type": "string",
