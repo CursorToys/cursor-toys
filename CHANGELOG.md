@@ -2,6 +2,167 @@
 
 All notable changes to the "CursorToys" extension will be documented in this file.
 
+## [1.9.0] - 2026-02-07
+
+### Added
+
+#### 🎓 **Skills Marketplace Integration**
+- **Tech Leads Club Integration**: Complete integration with Tech Leads Club Agent Skills marketplace
+  - Browse and discover community-driven skills from Tech Leads Club
+  - New command `cursor-toys.browseRecommendations`: Browse Skills Marketplace (replaces old recommendations browser)
+  - Elegant marketplace interface with category filters and search
+  - Direct installation via terminal with `npx @tech-leads-club/agent-skills`
+  - GitHub integration to view skills source code
+  - Visual indicators for skill features (references, scripts, assets folders)
+- **Skills Registry Configuration**:
+  - New setting `cursorToys.skillsRegistryUrl`: URL to Agent Skills registry (default: Tech Leads Club)
+  - Smart caching system (1 hour memory cache, 24 hours disk cache)
+  - Automatic fallback to cached data when offline
+
+#### 🌐 **Enhanced HTTP Helper Functions**
+- **New Dynamic Helpers**: Added 4 new helper functions for HTTP requests
+  - `{{@userAgent()}}`: Generate random browser User-Agent string (Chrome, Safari, Firefox)
+  - `{{@ip()}}`: Generate random IPv4 address
+  - `{{@lorem(count)}}`: Generate Lorem Ipsum text (1 to 100 words, default 5)
+  - `{{@randomFrom("a", "b", "c")}}`: Pick random item from list of arguments
+- **Use Cases**: Perfect for API testing, mock data generation, and load testing
+
+#### 📝 **HTTP Documentation Generator**
+- **llms.txt Generator**: New command `cursor-toys.generateHttpLlms`
+  - Automatically generates comprehensive HTTP features documentation
+  - Includes examples for all formats: cURL, REST Client, variables, helpers
+  - Available in context menu for HTTP folders
+  - Documents all helper functions, environment variables, and decorators
+  - Auto-generated on HTTP folder initialization
+
+### Changed
+
+#### 🔄 **Recommendations System Refactoring**
+- **Removed Legacy Features**: Streamlined recommendations system
+  - Removed old recommendations index system (CursorToys marketplace)
+  - Removed project context detection and auto-recommendations on startup
+  - Removed `cursor-toys.checkRecommendations` command
+  - Simplified to focus on Skills Marketplace integration
+- **Settings Migration**:
+  - Removed: `cursorToys.recommendationsIndexUrl` (replaced by `skillsRegistryUrl`)
+  - Removed: `cursorToys.recommendationsIndexGistId` (no longer needed)
+  - Removed: `cursorToys.recommendationsCheckOnStartup` (auto-check removed)
+  - Kept: `cursorToys.recommendationsEnabled` (now controls Skills Marketplace)
+  - Kept: `cursorToys.recommendationsSuggestInterval` (reserved for future use)
+- **Menu Updates**:
+  - Main menu now shows "Open Skills Marketplace" instead of "Open Marketplace"
+  - Removed "Check Recommendations" option from main menu
+  - Clearer focus on Skills from Tech Leads Club
+
+#### 🛠️ **Backend Architecture**
+- **RecommendationsManager Refactoring**: Complete rewrite for skills-only focus
+  - New method `getAllSkills()`: Fetch all skills from registry
+  - Removed `getRecommendationsForContext()`: No longer needed
+  - Removed `detectProjectContext()`: Project analysis removed
+  - Removed `shouldShowRecommendations()`: Auto-suggestions removed
+  - Simplified caching system (memory + disk)
+  - Maintained backward compatibility with deprecated methods
+- **RecommendationsBrowserPanel Refactoring**: New Skills Marketplace UI
+  - Redesigned for skill browsing experience
+  - Category-based filtering with Tech Leads Club categories
+  - Author and version information display
+  - Subfolder detection (references, scripts, assets)
+  - Install command copy and terminal integration
+  - GitHub repository links for each skill
+
+### Technical Details
+
+#### Enhanced Files
+- **`src/recommendationsManager.ts`**:
+  - Simplified to focus on skills registry fetching
+  - New interface `SkillsRegistry` with categories and skills
+  - Smart caching with configurable TTL (1h memory, 24h disk)
+  - Removed all project context detection logic
+  - Maintained backward compatibility for deprecated methods
+- **`src/recommendationsBrowserPanel.ts`**:
+  - Complete UI redesign for skills marketplace
+  - Category filtering with visual badges
+  - Search functionality across skills
+  - Install command generation and clipboard copy
+  - Terminal integration for direct installation
+  - GitHub integration for source code viewing
+  - Visual indicators for skill subfolders
+- **`src/httpRequestExecutor.ts`**:
+  - Added 4 new helper functions: `@userAgent()`, `@ip()`, `@lorem(count)`, `@randomFrom(...)`
+  - Enhanced helper function registry
+  - Improved helper function documentation
+- **`src/utils.ts`**:
+  - New function `createHttpLlmsFile()`: Generate HTTP documentation
+  - Comprehensive llms.txt template with all features documented
+  - Auto-generation support for HTTP folder initialization
+- **`src/extension.ts`**:
+  - Removed `checkRecommendationsOnStartup()` function
+  - Removed `workspaceChangeListener` for recommendations
+  - Updated menu items for Skills Marketplace
+  - Added `generateHttpLlms` command registration
+  - Simplified command registrations (removed unused recommendation commands)
+- **`package.json`**:
+  - Version bumped from 1.8.1 to 1.9.0
+  - Added `cursor-toys.generateHttpLlms` command
+  - Updated settings: new `skillsRegistryUrl`, removed old recommendation URLs
+  - Updated command descriptions for Skills Marketplace
+  - Maintained activation events for Skills Marketplace
+
+#### New Commands
+- `cursor-toys.generateHttpLlms`: Generate comprehensive HTTP documentation (llms.txt)
+
+#### Removed Commands
+- `cursor-toys.checkRecommendations`: Automatic project recommendations (replaced by Skills Marketplace)
+
+#### Configuration Changes
+- **Added**: `cursorToys.skillsRegistryUrl` - URL to Tech Leads Club skills registry
+- **Removed**: `cursorToys.recommendationsIndexUrl` - Old recommendations index URL
+- **Removed**: `cursorToys.recommendationsIndexGistId` - Old Gist-based recommendations
+- **Maintained**: `cursorToys.recommendationsEnabled` - Now controls Skills Marketplace
+- **Maintained**: `cursorToys.recommendationsSuggestInterval` - Reserved for future features
+
+### Use Cases
+
+**Browsing Skills Marketplace:**
+1. Run "CursorToys: Browse Recommendations Marketplace" command (or use main menu)
+2. Browse skills by category or search by keyword
+3. Click "Install in Cursor" to run installation in terminal
+4. Or copy install command to clipboard
+5. View skill source code on GitHub
+
+**Using New HTTP Helpers:**
+```http
+## Test Request with Random Data
+POST {{BASE_URL}}/api/feedback
+User-Agent: {{@userAgent()}}
+X-Forwarded-For: {{@ip()}}
+Content-Type: application/json
+
+{
+  "feedback": "{{@lorem(20)}}",
+  "source": "{{@randomFrom("web", "mobile", "api")}}"
+}
+```
+
+**Generating HTTP Documentation:**
+1. Right-click on `.cursor/http/` folder in Explorer
+2. Select "CursorToys: Generate llms.txt"
+3. Comprehensive documentation is created in HTTP folder
+4. Share with team or use as reference
+
+### Migration Guide
+
+**For Users:**
+- Old recommendations index URLs are no longer supported
+- Skills Marketplace replaces old recommendations system
+- All skills now come from Tech Leads Club community registry
+- No action needed - just explore the new Skills Marketplace!
+
+**For Extension Developers:**
+- If using `getAllRecommendations()`: Now returns skills in compatible format
+- If using `getRecommendationsForContext()`: Deprecated, use `getAllSkills()` instead
+- If checking project context: Feature removed, use Skills Marketplace directly
+
 ## [1.8.0] - 2026-01-24
 
 ### Added

@@ -54,22 +54,24 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 3. Choose a prompt from your library (personal or project)
 4. Text is processed and replaced/clipped automatically
 
-### 🎯 Smart Recommendations
+### 🎯 Skills Marketplace
 
-**Discover relevant tools for your project** — AI-powered suggestions analyzing your tech stack.
+**Discover community-driven Agent Skills** — Browse and install skills from Tech Leads Club.
 
-- 🔍 **Auto-Detection** — Analyzes project languages, frameworks, and context
-- 🎨 **Marketplace Browser** — Elegant interface to browse and install recommendations
-- 🏷️ **Tag-Based Search** — Find commands, prompts, and rules by tags or description
-- 📦 **Bundle Support** — Install multiple items at once
-- 🌐 **Official Index** — Curated recommendations included (customizable)
-- 📝 **YAML Metadata** — Frontmatter support for better organization
+- 🌐 **Tech Leads Club Integration** — Access community-driven skills catalog
+- 🎨 **Elegant Browser** — Visual interface with category filters and search
+- 🔍 **Smart Search** — Find skills by name, description, category, or author
+- 📦 **Direct Installation** — Install via terminal with one click
+- 🏷️ **Category Organization** — Browse by skill categories
+- 📝 **Rich Metadata** — Author, version, and subfolder information
+- 🔗 **GitHub Integration** — View source code on GitHub
 - ⚡ **Smart Caching** — Fast performance with memory and disk caching
 
-**Supported Contexts:**
-- Languages: JavaScript, TypeScript, Python, Java, Go, Rust, Ruby, PHP, Elixir
-- Frameworks: React, Next.js, Vue, Angular, Svelte, Express, NestJS
-- Tools: Jest, Vitest, Playwright, Cypress, Docker, Kubernetes, Terraform
+**Quick Start:**
+1. Run "CursorToys: Browse Recommendations Marketplace" command
+2. Browse skills by category or search by keyword
+3. Click "Install in Cursor" to install directly
+4. Skills are added to your `.cursor/skills/` or `.claude/skills/` folder
 
 ### 🔗 Instant Sharing
 
@@ -91,7 +93,7 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 - 🎨 **Syntax Highlighting** — Beautiful highlighting for requests and responses
 - 🌍 **Environment Variables** — Use `{{variableName}}` from `.env` files
 - 🔧 **Inline Variables** — Define variables with `# @var VAR_NAME=value` directly in files
-- 🎯 **Helper Functions** — Dynamic values: `{{@uuid()}}`, `{{@datetime}}`, `{{@randomIn()}}`, `{{@prompt()}}`
+- 🎯 **Helper Functions** — Dynamic values: `{{@uuid()}}`, `{{@datetime}}`, `{{@randomIn()}}`, `{{@prompt()}}`, `{{@userAgent()}}`, `{{@ip()}}`, `{{@lorem()}}`, `{{@randomFrom()}}`
 - 🔄 **Multiple Environments** — Switch between dev, staging, prod instantly
 - 💾 **Auto-Save Responses** — Or preview-only mode for quick tests
 
@@ -266,9 +268,32 @@ Click the "Send Request" link that appears above → See formatted response!
 
 ## ✨ What's New
 
-**Version 1.8.0 (January 2026)**
+**Version 1.9.0 (February 2026)**
 
 For a detailed look at the latest changes, visit the [CHANGELOG](CHANGELOG.md).
+
+**✨ Highlights**
+
+- ✅ **Skills Marketplace Integration** — Browse and install community skills from Tech Leads Club
+- ✅ **New HTTP Helper Functions** — `@userAgent()`, `@ip()`, `@lorem()`, `@randomFrom()` for dynamic testing
+- ✅ **HTTP Documentation Generator** — Auto-generate comprehensive llms.txt documentation
+- ✅ **Streamlined Recommendations** — Focused on Skills Marketplace, removed legacy features
+- ✅ **Better Marketplace UI** — Category filters, search, GitHub integration, visual indicators
+
+### Skills Marketplace Integration
+- **Tech Leads Club Integration**: Browse community-driven Agent Skills catalog
+- **Direct Installation**: Install skills via terminal with one click (`npx @tech-leads-club/agent-skills`)
+- **Rich Metadata**: See author, version, and available resources (references, scripts, assets)
+- **GitHub Links**: View skill source code directly on GitHub
+- **Smart Caching**: Fast browsing with 1-hour memory cache and 24-hour disk cache
+
+### Enhanced HTTP Testing
+- **New Helper Functions**: Generate random User-Agent strings, IP addresses, Lorem Ipsum text, and pick random items
+- **Documentation Generator**: Create comprehensive HTTP features documentation with examples
+- **Better Testing**: Perfect for API mocking, load testing, and data generation
+- **Use Cases**: `{{@userAgent()}}`, `{{@ip()}}`, `{{@lorem(20)}}`, `{{@randomFrom("a", "b", "c")}}`
+
+**Version 1.8.0 (January 2026)**
 
 **✨ Highlights**
 
