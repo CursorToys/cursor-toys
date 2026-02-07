@@ -1,56 +1,35 @@
 /**
- * Recommendations Manager for CursorToys
- * Manages project context detection, recommendations fetching, and filtering
+ * Skills Manager for CursorToys
+ * Manages skills fetching from Tech Leads Club registry
  */
 
 import * as vscode from 'vscode';
-import * as path from 'path';
-import * as fs from 'fs';
 import * as https from 'https';
-import { parseFrontmatter, FrontmatterMetadata, extractTags } from './frontmatterParser';
-import { GistManager } from './gistManager';
 
-export interface ProjectContext {
-  languages: string[];
-  frameworks: string[];
-  files: string[];
-  hasFolder: string[];
-}
-
-export interface RecommendationItem {
+export interface SkillItem {
   id: string;
   name: string;
   description: string;
-  type: 'command' | 'prompt' | 'rule';
-  tags: string[];
-  category?: string;
+  category: string;
+  path: string;
+  files?: string[];
   author?: string;
   version?: string;
-  gistId?: string;
-  cursortoysUrl?: string;
-  previewUrl?: string;
 }
 
-export interface RecommendationSet {
-  id: string;
+export interface SkillCategory {
   name: string;
   description: string;
-  context: Partial<ProjectContext>;
-  items: RecommendationItem[];
 }
 
-export interface RecommendationsIndex {
+export interface SkillsRegistry {
   version: string;
-  lastUpdated: string;
-  indexUrl?: string;
-  recommendations: RecommendationSet[];
+  categories: Record<string, SkillCategory>;
+  skills: SkillItem[];
 }
 
-export interface RecommendationsConfig {
-  indexUrl?: string;
-  indexGistId?: string;
-  checkOnStartup: boolean;
-  suggestInterval: number;
+export interface SkillsConfig {
+  registryUrl: string;
   enabled: boolean;
 }
 
@@ -73,134 +52,25 @@ export class RecommendationsManager {
   }
 
   /**
-   * Detecta contexto do projeto atual
+   * Busca todas as skills do registro
    */
-  public async detectProjectContext(): Promise<ProjectContext> {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      return { languages: [], frameworks: [], files: [], hasFolder: [] };
-    }
-
-    const context: ProjectContext = {
-      languages: [],
-      frameworks: [],
-      files: [],
-      hasFolder: []
-    };
-
-    const workspacePath = workspaceFolder.uri.fsPath;
-
-    // Mapa de detecção de linguagens por arquivos
-    const detectionMap: Record<string, string> = {
-      'package.json': 'javascript',
-      'tsconfig.json': 'typescript',
-      'requirements.txt': 'python',
-      'pyproject.toml': 'python',
-      'setup.py': 'python',
-      'Cargo.toml': 'rust',
-      'go.mod': 'go',
-      'pom.xml': 'java',
-      'build.gradle': 'java',
-      'build.gradle.kts': 'kotlin',
-      'composer.json': 'php',
-      'Gemfile': 'ruby',
-      'mix.exs': 'elixir',
-      'Pipfile': 'python',
-      'poetry.lock': 'python'
-    };
-
-    // Detectar arquivos e linguagens
-    for (const [file, lang] of Object.entries(detectionMap)) {
-      const filePath = path.join(workspacePath, file);
-      if (fs.existsSync(filePath)) {
-        if (!context.files.includes(file)) {
-          context.files.push(file);
-        }
-        if (!context.languages.includes(lang)) {
-          context.languages.push(lang);
-        }
-      }
-    }
-
-    // Detectar frameworks via package.json
-    if (fs.existsSync(path.join(workspacePath, 'package.json'))) {
-      try {
-        const packageJson = JSON.parse(
-          fs.readFileSync(path.join(workspacePath, 'package.json'), 'utf-8')
-        );
-        const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
-
-        const frameworkMap: Record<string, string> = {
-          'react': 'react',
-          'next': 'nextjs',
-          'vue': 'vue',
-          '@angular/core': 'angular',
-          'svelte': 'svelte',
-          'express': 'express',
-          '@nestjs/core': 'nestjs',
-          'fastify': 'fastify',
-          'jest': 'jest',
-          'vitest': 'vitest',
-          '@playwright/test': 'playwright',
-          'cypress': 'cypress'
-        };
-
-        for (const [dep, framework] of Object.entries(frameworkMap)) {
-          if (deps[dep] && !context.frameworks.includes(framework)) {
-            context.frameworks.push(framework);
-          }
-        }
-      } catch (error) {
-        console.error('Error parsing package.json:', error);
-      }
-    }
-
-    // Detectar pastas especiais
-    const specialFolders = [
-      '.git',
-      '.github',
-      'docker',
-      'kubernetes',
-      'terraform',
-      '.vscode',
-      '.cursor'
-    ];
-
-    for (const folder of specialFolders) {
-      if (fs.existsSync(path.join(workspacePath, folder))) {
-        context.hasFolder.push(folder);
-      }
-    }
-
-    return context;
-  }
-
-  /**
-   * Busca recomendações baseadas no contexto
-   */
-  public async getRecommendationsForContext(
-    context: ProjectContext
-  ): Promise<RecommendationSet[]> {
+  public async getAllSkills(): Promise<SkillsRegistry | null> {
     const config = this.getConfig();
 
     if (!config.enabled) {
-      return [];
+      return null;
     }
 
-    // Buscar apenas recomendações remotas
-    const remoteRecs = await this.loadRemoteRecommendations(config);
-
-    // Filtrar por contexto
-    return this.filterByContext(remoteRecs, context);
+    return await this.loadSkillsRegistry(config);
   }
 
   /**
-   * Carrega recomendações de índice remoto (Gist ou URL)
+   * Carrega skills do registro remoto (Tech Leads Club)
    */
-  private async loadRemoteRecommendations(
-    config: RecommendationsConfig
-  ): Promise<RecommendationSet[]> {
-    const cacheKey = 'remote_recommendations';
+  private async loadSkillsRegistry(
+    config: SkillsConfig
+  ): Promise<SkillsRegistry | null> {
+    const cacheKey = 'skills_registry';
 
     // Verificar cache em memória
     const memCache = this.memoryCache.get(cacheKey);
@@ -210,7 +80,7 @@ export class RecommendationsManager {
 
     // Verificar cache em disco
     const diskCache = this.context.globalState.get<{
-      data: RecommendationSet[];
+      data: SkillsRegistry;
       timestamp: number;
     }>(cacheKey);
 
@@ -225,38 +95,32 @@ export class RecommendationsManager {
 
     // Buscar do remoto
     try {
-      let recommendations: RecommendationSet[] = [];
+      const registry = await this.fetchSkillsRegistry(config.registryUrl);
 
-      if (config.indexUrl) {
-        recommendations = await this.fetchFromUrl(config.indexUrl);
-      } else if (config.indexGistId) {
-        recommendations = await this.fetchFromGist(config.indexGistId);
-      }
-
-      if (recommendations.length > 0) {
+      if (registry) {
         // Salvar em ambos os caches
-        const cacheData = { data: recommendations, timestamp: Date.now() };
+        const cacheData = { data: registry, timestamp: Date.now() };
         this.memoryCache.set(cacheKey, cacheData);
         await this.context.globalState.update(cacheKey, cacheData);
       }
 
-      return recommendations;
+      return registry;
     } catch (error) {
-      console.error('Error loading remote recommendations:', error);
+      console.error('Error loading skills registry:', error);
       
       // Retornar cache expirado se disponível
       if (diskCache) {
         return diskCache.data;
       }
       
-      return [];
+      return null;
     }
   }
 
   /**
-   * Busca índice de recomendações de uma URL
+   * Busca registro de skills de uma URL
    */
-  private async fetchFromUrl(url: string): Promise<RecommendationSet[]> {
+  private async fetchSkillsRegistry(url: string): Promise<SkillsRegistry | null> {
     return new Promise((resolve, reject) => {
       https.get(url, (res) => {
         let data = '';
@@ -267,8 +131,17 @@ export class RecommendationsManager {
 
         res.on('end', () => {
           try {
-            const parsed: RecommendationsIndex = JSON.parse(data);
-            resolve(parsed.recommendations || []);
+            const parsed: SkillsRegistry = JSON.parse(data);
+            
+            // Add ID to each skill (use name as ID)
+            if (parsed.skills) {
+              parsed.skills = parsed.skills.map((skill, index) => ({
+                ...skill,
+                id: skill.name || `skill-${index}`
+              }));
+            }
+            
+            resolve(parsed);
           } catch (error) {
             reject(error);
           }
@@ -280,176 +153,53 @@ export class RecommendationsManager {
   }
 
   /**
-   * Busca índice de recomendações de um Gist
-   */
-  private async fetchFromGist(gistId: string): Promise<RecommendationSet[]> {
-    try {
-      // Parse gistId (pode ser "username/gistid" ou apenas "gistid")
-      const parts = gistId.split('/');
-      const actualGistId = parts.length > 1 ? parts[1] : gistId;
-
-      // Construir URL do Gist raw
-      const url = `https://gist.githubusercontent.com/raw/${actualGistId}/recommendations-index.json`;
-      
-      return await this.fetchFromUrl(url);
-    } catch (error) {
-      console.error('Error fetching from Gist:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Filtra recomendações por contexto
-   */
-  private filterByContext(
-    recommendations: RecommendationSet[],
-    context: ProjectContext
-  ): RecommendationSet[] {
-    return recommendations.filter((rec) => {
-      const recContext = rec.context;
-
-      // Recomendações sem contexto são genéricas (sempre incluir)
-      if (!recContext || Object.keys(recContext).length === 0) {
-        return true;
-      }
-
-      // Verificar linguagens
-      if (recContext.languages && recContext.languages.length > 0) {
-        const hasLanguage = recContext.languages.some((lang) =>
-          context.languages.includes(lang)
-        );
-        if (!hasLanguage) {
-          return false;
-        }
-      }
-
-      // Verificar frameworks
-      if (recContext.frameworks && recContext.frameworks.length > 0) {
-        const hasFramework = recContext.frameworks.some((fw) =>
-          context.frameworks.includes(fw)
-        );
-        if (!hasFramework) {
-          return false;
-        }
-      }
-
-      // Verificar arquivos
-      if (recContext.files && recContext.files.length > 0) {
-        const hasFile = recContext.files.some((file) =>
-          context.files.includes(file)
-        );
-        if (!hasFile) {
-          return false;
-        }
-      }
-
-      // Verificar pastas
-      if (recContext.hasFolder && recContext.hasFolder.length > 0) {
-        const hasFolder = recContext.hasFolder.some((folder) =>
-          context.hasFolder.includes(folder)
-        );
-        if (!hasFolder) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }
-
-  /**
-   * Verifica se deve mostrar recomendações
-   */
-  public async shouldShowRecommendations(): Promise<boolean> {
-    const config = this.getConfig();
-
-    if (!config.enabled || !config.checkOnStartup) {
-      return false;
-    }
-
-    // Verificar última vez que mostrou
-    const lastShown = this.context.globalState.get<number>(
-      'lastRecommendationShown',
-      0
-    );
-    const now = Date.now();
-    const intervalMs = config.suggestInterval * 24 * 60 * 60 * 1000;
-
-    return now - lastShown > intervalMs;
-  }
-
-  /**
-   * Marca que recomendações foram mostradas
-   */
-  public async markRecommendationsShown(): Promise<void> {
-    await this.context.globalState.update('lastRecommendationShown', Date.now());
-  }
-
-  /**
    * Limpa cache
    */
   public async clearCache(): Promise<void> {
     this.memoryCache.clear();
-    await this.context.globalState.update('remote_recommendations', undefined);
-    vscode.window.showInformationMessage('Recommendations cache cleared');
+    await this.context.globalState.update('skills_registry', undefined);
+    vscode.window.showInformationMessage('Skills cache cleared');
   }
 
   /**
-   * Obtém configurações de recomendações
+   * Obtém configurações de skills
    */
-  private getConfig(): RecommendationsConfig {
+  private getConfig(): SkillsConfig {
     const config = vscode.workspace.getConfiguration('cursorToys');
     return {
-      indexUrl: config.get<string>('recommendationsIndexUrl', ''),
-      indexGistId: config.get<string>('recommendationsIndexGistId', ''),
-      checkOnStartup: config.get<boolean>('recommendationsCheckOnStartup', true),
-      suggestInterval: config.get<number>('recommendationsSuggestInterval', 7),
+      registryUrl: config.get<string>('skillsRegistryUrl', 'https://raw.githubusercontent.com/tech-leads-club/agent-skills/refs/heads/main/packages/skills-catalog/skills-registry.json'),
       enabled: config.get<boolean>('recommendationsEnabled', true)
     };
   }
 
   /**
-   * Parseia frontmatter de um arquivo e cria RecommendationItem
+   * Busca todas as recomendações (mantido para compatibilidade)
+   * @deprecated Use getAllSkills() instead
    */
-  public async parseFileToRecommendation(
-    filePath: string,
-    type: 'command' | 'prompt' | 'rule'
-  ): Promise<RecommendationItem | null> {
-    try {
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const parsed = parseFrontmatter(content);
-      const filename = path.basename(filePath, path.extname(filePath));
-
-      return {
-        id: filename,
-        name: filename.replace(/-/g, ' ').replace(/_/g, ' '),
-        description: parsed.metadata.description || `${type} file`,
-        type,
-        tags: extractTags(parsed.metadata),
-        category: parsed.metadata.category,
-        author: parsed.metadata.author,
-        version: parsed.metadata.version
-      };
-    } catch (error) {
-      console.error('Error parsing file to recommendation:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Busca todas as recomendações (sem filtro de contexto)
-   */
-  public async getAllRecommendations(): Promise<RecommendationSet[]> {
-    const config = this.getConfig();
-
-    if (!config.enabled) {
+  public async getAllRecommendations(): Promise<any[]> {
+    const registry = await this.getAllSkills();
+    if (!registry) {
       return [];
     }
-
-    // Apenas recomendações remotas
-    const remoteRecs = await this.loadRemoteRecommendations(config);
-
-    return remoteRecs;
+    
+    // Retornar em formato compatível (será usado pelo painel)
+    return [{
+      id: 'tech-leads-club',
+      name: 'Tech Leads Club Skills',
+      description: 'Agent Skills from Tech Leads Club',
+      context: {},
+      items: registry.skills.map((skill, index) => ({
+        id: skill.name || `skill-${index}`,
+        name: skill.name,
+        description: skill.description,
+        category: skill.category,
+        path: skill.path,
+        author: skill.author,
+        version: skill.version,
+        tags: [],
+        type: 'skill' as const
+      }))
+    }];
   }
 }
 

@@ -1,17 +1,27 @@
 /**
- * Recommendations Browser Panel for CursorToys
- * Webview-based marketplace interface for browsing and installing recommendations
+ * Skills Browser Panel for CursorToys
+ * Webview-based marketplace interface for browsing Agent Skills from Tech Leads Club
  */
 
 import * as vscode from 'vscode';
-import { RecommendationsManager, RecommendationSet, RecommendationItem } from './recommendationsManager';
+import { RecommendationsManager } from './recommendationsManager';
+
+interface SkillItem {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  path: string;
+  author?: string;
+  version?: string;
+}
 
 export class RecommendationsBrowserPanel {
   public static currentPanel: RecommendationsBrowserPanel | undefined;
   private readonly panel: vscode.WebviewPanel;
   private disposables: vscode.Disposable[] = [];
-  private recommendations: RecommendationSet[] = [];
-  private selectedItems: Set<string> = new Set();
+  private skills: SkillItem[] = [];
+  private categories: Record<string, { name: string; description: string }> = {};
 
   private constructor(
     panel: vscode.WebviewPanel,
@@ -28,31 +38,25 @@ export class RecommendationsBrowserPanel {
       async (message) => {
         switch (message.command) {
           case 'refresh':
-            await this.loadRecommendations();
+            await this.loadSkills();
             break;
-          case 'install':
-            await this.installItem(message.item);
+          case 'copyInstallCommand':
+            await this.copyInstallCommand(message.skillName);
             break;
-          case 'installSelected':
-            await this.installSelected();
+          case 'openInTerminal':
+            await this.openInTerminal(message.skillName);
             break;
-          case 'toggleSelect':
-            this.toggleSelect(message.itemId);
-            break;
-          case 'preview':
-            await this.previewItem(message.item);
+          case 'openGitHub':
+            await this.openGitHub(message.skillPath);
             break;
           case 'clearCache':
             await this.manager.clearCache();
-            await this.loadRecommendations();
+            await this.loadSkills();
             break;
           case 'openExternal':
             if (message.url) {
               vscode.env.openExternal(vscode.Uri.parse(message.url));
             }
-            break;
-          case 'shareCurrentFile':
-            await this.shareCurrentFile();
             break;
         }
       },
@@ -63,8 +67,8 @@ export class RecommendationsBrowserPanel {
     // Handle panel disposal
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
 
-    // Load recommendations
-    this.loadRecommendations();
+    // Load skills
+    this.loadSkills();
   }
 
   public static async createOrShow(
@@ -83,8 +87,8 @@ export class RecommendationsBrowserPanel {
 
     // Create new panel
     const panel = vscode.window.createWebviewPanel(
-      'cursorToysMarketplace',
-      'CursorToys Marketplace',
+      'cursorToysSkillsMarketplace',
+      'Agent Skills Marketplace',
       column || vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -100,311 +104,73 @@ export class RecommendationsBrowserPanel {
     );
   }
 
-  private async loadRecommendations(): Promise<void> {
+  private async loadSkills(): Promise<void> {
     try {
-      this.recommendations = await this.manager.getAllRecommendations();
+      const registry = await this.manager.getAllSkills();
       
-      // Check which items are already installed
-      const enrichedRecommendations = await this.enrichWithInstallStatus(this.recommendations);
-      
-      // Send recommendations to webview
-      this.panel.webview.postMessage({
-        command: 'updateRecommendations',
-        recommendations: enrichedRecommendations
-      });
-
-      if (this.recommendations.length === 0) {
-        vscode.window.showInformationMessage(
-          'No recommendations found. Configure a recommendations index URL or Gist ID in settings.'
-        );
-      }
-    } catch (error) {
-      vscode.window.showErrorMessage(
-        `Error loading recommendations: ${error}`
-      );
-    }
-  }
-
-  /**
-   * Enrich recommendations with installation status
-   */
-  private async enrichWithInstallStatus(recommendations: RecommendationSet[]): Promise<any[]> {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    
-    const fs = require('fs');
-    const path = require('path');
-    const { getCommandsPath, getPromptsPath, getRulesPath } = require('./utils');
-
-    return recommendations.map(recSet => {
-      const enrichedItems = recSet.items.map(item => {
-        let isInstalled = false;
-        let installedPath = '';
-
-        try {
-          // Try to match any .md or .mdc file with similar name
-          const baseName = item.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-          
-          const personalPath = item.type === 'command' 
-            ? getCommandsPath(undefined, true)
-            : item.type === 'prompt'
-            ? getPromptsPath(undefined, true)
-            : getRulesPath(undefined, true);
-
-          // Check personal folder
-          if (fs.existsSync(personalPath)) {
-            const files = fs.readdirSync(personalPath);
-            const found = files.find((f: string) => {
-              const fName = f.toLowerCase().replace(/\.(md|mdc)$/, '');
-              return fName.includes(baseName) || baseName.includes(fName);
-            });
-            
-            if (found) {
-              isInstalled = true;
-              installedPath = 'Personal';
-            }
-          }
-
-          // Check project folder if not found in personal
-          if (!isInstalled && workspaceFolder) {
-            const projectPath = item.type === 'command'
-              ? getCommandsPath(workspaceFolder.uri.fsPath, false)
-              : item.type === 'prompt'
-              ? getPromptsPath(workspaceFolder.uri.fsPath, false)
-              : getRulesPath(workspaceFolder.uri.fsPath, false);
-
-            if (fs.existsSync(projectPath)) {
-              const files = fs.readdirSync(projectPath);
-              const found = files.find((f: string) => {
-                const fName = f.toLowerCase().replace(/\.(md|mdc)$/, '');
-                return fName.includes(baseName) || baseName.includes(fName);
-              });
-              
-              if (found) {
-                isInstalled = true;
-                installedPath = 'Project';
-              }
-            }
-          }
-        } catch (error) {
-          console.error('Error checking install status:', error);
-        }
-
-        return {
-          ...item,
-          isInstalled,
-          installedPath
-        };
-      });
-
-      return {
-        ...recSet,
-        items: enrichedItems
-      };
-    });
-  }
-
-  private async installItem(item: RecommendationItem): Promise<void> {
-    try {
-      // Use existing import system
-      if (item.gistId) {
-        // Convert Gist ID to URL for import
-        const gistUrl = `https://gist.github.com/${item.gistId}`;
-        const { importFromGist } = require('./shareableImporter');
-        await importFromGist(gistUrl, this.context);
-      } else if (item.cursortoysUrl) {
-        const { importShareable } = require('./shareableImporter');
-        await importShareable(item.cursortoysUrl);
-      } else {
-        vscode.window.showWarningMessage(
-          `No installation source for ${item.name}`
+      if (!registry) {
+        vscode.window.showErrorMessage(
+          'Failed to load skills registry. Check your internet connection.'
         );
         return;
       }
 
-      vscode.window.showInformationMessage(
-        `Successfully installed: ${item.name}`
-      );
+      this.skills = registry.skills;
+      this.categories = registry.categories;
+      
+      // Send skills to webview
+      this.panel.webview.postMessage({
+        command: 'updateSkills',
+        skills: this.skills,
+        categories: this.categories,
+        totalSkills: this.skills.length,
+        totalCategories: Object.keys(this.categories).length
+      });
 
-      // Refresh to show updated state
-      await this.loadRecommendations();
     } catch (error) {
       vscode.window.showErrorMessage(
-        `Failed to install ${item.name}: ${error}`
+        `Error loading skills: ${error}`
       );
     }
   }
 
-  private async installSelected(): Promise<void> {
-    if (this.selectedItems.size === 0) {
-      vscode.window.showWarningMessage('No items selected');
-      return;
-    }
+  private async copyInstallCommand(skillName: string): Promise<void> {
+    const command = `npx @tech-leads-club/agent-skills --skill ${skillName} -a cursor`;
+    
+    await vscode.env.clipboard.writeText(command);
+    
+    vscode.window.showInformationMessage(
+      `Install command copied! Run it in your terminal to add this skill.`,
+      'Open Terminal'
+    ).then(selection => {
+      if (selection === 'Open Terminal') {
+        vscode.commands.executeCommand('workbench.action.terminal.new');
+      }
+    });
+  }
 
-    const allItems: RecommendationItem[] = [];
-    for (const recSet of this.recommendations) {
-      allItems.push(...recSet.items);
-    }
-
-    const itemsToInstall = allItems.filter((item) =>
-      this.selectedItems.has(item.id)
+  private async openInTerminal(skillName: string): Promise<void> {
+    const command = `npx @tech-leads-club/agent-skills --skill ${skillName} -a cursor`;
+    
+    // Copy to clipboard first
+    await vscode.env.clipboard.writeText(command);
+    
+    // Create or get terminal
+    const terminal = vscode.window.createTerminal('Agent Skills');
+    terminal.show();
+    
+    // Send command to terminal
+    terminal.sendText(command);
+    
+    vscode.window.showInformationMessage(
+      `Running install command in terminal...`
     );
-
-    let successCount = 0;
-    let errorCount = 0;
-
-    const { importFromGist, importShareable } = require('./shareableImporter');
-
-    for (const item of itemsToInstall) {
-      try {
-        if (item.gistId) {
-          const gistUrl = `https://gist.github.com/${item.gistId}`;
-          await importFromGist(gistUrl, this.context);
-        } else if (item.cursortoysUrl) {
-          await importShareable(item.cursortoysUrl);
-        }
-        successCount++;
-      } catch (error) {
-        console.error(`Failed to install ${item.name}:`, error);
-        errorCount++;
-      }
-    }
-
-    if (errorCount === 0) {
-      vscode.window.showInformationMessage(
-        `Successfully installed ${successCount} items`
-      );
-    } else {
-      vscode.window.showWarningMessage(
-        `Installed ${successCount} of ${itemsToInstall.length} items. ${errorCount} failed.`
-      );
-    }
-
-    // Clear selection
-    this.selectedItems.clear();
-    await this.loadRecommendations();
   }
 
-  private toggleSelect(itemId: string): void {
-    if (this.selectedItems.has(itemId)) {
-      this.selectedItems.delete(itemId);
-    } else {
-      this.selectedItems.add(itemId);
-    }
-
-    // Update webview
-    this.panel.webview.postMessage({
-      command: 'updateSelection',
-      selected: Array.from(this.selectedItems)
-    });
-  }
-
-  private async previewItem(item: RecommendationItem): Promise<void> {
-    // Show preview in a new document
-    const doc = await vscode.workspace.openTextDocument({
-      content: this.getPreviewContent(item),
-      language: 'markdown'
-    });
-
-    await vscode.window.showTextDocument(doc, {
-      preview: true,
-      viewColumn: vscode.ViewColumn.Beside
-    });
-  }
-
-  private getPreviewContent(item: RecommendationItem): string {
-    return `# ${item.name}
-
-**Type:** ${item.type}
-**Description:** ${item.description}
-
-${item.tags && item.tags.length > 0 ? `**Tags:** ${item.tags.join(', ')}` : ''}
-${item.category ? `**Category:** ${item.category}` : ''}
-${item.author ? `**Author:** ${item.author}` : ''}
-${item.version ? `**Version:** ${item.version}` : ''}
-
----
-
-${item.gistId ? `**Gist ID:** ${item.gistId}` : ''}
-${item.cursortoysUrl ? `**CursorToys URL:** ${item.cursortoysUrl}` : ''}
-`;
-  }
-
-  private async shareCurrentFile(): Promise<void> {
-    const editor = vscode.window.activeTextEditor;
-    
-    if (!editor) {
-      vscode.window.showWarningMessage('No active file to share. Please open a file first.');
-      return;
-    }
-
-    const filePath = editor.document.uri.fsPath;
-    const fileName = filePath.split('/').pop() || '';
-    
-    // Detect file type from path
-    const { getFileTypeFromPath } = require('./utils');
-    const fileType = getFileTypeFromPath(filePath);
-    
-    if (!fileType) {
-      vscode.window.showWarningMessage(
-        'This file is not a command, prompt, or rule. Please open a .cursor/commands/, .cursor/prompts/, or .cursor/rules/ file.'
-      );
-      return;
-    }
-
-    // Show quick pick for sharing method
-    const shareMethod = await vscode.window.showQuickPick([
-      {
-        label: '$(mark-github) Share as GitHub Gist',
-        description: 'Recommended - Version controlled and updatable',
-        value: 'gist'
-      },
-      {
-        label: '$(link) Generate Deeplink',
-        description: 'Quick share via URL',
-        value: 'deeplink'
-      }
-    ], {
-      placeHolder: 'Choose how to share this file'
-    });
-
-    if (!shareMethod) {
-      return;
-    }
-
-    try {
-      if (shareMethod.value === 'gist') {
-        // Use existing Share as Gist command
-        if (fileType === 'command') {
-          await vscode.commands.executeCommand('cursor-toys.shareAsCursorToysCommand');
-        } else if (fileType === 'prompt') {
-          await vscode.commands.executeCommand('cursor-toys.shareAsCursorToysPrompt');
-        } else if (fileType === 'rule') {
-          await vscode.commands.executeCommand('cursor-toys.shareAsCursorToysRule');
-        }
-      } else {
-        // Use existing Generate Deeplink command
-        if (fileType === 'command') {
-          await vscode.commands.executeCommand('cursor-toys.generate-command');
-        } else if (fileType === 'prompt') {
-          await vscode.commands.executeCommand('cursor-toys.generate-prompt');
-        } else if (fileType === 'rule') {
-          await vscode.commands.executeCommand('cursor-toys.generate-rule');
-        }
-      }
-      
-      vscode.window.showInformationMessage(
-        'File shared! Copy the URL and create a PR to add it to the recommendations index.',
-        'Open Repository'
-      ).then(selection => {
-        if (selection === 'Open Repository') {
-          vscode.env.openExternal(
-            vscode.Uri.parse('https://github.com/CursorToys/marketplace')
-          );
-        }
-      });
-    } catch (error) {
-      vscode.window.showErrorMessage(`Failed to share file: ${error}`);
-    }
+  private async openGitHub(skillPath: string): Promise<void> {
+    const baseUrl = 'https://github.com/tech-leads-club/agent-skills/tree/main/packages/skills-catalog/skills';
+    const url = `${baseUrl}/${skillPath}`;
+    vscode.env.openExternal(vscode.Uri.parse(url));
   }
 
   private getWebviewContent(): string {
@@ -413,7 +179,7 @@ ${item.cursortoysUrl ? `**CursorToys URL:** ${item.cursortoysUrl}` : ''}
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CursorToys Marketplace</title>
+  <title>Agent Skills Marketplace</title>
   <style>
     * {
       box-sizing: border-box;
@@ -429,34 +195,46 @@ ${item.cursortoysUrl ? `**CursorToys URL:** ${item.cursortoysUrl}` : ''}
     }
 
     .header {
-      margin-bottom: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
+      margin-bottom: 8px;
+      text-align: center;
     }
 
     .header h1 {
-      font-size: 24px;
-      font-weight: 600;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .header-subtitle {
+      font-size: 16px;
+      color: var(--vscode-descriptionForeground);
+      margin-bottom: 4px;
+    }
+
+    .header-disclaimer {
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground);
+      margin-bottom: 20px;
     }
 
     .header-actions {
       display: flex;
       gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
     }
 
     .search-bar {
       width: 100%;
-      max-width: 500px;
-      padding: 8px 12px;
+      max-width: 600px;
+      margin: 0 auto 20px;
+      padding: 10px 16px;
       background: var(--vscode-input-background);
       color: var(--vscode-input-foreground);
       border: 1px solid var(--vscode-input-border);
-      border-radius: 4px;
+      border-radius: 6px;
       font-size: 14px;
-      margin-bottom: 20px;
+      display: block;
     }
 
     .search-bar:focus {
@@ -466,29 +244,37 @@ ${item.cursortoysUrl ? `**CursorToys URL:** ${item.cursortoysUrl}` : ''}
 
     .filters {
       display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
+      gap: 8px;
+      margin-bottom: 24px;
       flex-wrap: wrap;
+      justify-content: center;
+      max-width: 100%;
+      overflow-x: auto;
+      padding: 8px 0;
     }
 
     .filter-button {
-      padding: 6px 12px;
+      padding: 8px 16px;
       background: var(--vscode-button-secondaryBackground);
       color: var(--vscode-button-secondaryForeground);
       border: none;
-      border-radius: 4px;
+      border-radius: 20px;
       cursor: pointer;
       font-size: 13px;
-      transition: background-color 0.2s;
+      font-weight: 500;
+      transition: all 0.2s;
+      white-space: nowrap;
     }
 
     .filter-button:hover {
       background: var(--vscode-button-secondaryHoverBackground);
+      transform: translateY(-1px);
     }
 
     .filter-button.active {
       background: var(--vscode-button-background);
       color: var(--vscode-button-foreground);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
 
     .button {
@@ -515,130 +301,164 @@ ${item.cursortoysUrl ? `**CursorToys URL:** ${item.cursortoysUrl}` : ''}
       background: var(--vscode-button-secondaryHoverBackground);
     }
 
-    .recommendations-grid {
+    .skills-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 20px;
       margin-bottom: 20px;
     }
 
-    .rec-card {
+    .skill-card {
       background: var(--vscode-editor-background);
       border: 1px solid var(--vscode-panel-border);
-      border-radius: 6px;
-      padding: 16px;
+      border-radius: 8px;
+      padding: 20px;
       transition: all 0.2s;
-      cursor: pointer;
     }
 
-    .rec-card:hover {
+    .skill-card:hover {
       border-color: var(--vscode-focusBorder);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
     }
 
-    .rec-card.selected {
-      border-color: var(--vscode-button-background);
-      background: var(--vscode-list-activeSelectionBackground);
-    }
-
-    .rec-card.installed {
-      opacity: 0.7;
-      border-color: var(--vscode-testing-iconPassed);
-    }
-
-    .rec-card.installed .rec-card-title::after {
-      content: " ✓";
-      color: var(--vscode-testing-iconPassed);
-      margin-left: 8px;
-    }
-
-    .rec-card-header {
+    .skill-card-header {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 12px;
     }
 
-    .rec-card-title {
-      font-size: 16px;
+    .skill-card-title {
+      font-size: 18px;
       font-weight: 600;
-      margin-bottom: 4px;
+      color: var(--vscode-editor-foreground);
+      flex: 1;
+      min-width: 0;
     }
 
-    .rec-card-type {
-      display: inline-block;
+    .category-badge {
+      padding: 4px 12px;
+      background: var(--vscode-badge-background);
+      color: var(--vscode-badge-foreground);
+      border-radius: 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .skill-card-description {
+      color: var(--vscode-descriptionForeground);
+      font-size: 14px;
+      margin-bottom: 12px;
+      line-height: 1.6;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .skill-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground);
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .subfolders {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .subfolder-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
       padding: 2px 8px;
       background: var(--vscode-badge-background);
       color: var(--vscode-badge-foreground);
-      border-radius: 3px;
+      border-radius: 4px;
       font-size: 11px;
-      text-transform: uppercase;
-      font-weight: 600;
-      margin-right: 6px;
     }
 
-    .installed-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      background: var(--vscode-testing-iconPassed);
-      color: var(--vscode-editor-background);
-      border-radius: 3px;
-      font-size: 11px;
-      text-transform: uppercase;
-      font-weight: 600;
+    .subfolder-icon {
+      width: 14px;
+      height: 14px;
+      opacity: 0.9;
+      flex-shrink: 0;
     }
 
-    .rec-card-description {
-      color: var(--vscode-descriptionForeground);
-      font-size: 13px;
-      margin-bottom: 12px;
-      line-height: 1.5;
-    }
-
-    .rec-card-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-
-    .tag {
-      padding: 2px 8px;
+    .install-command-box {
       background: var(--vscode-textCodeBlock-background);
-      border-radius: 3px;
-      font-size: 11px;
-      color: var(--vscode-textLink-foreground);
+      border: 1px solid var(--vscode-panel-border);
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
-    .rec-card-actions {
+    .install-command {
+      flex: 1;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: var(--vscode-textLink-foreground);
+      word-break: break-all;
+      user-select: all;
+    }
+
+    .copy-icon {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+      flex-shrink: 0;
+    }
+
+    .copy-icon:hover {
+      opacity: 1;
+    }
+
+    .skill-card-actions {
       display: flex;
       gap: 8px;
-      margin-top: 12px;
     }
 
     .action-button {
       flex: 1;
-      padding: 6px 12px;
+      padding: 8px 12px;
       background: var(--vscode-button-background);
       color: var(--vscode-button-foreground);
       border: none;
       border-radius: 4px;
       cursor: pointer;
       font-size: 12px;
+      font-weight: 500;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
 
     .action-button:hover {
       background: var(--vscode-button-hoverBackground);
-    }
-
-    .action-button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-      background: var(--vscode-button-secondaryBackground);
-    }
-
-    .action-button:disabled:hover {
-      background: var(--vscode-button-secondaryBackground);
     }
 
     .action-button-secondary {
@@ -650,20 +470,10 @@ ${item.cursortoysUrl ? `**CursorToys URL:** ${item.cursortoysUrl}` : ''}
       background: var(--vscode-button-secondaryHoverBackground);
     }
 
-    .footer {
-      position: sticky;
-      bottom: 0;
-      background: var(--vscode-editor-background);
-      padding: 16px 0;
-      border-top: 1px solid var(--vscode-panel-border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .selected-count {
-      color: var(--vscode-descriptionForeground);
-      font-size: 14px;
+    .action-icon {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
     }
 
     .empty-state {
@@ -676,112 +486,19 @@ ${item.cursortoysUrl ? `**CursorToys URL:** ${item.cursortoysUrl}` : ''}
       font-size: 20px;
       margin-bottom: 10px;
     }
-
-    .contribute-section {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-
-    .contribute-section h2 {
-      font-size: 24px;
-      margin-bottom: 20px;
-      color: var(--vscode-editor-foreground);
-    }
-
-    .contribute-section h3 {
-      font-size: 18px;
-      margin-top: 24px;
-      margin-bottom: 12px;
-      color: var(--vscode-editor-foreground);
-    }
-
-    .contribute-section p {
-      line-height: 1.6;
-      margin-bottom: 16px;
-      color: var(--vscode-descriptionForeground);
-    }
-
-    .contribute-section ul, .contribute-section ol {
-      margin-bottom: 16px;
-      padding-left: 24px;
-      color: var(--vscode-descriptionForeground);
-    }
-
-    .contribute-section li {
-      margin-bottom: 8px;
-      line-height: 1.6;
-    }
-
-    .contribute-section code {
-      background: var(--vscode-textCodeBlock-background);
-      padding: 2px 6px;
-      border-radius: 3px;
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
-    }
-
-    .contribute-section pre {
-      background: var(--vscode-textCodeBlock-background);
-      padding: 12px;
-      border-radius: 6px;
-      overflow-x: auto;
-      margin-bottom: 16px;
-    }
-
-    .contribute-section pre code {
-      background: none;
-      padding: 0;
-    }
-
-    .info-box {
-      background: var(--vscode-textBlockQuote-background);
-      border-left: 4px solid var(--vscode-textLink-foreground);
-      padding: 12px 16px;
-      margin-bottom: 16px;
-      border-radius: 4px;
-    }
-
-    .warning-box {
-      background: var(--vscode-inputValidation-warningBackground);
-      border-left: 4px solid var(--vscode-inputValidation-warningBorder);
-      padding: 12px 16px;
-      margin-bottom: 16px;
-      border-radius: 4px;
-    }
-
-    .example-box {
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-panel-border);
-      padding: 16px;
-      margin-bottom: 16px;
-      border-radius: 6px;
-    }
-
-    .contribute-actions {
-      display: flex;
-      gap: 12px;
-      margin-top: 24px;
-    }
-
-    .contribute-actions .button {
-      flex: 1;
-    }
-
-    .icon {
-      display: inline-block;
-      width: 16px;
-      height: 16px;
-      margin-right: 4px;
-      vertical-align: text-bottom;
-    }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>CursorToys Marketplace</h1>
+    <h1>Browse Skills</h1>
+    <div class="header-subtitle" id="subtitle">
+      Explore our collection of agent skills
+    </div>
+    <div class="header-disclaimer">
+      Powered by Tech Leads Club
+    </div>
     <div class="header-actions">
-      <button class="button-secondary button" onclick="refreshRecommendations()">Refresh</button>
+      <button class="button-secondary button" onclick="refreshSkills()">Refresh</button>
       <button class="button-secondary button" onclick="clearCache()">Clear Cache</button>
     </div>
   </div>
@@ -790,54 +507,67 @@ ${item.cursortoysUrl ? `**CursorToys URL:** ${item.cursortoysUrl}` : ''}
     type="text" 
     class="search-bar" 
     id="searchInput" 
-    placeholder="Search recommendations by name, description, or tags..."
-    oninput="filterRecommendations()"
+    placeholder="Search skills by name or description..."
+    oninput="filterSkills()"
   />
 
-  <div class="filters">
+  <div class="filters" id="filters">
     <button class="filter-button active" data-filter="all" onclick="setFilter('all')">All</button>
-    <button class="filter-button" data-filter="command" onclick="setFilter('command')">Commands</button>
-    <button class="filter-button" data-filter="prompt" onclick="setFilter('prompt')">Prompts</button>
-    <button class="filter-button" data-filter="rule" onclick="setFilter('rule')">Rules</button>
-    <button class="filter-button" data-filter="contribute" onclick="setFilter('contribute')" style="margin-left: auto;">
-      📤 Contribute
-    </button>
   </div>
 
   <div id="content">
     <div class="empty-state">
-      <h2>Loading recommendations...</h2>
-      <p>Please wait while we fetch the latest recommendations.</p>
+      <h2>Loading skills...</h2>
+      <p>Please wait while we fetch the latest skills from Tech Leads Club.</p>
     </div>
-  </div>
-
-  <div class="footer" id="footer" style="display: none;">
-    <div class="selected-count" id="selectedCount">0 items selected</div>
-    <button class="button" onclick="installSelected()">Install Selected</button>
   </div>
 
   <script>
     const vscode = acquireVsCodeApi();
-    let allRecommendations = [];
+    let allSkills = [];
+    let categories = {};
     let currentFilter = 'all';
-    let selectedItems = new Set();
 
     window.addEventListener('message', event => {
       const message = event.data;
       
       switch (message.command) {
-        case 'updateRecommendations':
-          allRecommendations = message.recommendations;
-          renderRecommendations();
-          break;
-        case 'updateSelection':
-          selectedItems = new Set(message.selected);
-          updateSelectionUI();
+        case 'updateSkills':
+          allSkills = message.skills || [];
+          categories = message.categories || {};
+          updateHeader(message.totalSkills || 0, message.totalCategories || 0);
+          updateFilters();
+          renderSkills();
           break;
       }
     });
 
-    function refreshRecommendations() {
+    function updateHeader(totalSkills, totalCategories) {
+      const subtitle = document.getElementById('subtitle');
+      subtitle.textContent = \`Explore our collection of \${totalSkills} agent skills across \${totalCategories} categories\`;
+    }
+
+    function updateFilters() {
+      const filtersContainer = document.getElementById('filters');
+      
+      // Clear existing category filters (keep "All")
+      const allButton = filtersContainer.querySelector('[data-filter="all"]');
+      filtersContainer.innerHTML = '';
+      filtersContainer.appendChild(allButton);
+      
+      // Add category filters
+      Object.keys(categories).sort().forEach(categoryId => {
+        const category = categories[categoryId];
+        const button = document.createElement('button');
+        button.className = 'filter-button';
+        button.dataset.filter = categoryId;
+        button.textContent = category.name;
+        button.onclick = () => setFilter(categoryId);
+        filtersContainer.appendChild(button);
+      });
+    }
+
+    function refreshSkills() {
       vscode.postMessage({ command: 'refresh' });
     }
 
@@ -850,299 +580,41 @@ ${item.cursortoysUrl ? `**CursorToys URL:** ${item.cursortoysUrl}` : ''}
       document.querySelectorAll('.filter-button').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.filter === filter);
       });
-      
-      if (filter === 'contribute') {
-        showContributePage();
-      } else {
-        filterRecommendations();
-      }
+      filterSkills();
     }
 
-    function filterRecommendations() {
+    function filterSkills() {
       const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-      renderRecommendations(searchTerm);
+      renderSkills(searchTerm);
     }
 
-    function showContributePage() {
-      const content = document.getElementById('content');
-      const footer = document.getElementById('footer');
-      footer.style.display = 'none';
-      
-      content.innerHTML = \`
-        <div class="contribute-section">
-          <h2>🚀 Contribute Your Commands, Prompts & Rules</h2>
-          
-          <p>
-            Help the CursorToys community by sharing your awesome commands, prompts, and rules! 
-            Your contributions will help other developers be more productive.
-          </p>
-
-          <div class="info-box">
-            <strong>📌 What can you contribute?</strong>
-            <ul style="margin: 8px 0 0 0;">
-              <li><strong>Commands:</strong> Reusable automation scripts</li>
-              <li><strong>Prompts:</strong> AI interaction templates</li>
-              <li><strong>Rules:</strong> Project guidelines and standards</li>
-            </ul>
-          </div>
-
-          <h3>📝 Step 1: Prepare Your File with Metadata</h3>
-          <p>Create a Markdown file (.md or .mdc) with YAML frontmatter containing metadata:</p>
-          
-          <div class="example-box">
-            <pre><code>---
-description: Short description of what this does
-tags:
-  - api
-  - http
-  - automation
-category: Development Tools
-author: Your Name
-version: 1.0.0
----
-
-# Your Command/Prompt/Rule Title
-
-Your content goes here...
-
-## Usage
-Explain how to use it...
-
-## Examples
-Provide examples...
-</code></pre>
-          </div>
-
-          <div class="warning-box">
-            <strong>⚠️ Important:</strong> The YAML frontmatter helps with discovery in the marketplace. Include description, tags, and category.
-          </div>
-
-          <h3>🔗 Step 2: Share Using CursorToys</h3>
-          <p>Use the built-in CursorToys sharing system to create a shareable link:</p>
-
-          <h4>Option A: Share as Gist (Recommended)</h4>
-          <ol>
-            <li>Open your command/prompt/rule file in the editor</li>
-            <li>Right-click → <strong>CursorToys: Share as Gist</strong></li>
-            <li>The file will be uploaded to GitHub Gist automatically</li>
-            <li>Copy the Gist URL from the notification</li>
-          </ol>
-
-          <div class="info-box">
-            <strong>💡 Pro Tip:</strong> Gists are recommended because they:
-            <ul style="margin: 8px 0 0 0;">
-              <li>Are version-controlled (users get updates)</li>
-              <li>Support multiple files</li>
-              <li>Have syntax highlighting</li>
-              <li>Can be edited later without changing the URL</li>
-            </ul>
-          </div>
-
-          <h4>Option B: Generate Deeplink</h4>
-          <ol>
-            <li>Open your file in the editor</li>
-            <li>Right-click → <strong>CursorToys: Share as Deeplink</strong></li>
-            <li>Choose the type (Command/Prompt/Rule)</li>
-            <li>Copy the generated CursorToys URL</li>
-          </ol>
-
-          <div class="contribute-actions" style="margin: 20px 0;">
-            <button class="button" onclick="shareCurrentFile()">
-              🔗 Share Current File
-            </button>
-            <button class="button-secondary button" onclick="openShareHelp()">
-              ❓ How to Share
-            </button>
-          </div>
-
-          <h3>📬 Step 3: Submit to the Index</h3>
-          <p>After generating your shareable link, add it to the recommendations index:</p>
-
-          <h4>Via Pull Request (Easy!)</h4>
-          <ol>
-            <li>Click the button below to open the index editor</li>
-            <li>Add your item to the appropriate section:
-              <pre style="margin-top: 8px;"><code>{
-  "name": "Your Item Name",
-  "gistId": "username/gist-id",  // or use cursortoysUrl
-  "type": "command",  // or "prompt" or "rule"
-  "context": {
-    "languages": ["javascript", "typescript"],
-    "frameworks": ["react"]
-  }
-}</code></pre>
-            </li>
-            <li>Click "Propose changes" and submit the Pull Request</li>
-          </ol>
-
-          <div class="contribute-actions" style="margin: 20px 0;">
-            <button class="button" onclick="openIndexEditor()">
-              📝 Edit Recommendations Index
-            </button>
-            <button class="button-secondary button" onclick="viewIndexExample()">
-              📚 View Index Format
-            </button>
-          </div>
-
-          <h4>Or via GitHub Issue</h4>
-          <p>If you prefer, you can also submit via issue:</p>
-          <ol>
-            <li>Copy your Gist URL or CursorToys deeplink</li>
-            <li>Click "Submit via Issue" below</li>
-            <li>Fill in the details and submit</li>
-          </ol>
-
-          <div class="contribute-actions" style="margin: 20px 0;">
-            <button class="button-secondary button" onclick="openIssue()">
-              📬 Submit via Issue
-            </button>
-          </div>
-
-          <h3>🎯 Context Targeting (Optional)</h3>
-          <p>
-            Help users discover your contribution by specifying when it's relevant:
-          </p>
-          <ul>
-            <li><strong>Languages:</strong> <code>javascript</code>, <code>python</code>, <code>go</code>, <code>java</code>, <code>typescript</code>, etc.</li>
-            <li><strong>Frameworks:</strong> <code>react</code>, <code>vue</code>, <code>django</code>, <code>express</code>, <code>nextjs</code>, etc.</li>
-            <li><strong>Special folders:</strong> <code>.github</code>, <code>docker</code>, <code>kubernetes</code>, etc.</li>
-          </ul>
-
-          <div class="example-box">
-            <strong>Example with context:</strong>
-            <pre><code>{
-  "name": "React Component Generator",
-  "gistId": "username/abc123",
-  "type": "command",
-  "context": {
-    "languages": ["javascript", "typescript"],
-    "frameworks": ["react", "nextjs"],
-    "specialFolders": ["components", "src"]
-  }
-}</code></pre>
-          </div>
-
-          <div class="info-box">
-            <strong>💡 More Pro Tips:</strong>
-            <ul style="margin: 8px 0 0 0;">
-              <li>Use clear, descriptive names</li>
-              <li>Add relevant tags for better discovery</li>
-              <li>Include usage examples in your file</li>
-              <li>Test your command/prompt/rule before sharing</li>
-              <li>Update your Gist if you improve it later</li>
-            </ul>
-          </div>
-
-          <h3>✅ Review Process</h3>
-          <p>
-            After submission, your contribution will be reviewed for:
-          </p>
-          <ul>
-            <li>✓ Quality and usefulness</li>
-            <li>✓ Proper formatting and metadata</li>
-            <li>✓ Security (no malicious code)</li>
-            <li>✓ Compatibility with CursorToys</li>
-          </ul>
-          <p>
-            Most contributions are reviewed within 1-3 days. You'll receive feedback via GitHub.
-          </p>
-
-          <h3>🎬 Quick Start Workflow</h3>
-          <div class="example-box">
-            <ol style="margin: 8px 0;">
-              <li>Open your .md file with YAML frontmatter</li>
-              <li>Right-click → <strong>Share as Gist</strong></li>
-              <li>Copy the Gist URL</li>
-              <li>Click <strong>Edit Recommendations Index</strong> above</li>
-              <li>Add your entry with the Gist URL</li>
-              <li>Submit the PR</li>
-              <li>Done! 🎉</li>
-            </ol>
-          </div>
-
-          <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--vscode-panel-border); text-align: center; color: var(--vscode-descriptionForeground);">
-            <p>
-              Thank you for contributing to the CursorToys community! 🎉<br>
-              Questions? <a href="https://github.com/CursorToys/cursor-toys/discussions" style="color: var(--vscode-textLink-foreground);">Join the discussion</a>
-            </p>
-          </div>
-        </div>
-      \`;
-    }
-
-    function shareCurrentFile() {
-      vscode.postMessage({ command: 'shareCurrentFile' });
-    }
-
-    function openShareHelp() {
-      vscode.postMessage({ 
-        command: 'openExternal', 
-        url: 'https://github.com/CursorToys/cursor-toys#sharing-commands-prompts--rules' 
-      });
-    }
-
-    function openIndexEditor() {
-      vscode.postMessage({ 
-        command: 'openExternal', 
-        url: 'https://github.com/CursorToys/marketplace/edit/main/recommendations-index.json' 
-      });
-    }
-
-    function viewIndexExample() {
-      vscode.postMessage({ 
-        command: 'openExternal', 
-        url: 'https://github.com/CursorToys/marketplace/blob/main/recommendations-index.json' 
-      });
-    }
-
-    function openIssue() {
-      vscode.postMessage({ 
-        command: 'openExternal', 
-        url: 'https://github.com/CursorToys/marketplace/pulls' 
-      });
-    }
-
-    function viewExamples() {
-      vscode.postMessage({ 
-        command: 'openExternal', 
-        url: 'https://github.com/CursorToys/marketplace/blob/main/recommendations-index.json' 
-      });
-    }
-
-    function renderRecommendations(searchTerm = '') {
+    function renderSkills(searchTerm = '') {
       const content = document.getElementById('content');
       
-      if (!allRecommendations || allRecommendations.length === 0) {
+      if (!allSkills || allSkills.length === 0) {
         content.innerHTML = \`
           <div class="empty-state">
-            <h2>No recommendations found</h2>
-            <p>Configure a recommendations index URL or Gist ID in settings to get started.</p>
+            <h2>No skills found</h2>
+            <p>Unable to load skills from the registry. Check your internet connection and try again.</p>
           </div>
         \`;
         return;
       }
 
-      // Flatten all items
-      const allItems = [];
-      allRecommendations.forEach(recSet => {
-        recSet.items.forEach(item => {
-          allItems.push({ ...item, setName: recSet.name });
-        });
-      });
-
-      // Filter items
-      const filteredItems = allItems.filter(item => {
-        // Filter by type
-        if (currentFilter !== 'all' && item.type !== currentFilter) {
+      // Filter skills
+      const filteredSkills = allSkills.filter(skill => {
+        // Filter by category
+        if (currentFilter !== 'all' && skill.category !== currentFilter) {
           return false;
         }
 
         // Filter by search term
         if (searchTerm) {
           const searchableText = [
-            item.name,
-            item.description,
-            ...(item.tags || [])
+            skill.name,
+            skill.description,
+            skill.category,
+            skill.author || ''
           ].join(' ').toLowerCase();
           
           if (!searchableText.includes(searchTerm)) {
@@ -1153,10 +625,10 @@ Provide examples...
         return true;
       });
 
-      if (filteredItems.length === 0) {
+      if (filteredSkills.length === 0) {
         content.innerHTML = \`
           <div class="empty-state">
-            <h2>No matching recommendations</h2>
+            <h2>No matching skills</h2>
             <p>Try adjusting your search or filters.</p>
           </div>
         \`;
@@ -1165,113 +637,136 @@ Provide examples...
 
       // Render grid
       const grid = document.createElement('div');
-      grid.className = 'recommendations-grid';
+      grid.className = 'skills-grid';
 
-      filteredItems.forEach(item => {
-        const card = createRecommendationCard(item);
+      filteredSkills.forEach(skill => {
+        const card = createSkillCard(skill);
         grid.appendChild(card);
       });
 
       content.innerHTML = '';
       content.appendChild(grid);
-
-      updateSelectionUI();
     }
 
-    function createRecommendationCard(item) {
+    function createSkillCard(skill) {
       const card = document.createElement('div');
-      card.className = 'rec-card';
-      card.dataset.itemId = item.id;
+      card.className = 'skill-card';
       
-      if (selectedItems.has(item.id)) {
-        card.classList.add('selected');
+      const categoryName = categories[skill.category]?.name || skill.category;
+      const installCommand = \`npx @tech-leads-club/agent-skills --skill \${skill.name} -a cursor\`;
+      
+      // Detect subfolders from files array
+      const subfolders = {
+        references: false,
+        scripts: false,
+        assets: false
+      };
+      
+      if (skill.files && Array.isArray(skill.files)) {
+        skill.files.forEach(file => {
+          if (file.includes('references/')) subfolders.references = true;
+          if (file.includes('scripts/')) subfolders.scripts = true;
+          if (file.includes('assets/')) subfolders.assets = true;
+        });
       }
-
-      if (item.isInstalled) {
-        card.classList.add('installed');
+      
+      // Build meta items (author, version, subfolders)
+      const metaItems = [];
+      
+      if (skill.author) {
+        metaItems.push(\`<span class="meta-item">by \${skill.author}</span>\`);
+      }
+      
+      if (skill.version) {
+        metaItems.push(\`<span class="meta-item">v\${skill.version}</span>\`);
+      }
+      
+      // Add subfolder badges with icons and text
+      if (subfolders.references) {
+        metaItems.push(\`
+          <span class="subfolder-item">
+            <svg class="subfolder-icon" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M0 1.75A.75.75 0 01.75 1h4.253c1.227 0 2.317.59 3 1.501A3.744 3.744 0 0111.006 1h4.245a.75.75 0 01.75.75v10.5a.75.75 0 01-.75.75h-4.507a2.25 2.25 0 00-1.591.659l-.622.621a.75.75 0 01-1.06 0l-.622-.621A2.25 2.25 0 005.258 13H.75a.75.75 0 01-.75-.75V1.75zm8.755 3a2.25 2.25 0 012.25-2.25H14.5v9h-3.757c-.71 0-1.4.201-1.992.572l.004-7.322zm-1.504 7.324l.004-5.073-.002-2.253A2.25 2.25 0 005.003 2.5H1.5v9h3.757a3.75 3.75 0 011.994.574z"/>
+            </svg>
+            References
+          </span>
+        \`);
+      }
+      
+      if (subfolders.scripts) {
+        metaItems.push(\`
+          <span class="subfolder-item">
+            <svg class="subfolder-icon" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M4.72 3.22a.75.75 0 011.06 1.06L2.06 8l3.72 3.72a.75.75 0 11-1.06 1.06L.47 8.53a.75.75 0 010-1.06l4.25-4.25zm6.56 0a.75.75 0 10-1.06 1.06L13.94 8l-3.72 3.72a.75.75 0 101.06 1.06l4.25-4.25a.75.75 0 000-1.06l-4.25-4.25z"/>
+            </svg>
+            Scripts
+          </span>
+        \`);
+      }
+      
+      if (subfolders.assets) {
+        metaItems.push(\`
+          <span class="subfolder-item">
+            <svg class="subfolder-icon" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M1.75 2.5a.25.25 0 00-.25.25v10.5c0 .138.112.25.25.25h.94a.5.5 0 01.5.5c0 .28.22.5.5.5h6.5a.5.5 0 00.5-.5.5.5 0 01.5-.5h.94a.25.25 0 00.25-.25v-10.5a.25.25 0 00-.25-.25H1.75zM0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0114.25 15H1.75A1.75 1.75 0 010 13.25V2.75zm4.5 2a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm-2 1.5a2 2 0 114 0 2 2 0 01-4 0zm9.75 5.5H3.75v-.75c0-.69.56-1.25 1.25-1.25h5c.69 0 1.25.56 1.25 1.25v.75z"/>
+            </svg>
+            Assets
+          </span>
+        \`);
       }
 
       card.innerHTML = \`
-        <div class="rec-card-header">
-          <div>
-            <div class="rec-card-title">\${item.name}</div>
-            <span class="rec-card-type">\${item.type}</span>
-            \${item.isInstalled ? \`<span class="installed-badge">Installed (\${item.installedPath})</span>\` : ''}
-          </div>
+        <div class="skill-card-header">
+          <div class="skill-card-title">\${skill.name}</div>
+          <span class="category-badge">\${categoryName}</span>
         </div>
-        <div class="rec-card-description">\${item.description}</div>
-        \${item.tags && item.tags.length > 0 ? \`
-          <div class="rec-card-tags">
-            \${item.tags.map(tag => \`<span class="tag">\${tag}</span>\`).join('')}
-          </div>
-        \` : ''}
-        <div class="rec-card-actions">
-          <button class="action-button" onclick="installItem('\${item.id}')" \${item.isInstalled ? 'disabled' : ''}>
-            \${item.isInstalled ? 'Installed' : 'Install'}
+        <div class="skill-card-description">\${skill.description}</div>
+        \${metaItems.length > 0 ? \`<div class="skill-card-meta">\${metaItems.join('')}</div>\` : ''}
+        <div class="install-command-box">
+          <code class="install-command">\${installCommand}</code>
+          <svg class="copy-icon" onclick='copyInstallCommand("\${skill.name}")' viewBox="0 0 16 16" fill="currentColor" title="Copy Command">
+            <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"/>
+            <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"/>
+          </svg>
+        </div>
+        <div class="skill-card-actions">
+          <button class="action-button" onclick='openInTerminal("\${skill.name}")'>
+            <svg class="action-icon" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0114.25 15H1.75A1.75 1.75 0 010 13.25V2.75zm1.75-.25a.25.25 0 00-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 00.25-.25V2.75a.25.25 0 00-.25-.25H1.75zM7.25 8a.75.75 0 01-.22.53l-2.25 2.25a.75.75 0 01-1.06-1.06L5.44 8 3.72 6.28a.75.75 0 111.06-1.06l2.25 2.25c.141.14.22.331.22.53zm1.5 1.5a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"/>
+            </svg>
+            Install in Cursor
           </button>
-          <button class="action-button-secondary action-button" onclick="previewItem('\${item.id}')">Preview</button>
+          <button class="action-button-secondary action-button" onclick='openGitHub("\${skill.path}")'>
+            <svg class="action-icon" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+            </svg>
+            View on GitHub
+          </button>
         </div>
       \`;
-
-      card.addEventListener('click', (e) => {
-        if (!e.target.classList.contains('action-button') && !item.isInstalled) {
-          toggleSelect(item.id);
-        }
-      });
 
       return card;
     }
 
-    function toggleSelect(itemId) {
-      if (selectedItems.has(itemId)) {
-        selectedItems.delete(itemId);
-      } else {
-        selectedItems.add(itemId);
-      }
-      vscode.postMessage({ command: 'toggleSelect', itemId });
-      updateSelectionUI();
-    }
-
-    function updateSelectionUI() {
-      const footer = document.getElementById('footer');
-      const selectedCount = document.getElementById('selectedCount');
-      
-      footer.style.display = selectedItems.size > 0 ? 'flex' : 'none';
-      selectedCount.textContent = \`\${selectedItems.size} item\${selectedItems.size !== 1 ? 's' : ''} selected\`;
-
-      // Update card selection
-      document.querySelectorAll('.rec-card').forEach(card => {
-        const itemId = card.dataset.itemId;
-        card.classList.toggle('selected', selectedItems.has(itemId));
+    function openInTerminal(skillName) {
+      vscode.postMessage({ 
+        command: 'openInTerminal', 
+        skillName: skillName 
       });
     }
 
-    function installItem(itemId) {
-      const allItems = [];
-      allRecommendations.forEach(recSet => {
-        allItems.push(...recSet.items);
+    function copyInstallCommand(skillName) {
+      vscode.postMessage({ 
+        command: 'copyInstallCommand', 
+        skillName: skillName 
       });
-      
-      const item = allItems.find(i => i.id === itemId);
-      if (item) {
-        vscode.postMessage({ command: 'install', item });
-      }
     }
 
-    function previewItem(itemId) {
-      const allItems = [];
-      allRecommendations.forEach(recSet => {
-        allItems.push(...recSet.items);
+    function openGitHub(skillPath) {
+      vscode.postMessage({ 
+        command: 'openGitHub', 
+        skillPath: skillPath 
       });
-      
-      const item = allItems.find(i => i.id === itemId);
-      if (item) {
-        vscode.postMessage({ command: 'preview', item });
-      }
-    }
-
-    function installSelected() {
-      vscode.postMessage({ command: 'installSelected' });
     }
   </script>
 </body>
