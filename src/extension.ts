@@ -4,7 +4,7 @@ import { generateDeeplink } from './deeplinkGenerator';
 import { importDeeplink } from './deeplinkImporter';
 import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForEnvFolder, generateShareableForHttpFolderWithEnv, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist } from './shareableImporter';
-import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpLlmsFile } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { EnvCodeLensProvider } from './envCodeLensProvider';
@@ -27,47 +27,6 @@ import { GistManager } from './gistManager';
 import { RecommendationsManager } from './recommendationsManager';
 import { RecommendationsBrowserPanel } from './recommendationsBrowserPanel';
 import * as fs from 'fs';
-
-/**
- * Checks recommendations on workspace startup (with delay)
- */
-async function checkRecommendationsOnStartup(manager: RecommendationsManager): Promise<void> {
-  // Delay to not slow down activation
-  setTimeout(async () => {
-    try {
-      if (await manager.shouldShowRecommendations()) {
-        const context = await manager.detectProjectContext();
-        const recommendations = await manager.getRecommendationsForContext(context);
-        
-        if (recommendations.length > 0) {
-          const totalItems = recommendations.reduce((sum, rec) => sum + rec.items.length, 0);
-          
-          const action = await vscode.window.showInformationMessage(
-            `CursorToys Marketplace has ${totalItems} recommended items for your project`,
-            'Open Marketplace',
-            'Not Now',
-            "Don't Show Again"
-          );
-
-          if (action === 'Open Marketplace') {
-            // This will be handled by the command
-            vscode.commands.executeCommand('cursor-toys.browseRecommendations');
-          } else if (action === "Don't Show Again") {
-            await vscode.workspace.getConfiguration('cursorToys').update(
-              'recommendationsEnabled',
-              false,
-              vscode.ConfigurationTarget.Global
-            );
-          }
-
-          await manager.markRecommendationsShown();
-        }
-      }
-    } catch (error) {
-      console.error('Error checking recommendations on startup:', error);
-    }
-  }, 5000); // 5 seconds delay
-}
 
 /**
  * Helper function to generate deeplink with validations
@@ -212,14 +171,9 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('cursor-toys.showMenu', async () => {
       const items: vscode.QuickPickItem[] = [
         {
-          label: '$(compass) Open Marketplace',
-          description: 'Browse and install recommended commands, prompts and rules',
+          label: '$(compass) Open Skills Marketplace',
+          description: 'Browse Agent Skills from Tech Leads Club',
           detail: 'Marketplace'
-        },
-        {
-          label: '$(search) Check Recommendations',
-          description: 'Check recommendations for current project',
-          detail: 'Recommendations'
         },
         {
           label: '$(cloud-download) Import from URL',
@@ -260,8 +214,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       // Map selection to command
       const commandMap: { [key: string]: string } = {
-        'Open Marketplace': 'cursor-toys.browseRecommendations',
-        'Check Recommendations': 'cursor-toys.checkRecommendations',
+        'Open Skills Marketplace': 'cursor-toys.browseRecommendations',
         'Import from URL': 'cursor-toys.import',
         'New Notepad': 'cursor-toys.createNotepad',
         'Create Skill': 'cursor-toys.createSkill',
@@ -3356,6 +3309,38 @@ Detailed instructions for the agent.
     }
   );
 
+  // Command to generate llms.txt in HTTP folder (instructions for the extension)
+  const generateHttpLlmsCommand = vscode.commands.registerCommand(
+    'cursor-toys.generateHttpLlms',
+    async (uri?: vscode.Uri) => {
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders || workspaceFolders.length === 0) {
+        vscode.window.showErrorMessage('No workspace folder open');
+        return;
+      }
+
+      let httpPath: string;
+      if (uri && uri.scheme === 'file') {
+        const normalized = uri.fsPath.replace(/\\/g, '/');
+        const baseFolderName = getBaseFolderName();
+        if (normalized.endsWith(`/${baseFolderName}/http`) || normalized.endsWith(`/${baseFolderName}/http/`)) {
+          httpPath = uri.fsPath;
+        } else {
+          httpPath = getHttpPath(workspaceFolders[0].uri.fsPath);
+        }
+      } else {
+        httpPath = getHttpPath(workspaceFolders[0].uri.fsPath);
+      }
+
+      try {
+        await createHttpLlmsFile(httpPath, true);
+        vscode.window.showInformationMessage('llms.txt generated successfully in HTTP folder.');
+      } catch (error) {
+        vscode.window.showErrorMessage(`Failed to generate llms.txt: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  );
+
   // Command to minify file
   const minifyFileCommand = vscode.commands.registerCommand(
     'cursor-toys.minifyFile',
@@ -3727,52 +3712,13 @@ Detailed instructions for the agent.
     }
   );
 
-  // Recommendations commands
-  const checkRecommendationsCommand = vscode.commands.registerCommand('cursor-toys.checkRecommendations', async () => {
-    try {
-      const projectContext = await recsManager.detectProjectContext();
-      const recommendations = await recsManager.getRecommendationsForContext(projectContext);
-      
-      if (recommendations.length === 0) {
-        vscode.window.showInformationMessage('No recommendations found for this project.');
-        return;
-      }
-
-      // Count total items
-      const totalItems = recommendations.reduce((sum, rec) => sum + rec.items.length, 0);
-
-      const action = await vscode.window.showInformationMessage(
-        `CursorToys Marketplace has ${totalItems} recommended items for your project`,
-        'Open Marketplace',
-        'Not Now'
-      );
-
-      if (action === 'Open Marketplace') {
-        await RecommendationsBrowserPanel.createOrShow(context, recsManager);
-      }
-    } catch (error) {
-      vscode.window.showErrorMessage(`Error checking recommendations: ${error}`);
-    }
-  });
-
-  const browseRecommendationsCommand = vscode.commands.registerCommand('cursor-toys.browseRecommendations', async () => {
+  // Skills Marketplace commands
+  const browseSkillsMarketplaceCommand = vscode.commands.registerCommand('cursor-toys.browseRecommendations', async () => {
     await RecommendationsBrowserPanel.createOrShow(context, recsManager);
   });
 
-  const refreshRecommendationsCommand = vscode.commands.registerCommand('cursor-toys.refreshRecommendations', async () => {
+  const refreshSkillsCommand = vscode.commands.registerCommand('cursor-toys.refreshRecommendations', async () => {
     await recsManager.clearCache();
-  });
-
-  // Check recommendations on workspace open (delayed)
-  if (vscode.workspace.workspaceFolders) {
-    checkRecommendationsOnStartup(recsManager);
-  }
-
-  // Watch for workspace folder changes
-  const workspaceChangeListener = vscode.workspace.onDidChangeWorkspaceFolders(() => {
-    if (vscode.workspace.workspaceFolders) {
-      checkRecommendationsOnStartup(recsManager);
-    }
   });
 
   // Register URI Handler for cursor://godrix.cursor-toys/* and vscode://godrix.cursor-toys/* deeplinks
@@ -4122,6 +4068,7 @@ Detailed instructions for the agent.
     openEnvironmentsCommand,
     createEnvironmentCommand,
     initializeEnvironmentsCommand,
+    generateHttpLlmsCommand,
     minifyFileCommand,
     trimClipboardCommand,
     trimClipboardWithPromptCommand,
@@ -4134,10 +4081,8 @@ Detailed instructions for the agent.
     shareFolderViaGistCommand,
     configureGitHubTokenCommand,
     removeGitHubTokenCommand,
-    checkRecommendationsCommand,
-    browseRecommendationsCommand,
-    refreshRecommendationsCommand,
-    workspaceChangeListener,
+    browseSkillsMarketplaceCommand,
+    refreshSkillsCommand,
     uriHandler
   );
   
