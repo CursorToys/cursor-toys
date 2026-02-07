@@ -1147,6 +1147,67 @@ function initializeHelpers(): void {
       return result;
     }
   });
+
+  // User-Agent helper: @userAgent()
+  helperFunctions.set('userAgent', {
+    name: 'userAgent',
+    description: 'Generates a random browser User-Agent string',
+    execute: () => {
+      const chromeVersions = ['120', '119', '118', '121', '122'];
+      const safariVersions = ['17.2', '17.1', '16.6', '18.0'];
+      const firefoxVersions = ['121', '120', '119'];
+      const os = [
+        'Windows NT 10.0; Win64; x64',
+        'Macintosh; Intel Mac OS X 10_15_7',
+        'X11; Linux x86_64'
+      ];
+      const i = Math.floor(Math.random() * 3);
+      if (i === 0) {
+        return `Mozilla/5.0 (${os[Math.floor(Math.random() * os.length)]}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersions[Math.floor(Math.random() * chromeVersions.length)]}.0.0.0 Safari/537.36`;
+      }
+      if (i === 1) {
+        return `Mozilla/5.0 (${os[Math.floor(Math.random() * os.length)]}) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/${safariVersions[Math.floor(Math.random() * safariVersions.length)]} Safari/605.1.15`;
+      }
+      return `Mozilla/5.0 (${os[Math.floor(Math.random() * os.length)]}) Gecko/20100101 Firefox/${firefoxVersions[Math.floor(Math.random() * firefoxVersions.length)]}.0`;
+    }
+  });
+
+  // IP helper: @ip()
+  helperFunctions.set('ip', {
+    name: 'ip',
+    description: 'Generates a random IPv4 address',
+    execute: () => {
+      const octet = () => Math.floor(Math.random() * 256).toString();
+      return `${octet()}.${octet()}.${octet()}.${octet()}`;
+    }
+  });
+
+  // Lorem ipsum helper: @lorem(count) - count 1 to 100 words
+  const LOREM_WORDS = 'Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur Excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum'.split(' ');
+  helperFunctions.set('lorem', {
+    name: 'lorem',
+    description: 'Generates Lorem Ipsum text with 1 to 100 words',
+    execute: (count: string = '5') => {
+      let n = parseInt(count, 10) || 5;
+      n = Math.max(1, Math.min(100, n));
+      const words: string[] = [];
+      for (let i = 0; i < n; i++) {
+        words.push(LOREM_WORDS[i % LOREM_WORDS.length]);
+      }
+      return words.join(' ');
+    }
+  });
+
+  // Random from list helper: @randomFrom("item1", "item2", ...)
+  helperFunctions.set('randomFrom', {
+    name: 'randomFrom',
+    description: 'Picks a random item from the list of arguments',
+    execute: (...args: string[]) => {
+      const list = args.filter(a => a !== undefined && a !== null);
+      if (list.length === 0) return '';
+      return list[Math.floor(Math.random() * list.length)];
+    }
+  });
 }
 
 // Initialize helpers on module load

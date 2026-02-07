@@ -539,23 +539,24 @@ export async function isSkillFolder(folderPath: string): Promise<boolean> {
 /**
  * Creates llms.txt file in HTTP folder with instructions on how to use HTTP requests
  * @param httpFolderPath Path to the HTTP folder
+ * @param overwrite If true, overwrite existing llms.txt; if false, skip when file exists
  */
-export async function createHttpLlmsFile(httpFolderPath: string): Promise<void> {
+export async function createHttpLlmsFile(httpFolderPath: string, overwrite?: boolean): Promise<void> {
   const llmsFilePath = path.join(httpFolderPath, 'llms.txt');
   const llmsUri = vscode.Uri.file(llmsFilePath);
-  
-  // Check if file already exists
-  try {
-    await vscode.workspace.fs.stat(llmsUri);
-    // File exists, don't overwrite
-    return;
-  } catch {
-    // File doesn't exist, create it
+
+  if (!overwrite) {
+    try {
+      await vscode.workspace.fs.stat(llmsUri);
+      return;
+    } catch {
+      // File doesn't exist, create it
+    }
   }
-  
+
   const baseFolderName = getBaseFolderName();
   const environmentsFolderName = getEnvironmentsFolderName();
-  
+
   const llmsContent = `---
 description: CursorToys HTTP Requests - In-Editor API Testing
 alwaysApply: true
@@ -623,10 +624,14 @@ Define variables directly in request files: \`# @var VAR_NAME=value\`
 ## Helper Functions
 
 - \`{{@prompt("label")}}\` - Prompt user for input value
-- \`{{@randomIn(min, max)}}\` - Generate random integer
-- \`{{@datetime}}\` or \`{{@datetime("format")}}\` - Current date/time
+- \`{{@randomIn(min, max)}}\` - Generate random integer between min and max (inclusive)
+- \`{{@datetime}}\` or \`{{@datetime("format")}}\` - Current date/time (format: ISO, timestamp, date, time)
 - \`{{@uuid()}}\` - Generate random UUID v4
 - \`{{@randomString(length)}}\` - Generate random alphanumeric string
+- \`{{@userAgent()}}\` - Generate random browser User-Agent string
+- \`{{@ip()}}\` - Generate random IPv4 address
+- \`{{@lorem(count)}}\` - Generate Lorem Ipsum text (1 to 100 words; default 5)
+- \`{{@randomFrom("a", "b", "c")}}\` - Pick a random item from the list of arguments
 
 ## Environment Decorators
 
@@ -719,6 +724,23 @@ Content-Type: application/json
   "age": {{@randomIn(18, 65)}},
   "createdAt": "{{@datetime}}",
   "email": "{{@prompt("Enter email")}}"
+}
+\`\`\`
+
+### Example 5: Using userAgent, ip, lorem and randomFrom
+\`\`\`http
+## Request with random helpers
+GET {{BASE_URL}}/api/items
+User-Agent: {{@userAgent()}}
+X-Forwarded-For: {{@ip()}}
+X-Request-Type: {{@randomFrom("internal", "external", "test")}}
+
+POST {{BASE_URL}}/api/feedback
+Content-Type: application/json
+
+{
+  "summary": "{{@lorem(10)}}",
+  "source": "{{@randomFrom("web", "mobile", "api")}}"
 }
 \`\`\`
 
