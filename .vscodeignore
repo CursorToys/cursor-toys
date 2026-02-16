@@ -30,3 +30,7 @@ node_modules/**
 vsc-extension-quickstart.md
 .DS_Store
 *.log
+llms.txt
+README.md
+CHANGELOG.md
+*.code-workspace
