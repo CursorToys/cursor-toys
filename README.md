@@ -29,6 +29,8 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 | [🪝 Cursor Hooks](#-cursor-hooks) | [🎓 Skills Management](#-skills-management) | [🗜️ File Minification](#️-file-minification) |
 | [💬 Chat Integration](#-chat-integration) | [🌐 GitHub Gist Integration](#-github-gist-integration) | |
 
+> **🧪 NEW in v1.10.0**: HTTP Request Assertions — Automate API testing with `@assert()` annotations!
+
 ### 🤖 AI Text Refinement
 
 **Enhance text and code quality with AI** — Powered by Google Gemini.
@@ -85,10 +87,13 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 
 ### 🌐 In-Editor API Testing
 
-**Test APIs without leaving Cursor** — Full REST client built-in.
+**Test APIs without leaving Cursor** — Full REST client built-in with automated testing.
 
 - 🚀 **Execute Requests** — Run HTTP requests from `.req` files with CodeLens
 - 📝 **Multiple Formats** — cURL commands or REST Client format (METHOD URL)
+- 🧪 **Automated Testing** — Built-in assertion system with `@assert()` annotations
+- ✅ **27+ Assertion Operators** — Validate status, headers, body, types, and more
+- 📊 **Test Results** — Pass/fail indicators with actual vs expected values
 - ⚡ **Performance Tracking** — See execution time for each request
 - 🎨 **Syntax Highlighting** — Beautiful highlighting for requests and responses
 - 🌍 **Environment Variables** — Use `{{variableName}}` from `.env` files
@@ -96,6 +101,19 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 - 🎯 **Helper Functions** — Dynamic values: `{{@uuid()}}`, `{{@datetime}}`, `{{@randomIn()}}`, `{{@prompt()}}`, `{{@userAgent()}}`, `{{@ip()}}`, `{{@lorem()}}`, `{{@randomFrom()}}`
 - 🔄 **Multiple Environments** — Switch between dev, staging, prod instantly
 - 💾 **Auto-Save Responses** — Or preview-only mode for quick tests
+- ⚙️ **Configurable** — Timeout, default environment, environments folder name (`.environments`), assertion options
+- 📘 **HTTP Requests Skill** — Install a Cursor Agent Skill with full documentation: right-click the **HTTP folder** (e.g. `.cursor/http/`) in the Explorer and choose **"CursorToys: Add Skill: HTTP Requests Documentation"**. The skill is added to your personal skills; the AI will use it when you work with `.req`/`.request` files, environments, and assertions.
+
+**Quick Start - HTTP Assertions:**
+```http
+/*
+ * @assert("Status should be 200", "res.status", "equals", 200)
+ * @assert("Response should have userId", "res.body.userId", "isDefined")
+ * @assert("User age should be greater than 18", "res.body.age", "gt", 18)
+ */
+GET https://api.example.com/user/123
+```
+Click "Send Request" → See assertion results inline!
 
 ### 📚 Personal Libraries
 
@@ -259,6 +277,7 @@ Click the "Send Request" link that appears above → See formatted response!
 | **CursorToys: Check Recommendations** | — | Check recommendations for the project |
 | **CursorToys: Browse Marketplace** | — | Browse recommendations marketplace |
 | **CursorToys: Send HTTP Request** | — | Execute HTTP request from file |
+| **CursorToys: Run HTTP Assertions Tests** | — | Run assertions for HTTP request file |
 | **CursorToys: Select HTTP Environment** | — | Switch between HTTP environments |
 | **CursorToys: Minify File** | — | Minify current file |
 | **CursorToys: Trim & Minify Clipboard** | — | Auto-detect and minify clipboard |
@@ -268,9 +287,36 @@ Click the "Send Request" link that appears above → See formatted response!
 
 ## ✨ What's New
 
-**Version 1.9.0 (February 2026)**
+**Version 1.10.0 (16 February 2026)**
 
 For a detailed look at the latest changes, visit the [CHANGELOG](CHANGELOG.md).
+
+**✨ Highlights**
+
+- ✅ **HTTP Request Assertions** — Complete automated testing system with `@assert()` annotations
+- ✅ **27+ Assertion Operators** — Validate status, headers, body properties, types, and more
+- ✅ **Flexible Assertion Syntax** — Support for multiple formats with optional descriptions
+- ✅ **Rich Test Results** — Pass/fail indicators with actual vs expected values inline in `.res` files
+- ✅ **Expression Resolution** — Access nested properties with dot notation (`res.body.users[0].name`)
+- ✅ **Configurable Testing** — Enable/disable assertions, inline results, fail-on-error behavior
+- ✅ **HTTP Docs Skill** — Install the "HTTP Requests Documentation" Agent Skill: **right-click the HTTP folder** (e.g. `.cursor/http/`) in the Explorer and choose **"CursorToys: Add Skill: HTTP Requests Documentation"**. The AI then uses this skill when you work with `.req` files. Content matches canonical SKILL.md (operators, best practices, CLI testing).
+- ✅ **Configurable Environments Folder** — `cursorToys.environmentsFolder` (default `.environments`) for environment files path
+
+### HTTP Request Assertions System
+- **Test Automation**: Write assertions directly in HTTP request files using `@assert()` annotations
+- **27+ Operators**: Comparison (`equals`, `gt`, `lte`), String (`contains`, `matches`), Type checks (`isNull`, `isArray`), and more
+- **Flexible Syntax**: 
+  - With description: `@assert("Status should be 200", "res.status", "equals", 200)`
+  - Without description: `@assert("res.body.userId", "isDefined")`
+  - With regex: `@assert("res.body.email", "matches", /^[\w\.-]+@[\w\.-]+\.\w+$/)`
+- **Expression Resolution**: Access response properties with dot notation and array indexing
+- **Result Display**: Inline results in `.res` files with ✓/✗ indicators and summary statistics
+- **Configuration Options**: 
+  - `cursorToys.httpAssertionsEnabled`: Enable/disable assertions (default: true)
+  - `cursorToys.httpAssertionsShowInline`: Show results inline (default: true)
+  - `cursorToys.httpAssertionsFailOnError`: Stop on failure (default: false)
+
+**Version 1.9.0 (February 2026)**
 
 **✨ Highlights**
 
@@ -414,6 +460,144 @@ For a detailed look at the latest changes, visit the [CHANGELOG](CHANGELOG.md).
 - **Personal Prompts View**: Enhanced to show categories at root level (Personal/Workspace)
 - Better organization with clear separation between personal and project items
 - Maintains backward compatibility with existing folder structure
+
+### HTTP Request Assertions (NEW in v1.10.0)
+
+**Complete automated testing system for HTTP requests** — Validate API responses directly in your editor.
+
+#### Quick Example
+
+```http
+/*
+ * @assert("Status should be 200", "res.status", "equals", 200)
+ * @assert("Response should be JSON", "res.headers.content-type", "contains", "application/json")
+ * @assert("User ID should exist", "res.body.userId", "isDefined")
+ * @assert("User name should not be empty", "res.body.name", "isNotEmpty")
+ * @assert("User age should be greater than 18", "res.body.age", "gt", 18)
+ * @assert("Email format should be valid", "res.body.email", "matches", /^[\w\.-]+@[\w\.-]+\.\w+$/)
+ */
+GET https://api.example.com/user/123
+```
+
+Click "Send Request" → See assertion results inline in `.res` file:
+
+```
+=== ASSERTIONS ===
+✓ Status should be 200
+✓ Response should be JSON
+✓ User ID should exist
+✓ User name should not be empty
+✓ User age should be greater than 18
+✓ Email format should be valid
+
+6/6 assertions passed
+```
+
+#### Assertion Operators
+
+**Comparison Operators** (for numbers):
+- `equals`, `notEquals`: Exact equality comparison
+- `gt`, `gte`: Greater than, greater than or equal
+- `lt`, `lte`: Less than, less than or equal
+
+**String Operators**:
+- `contains`, `notContains`: Check if string contains substring
+- `startsWith`, `endsWith`: Check string prefix/suffix
+- `matches`, `notMatches`: Regex pattern matching
+
+**Type Check Operators**:
+- `isNull`, `isNotNull`: Check for null values
+- `isEmpty`, `isNotEmpty`: Check empty strings/arrays/objects
+- `isDefined`, `isUndefined`: Check if property exists
+- `isNumber`, `isString`, `isBoolean`, `isArray`, `isJson`: Type validation
+
+**Value Check Operators**:
+- `isTruthy`, `isFalsy`: Boolean evaluation
+
+**Other Operators**:
+- `in`, `notIn`: Check if value is in array
+- `between`: Check if number is in range
+- `length`: Check string/array length
+
+#### Assertion Formats
+
+**With Description** (recommended for clarity):
+```http
+/* @assert("Status code should be 200", "res.status", "equals", 200) */
+```
+
+**Without Description** (concise):
+```http
+/* @assert("res.status", "equals", 200) */
+```
+
+**No Value** (for operators that don't need expected value):
+```http
+/* @assert("res.body.userId", "isDefined") */
+```
+
+#### Expression Resolution
+
+Access response properties using dot notation:
+
+- **Status**: `res.status`
+- **Headers**: `res.headers.content-type`, `res.headers.authorization`
+- **Body Properties**: `res.body.userId`, `res.body.user.profile.name`
+- **Array Indexing**: `res.body.users[0].name`, `res.body.items[5].id`
+
+#### Real-World Examples
+
+**API Contract Testing**:
+```http
+/*
+ * @assert("res.status", "equals", 200)
+ * @assert("res.body.version", "equals", "2.0")
+ * @assert("res.body.endpoints", "isArray")
+ * @assert("res.body.endpoints", "isNotEmpty")
+ */
+GET https://api.example.com/v2/metadata
+```
+
+**User Authentication Flow**:
+```http
+/*
+ * @assert("res.status", "equals", 201)
+ * @assert("res.body.token", "isDefined")
+ * @assert("res.body.token", "isString")
+ * @assert("res.body.token", "isNotEmpty")
+ * @assert("res.body.expiresIn", "gt", 0)
+ */
+POST https://api.example.com/auth/login
+Content-Type: application/json
+
+{
+  "username": "testuser",
+  "password": "testpass"
+}
+```
+
+**Data Validation**:
+```http
+/*
+ * @assert("res.body.users", "isArray")
+ * @assert("res.body.users", "isNotEmpty")
+ * @assert("res.body.users[0].id", "isNumber")
+ * @assert("res.body.users[0].email", "matches", /^[\w\.-]+@[\w\.-]+\.\w+$/)
+ * @assert("res.body.pagination.total", "gte", 1)
+ * @assert("res.body.pagination.page", "equals", 1)
+ */
+GET https://api.example.com/users?page=1
+```
+
+#### Configuration Options
+
+```json
+{
+  "cursorToys.httpAssertionsEnabled": true,        // Enable assertions
+  "cursorToys.httpAssertionsShowInline": true,     // Show results in .res files
+  "cursorToys.httpAssertionsFailOnError": false    // Stop on assertion failure
+}
+```
 
 ### General Improvements
 - Performance improvements in cache system

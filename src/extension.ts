@@ -4,7 +4,7 @@ import { generateDeeplink } from './deeplinkGenerator';
 import { importDeeplink } from './deeplinkImporter';
 import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForEnvFolder, generateShareableForHttpFolderWithEnv, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist } from './shareableImporter';
-import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpLlmsFile } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpDocsSkill } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { EnvCodeLensProvider } from './envCodeLensProvider';
@@ -3162,6 +3162,36 @@ Detailed instructions for the agent.
     }
   );
 
+  // Command to run assertions using CLI
+  const runAssertionsCommand = vscode.commands.registerCommand(
+    'cursor-toys.runAssertions',
+    async (uri?: vscode.Uri) => {
+      let requestUri: vscode.Uri;
+      
+      if (uri) {
+        requestUri = uri;
+      } else {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+          vscode.window.showErrorMessage('No file selected');
+          return;
+        }
+        requestUri = editor.document.uri;
+      }
+
+      const filePath = requestUri.fsPath;
+      
+      // Create a terminal and run cursortoys command
+      const terminal = vscode.window.createTerminal({
+        name: 'CursorToys - HTTP Tests',
+        cwd: path.dirname(filePath)
+      });
+      
+      terminal.show();
+      terminal.sendText(`cursortoys http test -f "${filePath}"`);
+    }
+  );
+
   // Command to select environment
   const selectEnvironmentCommand = vscode.commands.registerCommand(
     'cursor-toys.selectEnvironment',
@@ -3309,34 +3339,14 @@ Detailed instructions for the agent.
     }
   );
 
-  // Command to generate llms.txt in HTTP folder (instructions for the extension)
+  // Command to add HTTP Requests documentation skill
   const generateHttpLlmsCommand = vscode.commands.registerCommand(
     'cursor-toys.generateHttpLlms',
     async (uri?: vscode.Uri) => {
-      const workspaceFolders = vscode.workspace.workspaceFolders;
-      if (!workspaceFolders || workspaceFolders.length === 0) {
-        vscode.window.showErrorMessage('No workspace folder open');
-        return;
-      }
-
-      let httpPath: string;
-      if (uri && uri.scheme === 'file') {
-        const normalized = uri.fsPath.replace(/\\/g, '/');
-        const baseFolderName = getBaseFolderName();
-        if (normalized.endsWith(`/${baseFolderName}/http`) || normalized.endsWith(`/${baseFolderName}/http/`)) {
-          httpPath = uri.fsPath;
-        } else {
-          httpPath = getHttpPath(workspaceFolders[0].uri.fsPath);
-        }
-      } else {
-        httpPath = getHttpPath(workspaceFolders[0].uri.fsPath);
-      }
-
       try {
-        await createHttpLlmsFile(httpPath, true);
-        vscode.window.showInformationMessage('llms.txt generated successfully in HTTP folder.');
+        await createHttpDocsSkill();
       } catch (error) {
-        vscode.window.showErrorMessage(`Failed to generate llms.txt: ${error instanceof Error ? error.message : String(error)}`);
+        vscode.window.showErrorMessage(`Failed to install skill: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
   );
@@ -4064,6 +4074,7 @@ Detailed instructions for the agent.
     copySelectionAsPromptCommand,
     sendHttpRequestCommand,
     copyCurlCommandCommand,
+    runAssertionsCommand,
     selectEnvironmentCommand,
     openEnvironmentsCommand,
     createEnvironmentCommand,

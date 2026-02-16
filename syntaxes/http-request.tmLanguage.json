@@ -10,7 +10,48 @@
         "0": {
           "name": "punctuation.definition.comment.http-request"
         }
-      }
+      },
+      "patterns": [
+        {
+          "match": "(\\*)\\s*(@assert)\\s*\\(\\s*\"([^\"]+)\"\\s*,\\s*\"([^\"]+)\"\\s*,\\s*(.+)\\s*\\)",
+          "name": "meta.assertion.http-request",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.comment.star"
+            },
+            "2": {
+              "name": "keyword.control.assertion.http-request"
+            },
+            "3": {
+              "name": "variable.other.assertion-expression"
+            },
+            "4": {
+              "name": "keyword.operator.assertion"
+            },
+            "5": {
+              "name": "constant.other.assertion-value"
+            }
+          }
+        },
+        {
+          "match": "(\\*)\\s*(@assert)\\s*\\(\\s*\"([^\"]+)\"\\s*,\\s*\"([^\"]+)\"\\s*\\)",
+          "name": "meta.assertion.http-request",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.comment.star"
+            },
+            "2": {
+              "name": "keyword.control.assertion.http-request"
+            },
+            "3": {
+              "name": "variable.other.assertion-expression"
+            },
+            "4": {
+              "name": "keyword.operator.assertion"
+            }
+          }
+        }
+      ]
     },
     {
       "match": "^(#\\s*@env)\\s+(\\w+).*$",
@@ -100,6 +141,57 @@
         }
       },
       "patterns": [
+            {
+              "begin": "/\\*",
+              "end": "\\*/",
+              "name": "comment.block.http-request",
+              "captures": {
+                "0": {
+                  "name": "punctuation.definition.comment.http-request"
+                }
+              },
+              "patterns": [
+                {
+                  "match": "(\\*)\\s*(@assert)\\s*\\(\\s*\"([^\"]+)\"\\s*,\\s*\"([^\"]+)\"\\s*,\\s*(.+)\\s*\\)",
+                  "name": "meta.assertion.http-request",
+                  "captures": {
+                    "1": {
+                      "name": "punctuation.definition.comment.star"
+                    },
+                    "2": {
+                      "name": "keyword.control.assertion.http-request"
+                    },
+                    "3": {
+                      "name": "variable.other.assertion-expression"
+                    },
+                    "4": {
+                      "name": "keyword.operator.assertion"
+                    },
+                    "5": {
+                      "name": "constant.other.assertion-value"
+                    }
+                  }
+                },
+                {
+                  "match": "(\\*)\\s*(@assert)\\s*\\(\\s*\"([^\"]+)\"\\s*,\\s*\"([^\"]+)\"\\s*\\)",
+                  "name": "meta.assertion.http-request",
+                  "captures": {
+                    "1": {
+                      "name": "punctuation.definition.comment.star"
+                    },
+                    "2": {
+                      "name": "keyword.control.assertion.http-request"
+                    },
+                    "3": {
+                      "name": "variable.other.assertion-expression"
+                    },
+                    "4": {
+                      "name": "keyword.operator.assertion"
+                    }
+                  }
+                }
+              ]
+            },
             {
               "match": "\\{\\{\\s*@(prompt|randomIn|datetime|uuid|randomString)\\s*\\([^)]*\\)\\s*\\}\\}",
               "name": "meta.helper.expression",
@@ -210,6 +302,57 @@
         }
       },
       "patterns": [
+            {
+              "begin": "/\\*",
+              "end": "\\*/",
+              "name": "comment.block.http-request",
+              "captures": {
+                "0": {
+                  "name": "punctuation.definition.comment.http-request"
+                }
+              },
+              "patterns": [
+                {
+                  "match": "(\\*)\\s*(@assert)\\s*\\(\\s*\"([^\"]+)\"\\s*,\\s*\"([^\"]+)\"\\s*,\\s*(.+)\\s*\\)",
+                  "name": "meta.assertion.http-request",
+                  "captures": {
+                    "1": {
+                      "name": "punctuation.definition.comment.star"
+                    },
+                    "2": {
+                      "name": "keyword.control.assertion.http-request"
+                    },
+                    "3": {
+                      "name": "variable.other.assertion-expression"
+                    },
+                    "4": {
+                      "name": "keyword.operator.assertion"
+                    },
+                    "5": {
+                      "name": "constant.other.assertion-value"
+                    }
+                  }
+                },
+                {
+                  "match": "(\\*)\\s*(@assert)\\s*\\(\\s*\"([^\"]+)\"\\s*,\\s*\"([^\"]+)\"\\s*\\)",
+                  "name": "meta.assertion.http-request",
+                  "captures": {
+                    "1": {
+                      "name": "punctuation.definition.comment.star"
+                    },
+                    "2": {
+                      "name": "keyword.control.assertion.http-request"
+                    },
+                    "3": {
+                      "name": "variable.other.assertion-expression"
+                    },
+                    "4": {
+                      "name": "keyword.operator.assertion"
+                    }
+                  }
+                }
+              ]
+            },
             {
               "match": "\\{\\{\\s*@(prompt|randomIn|datetime|uuid|randomString)\\s*\\([^)]*\\)\\s*\\}\\}",
               "name": "meta.helper.expression",

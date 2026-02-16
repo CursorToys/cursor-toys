@@ -2,6 +2,132 @@
 
 All notable changes to the "CursorToys" extension will be documented in this file.
 
+## [1.10.0] - 2026-02-16
+
+### Added
+
+#### 🧪 **HTTP Request Assertions**
+- **Test Automation**: Complete assertion system for HTTP request testing
+  - New `@assert()` annotation syntax for validating HTTP responses
+  - Parse assertions from comment blocks in `.req` files
+  - Validate responses against expected values automatically
+  - Display assertion results inline in `.res` files
+- **Comprehensive Operators**: Support for 27+ assertion operators
+  - **Comparison**: `equals`, `notEquals`, `gt`, `gte`, `lt`, `lte`
+  - **String Operations**: `contains`, `notContains`, `startsWith`, `endsWith`, `matches`, `notMatches`
+  - **Type Checks**: `isNull`, `isNotNull`, `isEmpty`, `isNotEmpty`, `isDefined`, `isUndefined`
+  - **Value Checks**: `isTruthy`, `isFalsy`, `isNumber`, `isString`, `isBoolean`, `isArray`, `isJson`
+  - **Other Operations**: `in`, `notIn`, `between`, `length`
+- **Flexible Syntax**: Multiple assertion formats supported
+  - 4 parameters with description: `@assert("description", "expression", "operator", value)`
+  - 3 parameters without description: `@assert("expression", "operator", value)`
+  - 2 parameters (no value): `@assert("expression", "operator")`
+- **Expression Resolution**: Access response properties with dot notation
+  - Status code: `res.status`
+  - Headers: `res.headers.content-type`
+  - Body properties: `res.body.userId`, `res.body.users[0].name`
+  - Nested objects and arrays fully supported
+- **Rich Result Display**: Formatted assertion results in response files
+  - Pass/fail indicator (✓/✗)
+  - Actual vs expected values for failures
+  - Error messages for invalid assertions
+  - Summary statistics (passed/total)
+- **Configuration Options**: Fine-tune assertion behavior
+  - `cursorToys.httpAssertionsEnabled`: Enable/disable assertions (default: true)
+  - `cursorToys.httpAssertionsShowInline`: Show results inline in `.res` files (default: true)
+  - `cursorToys.httpAssertionsFailOnError`: Stop execution on assertion failure (default: false)
+- **New Commands**:
+  - `cursor-toys.runAssertions`: Run assertions for HTTP request file
+- **Configurable Environments Folder**: Setting `cursorToys.environmentsFolder` (default: `.environments`) so environment files can live in `.cursor/http/.environments/` or a custom folder name
+
+#### 📝 **New Files**
+- **`src/assertionTypes.ts`**: TypeScript types and interfaces for assertion system
+  - `AssertionOperator`: All supported operators
+  - `Assertion`: Assertion definition structure
+  - `AssertionResult`: Validation result format
+  - `ResponseData`: HTTP response structure
+- **`src/assertionParser.ts`**: Parser for extracting assertions from request files
+  - `extractAssertions()`: Extract all assertions from file content
+  - `validateAssertionSyntax()`: Validate assertion syntax
+  - `removeAssertionBlocks()`: Clean assertions from request content
+  - Support for regex patterns, strings, numbers, booleans, null values
+- **`src/assertionValidator.ts`**: Validator for executing assertions against responses
+  - `validateAssertions()`: Run all assertions against HTTP response
+  - `formatAssertionResults()`: Format results for display
+  - Expression resolver with dot notation and array indexing
+  - Comprehensive operator evaluation logic
+
+### Changed
+
+#### 🔄 **HTTP Request Executor Enhanced**
+- **`src/httpRequestExecutor.ts`**:
+  - Integrated assertion parsing and validation
+  - Extract and execute assertions automatically on request execution
+  - Include assertion results in response output
+  - Clean request content before execution (remove assertion blocks)
+- **`src/httpCodeLensProvider.ts`**:
+  - Added "Run Assertions" CodeLens for request files with assertions
+  - Visual indicator for testable requests
+  - New command integration for running assertions
+- **`package.json`**:
+  - Updated version to 1.10.0
+  - Added assertion configuration options
+  - Registered new `cursor-toys.runAssertions` command
+  - Updated extension description highlighting new assertion capabilities
+
+#### 📚 **HTTP Documentation Skill**
+- **Built-in skill for HTTP Requests**: Install the "HTTP Requests Documentation" Agent Skill directly from the extension
+  - **How to use**: Right-click the **HTTP folder** (e.g. `.cursor/http/`) in the Explorer and choose **"CursorToys: Add Skill: HTTP Requests Documentation"**
+  - Skill is installed in your personal skills folder; the AI uses it when you work with `.req`/`.request` files, environments, and assertions
+- **`src/utils.ts`** – `createHttpDocsSkill` / `generateHttpSkillContent`:
+  - Generated skill content aligned with canonical `http-request-docs-cursor-toys` SKILL.md
+  - Updated frontmatter description for better discoverability
+  - Full assertion operators list with categories (Comparison, String, Type Checks, Value Checks, Other)
+  - Best Practices section as bold items with paragraphs (replacing numbered list)
+  - Response Handling updated with CLI test-runner bullet (Jest-style output)
+  - Environment decorators and inline variables wording matched to skill doc
+  - File location and troubleshooting reference `.cursor/http/` and `.cursor/http/.environments/` for consistency
+
+### Technical Details
+
+#### 🏗️ **Architecture**
+- **Separation of Concerns**: Three dedicated modules for assertions
+  - Types (`assertionTypes.ts`): Clean type definitions
+  - Parser (`assertionParser.ts`): Extraction and syntax validation
+  - Validator (`assertionValidator.ts`): Runtime validation and formatting
+- **Flexible Parsing**: Regex-based parser supporting multiple formats
+  - Handles quoted strings, numbers, booleans, null, regex patterns
+  - Line number tracking for error reporting
+  - Comment block detection (`/* ... */`)
+- **Expression Evaluation**: Safe property access with dot notation
+  - Handles nested objects: `res.body.user.profile.name`
+  - Array indexing: `res.body.users[0]`, `res.body.items[5].id`
+  - Undefined/null safety with graceful fallback
+- **Result Formatting**: Clean, readable output for developers
+  - Pass/fail symbols (✓/✗)
+  - Expected vs actual values for failures
+  - Summary statistics at the end
+  - Integration with `.res` files
+
+#### 📚 **Use Cases**
+- **API Testing**: Validate API responses automatically
+- **Integration Testing**: Test HTTP endpoints in development
+- **Contract Testing**: Ensure APIs meet expected contracts
+- **Regression Testing**: Catch breaking changes early
+- **Development Workflow**: Test APIs without leaving editor
+
+#### 🎯 **Example Usage**
+```http
+/*
+ * @assert("Status should be 200", "res.status", "equals", 200)
+ * @assert("Content-Type should be JSON", "res.headers.content-type", "contains", "application/json")
+ * @assert("User ID should exist", "res.body.userId", "isDefined")
+ * @assert("User name should not be empty", "res.body.name", "isNotEmpty")
+ * @assert("User age should be greater than 18", "res.body.age", "gt", 18)
+ */
+GET https://api.example.com/user/123
+```
+
 ## [1.9.0] - 2026-02-07
 
 ### Added

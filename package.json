@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -414,6 +414,11 @@
         "icon": "$(copy)"
       },
       {
+        "command": "cursor-toys.runAssertions",
+        "title": "CursorToys: Run HTTP Assertions Tests",
+        "icon": "$(play)"
+      },
+      {
         "command": "cursor-toys.selectEnvironment",
         "title": "CursorToys: Select HTTP Environment"
       },
@@ -431,7 +436,7 @@
       },
       {
         "command": "cursor-toys.generateHttpLlms",
-        "title": "CursorToys: Generate llms.txt"
+        "title": "CursorToys: Add Skill: HTTP Requests Documentation"
       },
       {
         "command": "cursor-toys.minifyFile",
@@ -764,7 +769,7 @@
         },
         {
           "command": "cursor-toys.deleteSkill",
-          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolder",
+          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolderPersonal",
           "group": "2_actions"
         },
         {
@@ -1111,6 +1116,21 @@
           "type": "boolean",
           "default": false,
           "description": "Save HTTP response to file. If false, only shows preview without saving."
+        },
+        "cursorToys.httpAssertionsEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable HTTP request assertions validation (@assert annotations)"
+        },
+        "cursorToys.httpAssertionsShowInline": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show assertion results inline in .res files"
+        },
+        "cursorToys.httpAssertionsFailOnError": {
+          "type": "boolean",
+          "default": false,
+          "description": "Stop execution if assertion fails (extension only)"
         },
         "cursorToys.httpDefaultEnvironment": {
           "type": "string",

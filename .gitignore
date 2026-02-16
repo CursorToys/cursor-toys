@@ -17,3 +17,4 @@ node_modules
 # Analytics local (desenvolvimento)
 analytics-local.json
 analytics-export-*.json
+cursor-toys-vsx-extension.code-workspace

@@ -109,6 +109,35 @@ export class HttpCodeLensProvider implements vscode.CodeLensProvider {
   }
 
   /**
+   * Counts assertions in a section or curl command
+   */
+  private countAssertions(document: vscode.TextDocument, startLine: number, endLine: number): number {
+    let count = 0;
+    let inCommentBlock = false;
+    
+    for (let i = startLine; i <= endLine && i < document.lineCount; i++) {
+      const line = document.lineAt(i).text;
+      
+      // Check for start of comment block
+      if (line.includes('/*')) {
+        inCommentBlock = true;
+      }
+      
+      // Count @assert in comment blocks
+      if (inCommentBlock && line.includes('@assert')) {
+        count++;
+      }
+      
+      // Check for end of comment block
+      if (line.includes('*/')) {
+        inCommentBlock = false;
+      }
+    }
+    
+    return count;
+  }
+
+  /**
    * Checks if a single curl command line (and continuation) has variables
    */
   private curlHasVariables(lines: string[], startIndex: number): boolean {
@@ -142,6 +171,22 @@ export class HttpCodeLensProvider implements vscode.CodeLensProvider {
     const text = document.getText();
     const lines = text.split('\n');
     
+    // Check if file has ANY assertions
+    const totalAssertions = this.countAssertions(document, 0, lines.length - 1);
+    
+    // If file has assertions, add "Run Assertions" CodeLens at the top
+    if (totalAssertions > 0) {
+      const runAssertionsCodeLens = new vscode.CodeLens(
+        new vscode.Range(0, 0, 0, 0),
+        {
+          title: `$(play) Run Assertions (${totalAssertions} ${totalAssertions === 1 ? 'test' : 'tests'})`,
+          command: 'cursor-toys.runAssertions',
+          arguments: [document.uri]
+        }
+      );
+      this.codeLenses.push(runAssertionsCodeLens);
+    }
+    
     // CASCADING SUPPORT: Find global environment at the top of the file
     let globalEnv: string | null = null;
     for (let i = 0; i < lines.length; i++) {
@@ -168,10 +213,16 @@ export class HttpCodeLensProvider implements vscode.CodeLensProvider {
       // Check if section has variables
       const hasVars = this.hasVariables(document, section.startLine, section.endLine);
       
+      // Count assertions in this section
+      const assertionCount = this.countAssertions(document, section.startLine, section.endLine);
+      
       // Build title with environment only if has variables
       let title = `Send Request: ${section.title}`;
       if (section.envName && hasVars) {
         title += ` [${section.envName}]`;
+      }
+      if (assertionCount > 0) {
+        title += ` [${assertionCount} ${assertionCount === 1 ? 'assertion' : 'assertions'}]`;
       }
       
       // Send Request CodeLens
@@ -225,12 +276,6 @@ export class HttpCodeLensProvider implements vscode.CodeLensProvider {
         // Check if this curl has variables
         const hasVars = this.curlHasVariables(lines, i);
         
-        // Build title with environment only if has variables
-        let title = 'Send Request';
-        if (currentEnv && hasVars) {
-          title += ` [${currentEnv}]`;
-        }
-        
         // Find end line of this curl command (follow backslash continuations)
         let endLine = i;
         for (let j = i; j < lines.length; j++) {
@@ -240,6 +285,18 @@ export class HttpCodeLensProvider implements vscode.CodeLensProvider {
             break;
           }
           endLine = j;
+        }
+        
+        // Count assertions for this curl command
+        const assertionCount = this.countAssertions(document, i, endLine);
+        
+        // Build title with environment only if has variables
+        let title = 'Send Request';
+        if (currentEnv && hasVars) {
+          title += ` [${currentEnv}]`;
+        }
+        if (assertionCount > 0) {
+          title += ` [${assertionCount} ${assertionCount === 1 ? 'assertion' : 'assertions'}]`;
         }
         
         // Send Request CodeLens
@@ -299,12 +356,6 @@ export class HttpCodeLensProvider implements vscode.CodeLensProvider {
         // Check if this request has variables
         const hasVars = this.hasVariables(document, i, lines.length - 1);
         
-        // Build title with request name if available, environment if has variables
-        let title = requestTitle ? `Send Request: ${requestTitle}` : 'Send Request';
-        if (currentEnv && hasVars) {
-          title += ` [${currentEnv}]`;
-        }
-        
         // Find end line of this REST Client request
         // Look for next ### separator (REST Client standard), next ## header, or end of file
         let endLine = i;
@@ -326,6 +377,18 @@ export class HttpCodeLensProvider implements vscode.CodeLensProvider {
             break;
           }
           endLine = j;
+        }
+        
+        // Count assertions for this REST Client request
+        const assertionCount = this.countAssertions(document, i, endLine);
+        
+        // Build title with request name if available, environment if has variables
+        let title = requestTitle ? `Send Request: ${requestTitle}` : 'Send Request';
+        if (currentEnv && hasVars) {
+          title += ` [${currentEnv}]`;
+        }
+        if (assertionCount > 0) {
+          title += ` [${assertionCount} ${assertionCount === 1 ? 'assertion' : 'assertions'}]`;
         }
         
         // Send Request CodeLens (position on title line if available, otherwise on request line)

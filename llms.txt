@@ -67,26 +67,26 @@ Test HTTP requests without leaving Cursor/VS Code.
 - Create `.req` or `.request` files in `.cursor/http/` folder (or `.vscode/http/` if using VS Code)
 
 **Supported Formats:**
-- **cURL Commands**: Full cURL syntax support
-- **REST Client Format**: `METHOD URL` with headers and body (similar to VS Code REST Client extension)
+- **REST Client Format** (Recommended): `METHOD URL` with headers and body - Best for assertions and full feature support
+- **cURL Commands**: Full cURL syntax support - Note: Some assertion features work better with REST Client format
+
+**Important:** When using assertions (`@assert`), **prefer REST Client format** over cURL for better compatibility and reliability.
 
 **Multiple Requests:**
 - Use markdown sections (`## Section Title`) to organize multiple requests in one file
+- **Separator `###` is optional** - the CLI and extension automatically detect new requests by identifying HTTP method lines (GET, POST, etc.) or curl commands
+- Use `###` only if you need explicit separation or for compatibility with REST Client extension
 - Each section gets its own "Send Request" CodeLens link
 
-**Example cURL Format:**
-```http
-## Get All Users
-curl --request GET \
-  --url https://api.example.com/users \
-  --header 'Authorization: Bearer {{API_KEY}}'
-```
-
-**Example REST Client Format:**
+**Example REST Client Format (Recommended):**
 ```http
 ### Get All Users
 GET {{BASE_URL}}/api/users
 Authorization: Bearer {{API_KEY}}
+/*
+ * @assert("res.status", "equals", 200)
+ * @assert("res.body", "isArray")
+ */
 
 ### Create User
 POST {{BASE_URL}}/api/users
@@ -96,6 +96,18 @@ Content-Type: application/json
   "name": "John Doe",
   "email": "john@example.com"
 }
+/*
+ * @assert("res.status", "equals", 201)
+ * @assert("res.body.id", "isDefined")
+ */
+```
+
+**Example cURL Format (Alternative):**
+```http
+## Get All Users
+curl --request GET \
+  --url https://api.example.com/users \
+  --header 'Authorization: Bearer {{API_KEY}}'
 ```
 
 **Environment Variables:**

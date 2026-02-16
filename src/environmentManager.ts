@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getEnvironmentsPath, getHttpPath, createHttpLlmsFile } from './utils';
+import { getEnvironmentsPath, getHttpPath } from './utils';
 
 /**
  * Environment Manager - Gerencia variáveis de environment através de arquivos .env
@@ -325,10 +325,6 @@ export class EnvironmentManager {
     if (!fs.existsSync(httpPath)) {
       try {
         fs.mkdirSync(httpPath, { recursive: true });
-        // Create llms.txt asynchronously (don't await to avoid blocking)
-        createHttpLlmsFile(httpPath).catch(err => {
-          console.warn(`Failed to create llms.txt in HTTP folder: ${httpPath}`, err);
-        });
       } catch (error) {
         console.warn(`Failed to create HTTP directory: ${httpPath}`, error);
       }
@@ -409,7 +405,6 @@ export class EnvironmentManager {
     // Create HTTP folder and llms.txt if needed
     if (!fs.existsSync(httpPath)) {
       fs.mkdirSync(httpPath, { recursive: true });
-      await createHttpLlmsFile(httpPath);
     }
     
     // Criar diretório se não existir
@@ -454,7 +449,6 @@ TIMEOUT=10000
     // Create HTTP folder and llms.txt if needed
     if (!fs.existsSync(httpPath)) {
       fs.mkdirSync(httpPath, { recursive: true });
-      await createHttpLlmsFile(httpPath);
     }
     
     // Verificar se diretório já existe e tem arquivos

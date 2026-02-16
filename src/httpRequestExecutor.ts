@@ -21,7 +21,7 @@ interface HttpRequestConfig {
 /**
  * Result of HTTP request execution
  */
-interface HttpRequestResult {
+export interface HttpRequestResult {
   statusCode: number;
   statusText: string;
   headers: Record<string, string>;
@@ -33,15 +33,58 @@ interface HttpRequestResult {
  * Parses REST Client format (HTTP Request File format)
  * Format: METHOD URL\nHeader: Value\n\nBody
  * Standard separator: ### (three hashes) for multiple requests
- * Only the first request is parsed (before the first ### separator)
+ * Stops at: ###, /*, ##, or next HTTP method line
+ * Only the first request is parsed
  * @param content The file content
  * @returns The parsed HTTP request configuration or null if parsing fails
  */
 function parseRestClientFormat(content: string): HttpRequestConfig | null {
   const trimmed = content.trim();
   
-  // Split by ### separator (REST Client standard) and take first request
-  const firstRequest = trimmed.split('###')[0].trim();
+  // Split by ### separator (REST Client standard) first
+  const beforeSeparator = trimmed.split('###')[0].trim();
+  if (!beforeSeparator) {
+    return null;
+  }
+  
+  // Find where the request ends (stop at /*, ##, or next HTTP method)
+  const allLines = beforeSeparator.split('\n');
+  let requestEndIndex = allLines.length;
+  let foundFirstMethod = false;
+  
+  for (let i = 0; i < allLines.length; i++) {
+    const line = allLines[i].trim();
+    
+    // Skip comments and variable declarations
+    if (line.startsWith('#')) {
+      continue;
+    }
+    
+    // Check if this is an HTTP method line
+    const isHttpMethod = /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+/i.test(line);
+    
+    if (isHttpMethod) {
+      if (foundFirstMethod) {
+        // Found a second HTTP method, stop here
+        requestEndIndex = i;
+        break;
+      }
+      foundFirstMethod = true;
+      continue;
+    }
+    
+    // Stop at assertion comments or ## headers (after finding first method)
+    if (foundFirstMethod) {
+      if (line.startsWith('/*') || line.startsWith('##')) {
+        requestEndIndex = i;
+        break;
+      }
+    }
+  }
+  
+  // Extract only the lines for this request
+  const requestLines = allLines.slice(0, requestEndIndex);
+  const firstRequest = requestLines.join('\n').trim();
   if (!firstRequest) {
     return null;
   }
@@ -671,9 +714,10 @@ function formatXML(xml: string): string {
  * Formats HTTP response as a string
  * @param result The HTTP request result
  * @param requestPayload Optional request payload to include at the top
+ * @param assertionResults Optional assertion results to append
  * @returns Formatted response string
  */
-export function formatHttpResponse(result: HttpRequestResult, requestPayload?: string): string {
+export function formatHttpResponse(result: HttpRequestResult, requestPayload?: string, assertionResults?: any[]): string {
   let response = '';
   
   const statusCode = result.statusCode > 0 ? result.statusCode : 0;
@@ -713,6 +757,13 @@ export function formatHttpResponse(result: HttpRequestResult, requestPayload?: s
       // For curl errors, just output the raw error message
       response += result.body;
     }
+  }
+  
+  // Add assertion results if present
+  if (assertionResults && assertionResults.length > 0) {
+    // Import formatAssertionResults dynamically to avoid circular dependency
+    const { formatAssertionResults } = require('./assertionValidator');
+    response += formatAssertionResults(assertionResults);
   }
   
   // For errors, add payload at the end as DEBUG PAYLOAD
@@ -1437,13 +1488,23 @@ export function extractFileVariables(
     }
   }
   
-  // First, collect global variables (before first ##)
+  // First, collect global variables (before first ### separator)
+  // Note: ### with text (decorative) is ignored. Only ### alone on a line is treated as separator.
+  let globalVarsEndLine = document.lineCount;
   for (let i = 0; i < document.lineCount; i++) {
     const line = document.lineAt(i).text.trim();
-    
-    // Stop at first section header for global vars
-    if (line.startsWith('##')) {
+    if (line === '###') {
+      globalVarsEndLine = i;
       break;
+    }
+  }
+  
+  for (let i = 0; i < globalVarsEndLine; i++) {
+    const line = document.lineAt(i).text.trim();
+    
+    // Skip ## headers - they don't end the global variable section
+    if (line.startsWith('##')) {
+      continue;
     }
     
     // Match: # @var VAR_NAME=value or # @var VAR_NAME value
@@ -1457,7 +1518,47 @@ export function extractFileVariables(
     }
   }
   
-  // Then, collect section-specific variables (override global)
+  // Collect variables from blocks between global section and current section (cascade effect)
+  // This implements variable override in cascade: variables after ### override previous ones
+  if (startLine !== undefined) {
+    let currentBlockStart = 0;
+    
+    // Find all ### separators and blocks before the current line
+    for (let i = 0; i < startLine; i++) {
+      const line = document.lineAt(i).text.trim();
+      
+      // When we find a ### separator, process variables in the block that just ended
+      if (line === '###') {
+        // Process variables from currentBlockStart to i
+        for (let j = currentBlockStart; j < i; j++) {
+          const blockLine = document.lineAt(j).text.trim();
+          const match = blockLine.match(/^#\s*@var\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:=\s*)?(.+)?$/i);
+          if (match) {
+            const varName = match[1];
+            const value = match[2] ? match[2].trim() : '';
+            const cleanValue = value.replace(/^["']|["']$/g, '');
+            // Override previous value (cascade effect)
+            variables.set(varName, cleanValue);
+          }
+        }
+        currentBlockStart = i + 1;
+      }
+    }
+    
+    // Process variables in the final block (from last ### to current line)
+    for (let j = currentBlockStart; j < startLine; j++) {
+      const blockLine = document.lineAt(j).text.trim();
+      const match = blockLine.match(/^#\s*@var\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:=\s*)?(.+)?$/i);
+      if (match) {
+        const varName = match[1];
+        const value = match[2] ? match[2].trim() : '';
+        const cleanValue = value.replace(/^["']|["']$/g, '');
+        variables.set(varName, cleanValue);
+      }
+    }
+  }
+  
+  // Then, collect section-specific variables (override global and cascade)
   if (startLine !== undefined) {
     for (let i = searchStart; i < searchEnd; i++) {
       const line = document.lineAt(i).text.trim();
@@ -1584,6 +1685,14 @@ export async function executeHttpRequestFromFile(
       content = replaceFileVariables(content, fileVariables);
     }
     
+    // Extract assertions from content (BEFORE removing comment blocks)
+    const { extractAssertions, removeAssertionBlocks } = require('./assertionParser');
+    const assertions = extractAssertions(content);
+    console.log(`[DEBUG] Extracted ${assertions.length} assertions from content`);
+    
+    // Remove assertion blocks from content before parsing the request
+    content = removeAssertionBlocks(content);
+    
     // Detect environment decorator for this section
     let envName: string | null = null;
     let envUsed = false;
@@ -1666,8 +1775,17 @@ export async function executeHttpRequestFromFile(
         
         progress.report({ increment: 50, message: 'Processing response...' });
         
-        // Format response with payload
-        const responseText = formatHttpResponse(result, requestPayload);
+        // Validate assertions if present
+        let assertionResults: any[] = [];
+        if (assertions.length > 0) {
+          console.log(`[DEBUG] Found ${assertions.length} assertions to validate`);
+          const { validateAssertions } = require('./assertionValidator');
+          assertionResults = validateAssertions(assertions, result);
+          console.log(`[DEBUG] Validation returned ${assertionResults.length} results`);
+        }
+        
+        // Format response with payload and assertions
+        const responseText = formatHttpResponse(result, requestPayload, assertionResults);
         
         let responseUri: vscode.Uri | undefined;
         let responseDoc: vscode.TextDocument;
@@ -1840,6 +1958,10 @@ export async function copyCurlCommand(
       // Use entire file content
       content = document.getText();
     }
+    
+    // Remove assertion blocks from content (don't include them in cURL)
+    const { removeAssertionBlocks } = require('./assertionParser');
+    content = removeAssertionBlocks(content);
     
     // Process prompt and helper expressions first
     const expressions = extractPromptExpressions(content);
