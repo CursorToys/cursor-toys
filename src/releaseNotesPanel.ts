@@ -26,19 +26,29 @@ export function compareVersions(a: string, b: string): number {
 }
 
 /**
- * Extract the first release block from CHANGELOG markdown (from first ## [ to next ## [ or end).
- * Converts to simple HTML for the webview.
+ * Extract the intro block (title, images, first paragraph) and first release block from CHANGELOG.
+ * Supports both version formats: "## [1.0.0]" (Keep a Changelog) and "## v1.0.0 - Title".
+ * Converts to simple HTML for the webview (including images).
  */
 export function parseChangelogFirstSection(changelogRaw: string): string {
-  const match = changelogRaw.match(/^# Change Log[\s\S]*?^## \[([^\]]+)\][\s\S]*?(?=^## \[|$(?![\s\S]))/m);
+  // Intro: everything before the first ## version line
+  const introMatch = changelogRaw.match(/^[\s\S]*?(?=^## (?:\[[^\]]+\]|v\d+(?:\.\d+)*))/m);
+  const intro = introMatch ? introMatch[0].trim() : '';
+
+  // First version block: ## [x.y.z] or ## vx.y.z, then content until next ## or end of file
+  const match = changelogRaw.match(
+    /[\s\S]*?^## (?:\[([^\]]+)\]|v(\d+(?:\.\d+)*))[^\n]*\n((?:[\s\S]*?)(?=^## )|(?:[\s\S]*))/m
+  );
   if (!match) {
     return '<p>Release notes could not be loaded. Check the CHANGELOG in the repository.</p>';
   }
-  const section = match[0];
-  const version = match[1];
-  const afterHeader = section.replace(/^# Change Log[\s\S]*?^## \[[^\]]+\][^\n]*\n/m, '').trim();
-  const html = markdownToHtml(afterHeader);
-  return `<div class="changelog-version">Version ${escapeHtml(version)}</div>${html}`;
+  const version = match[1] ?? match[2];
+  const afterHeader = (match[3] ?? '').trim();
+
+  const introHtml = intro ? markdownToHtml(intro) : '';
+  const releaseHtml = markdownToHtml(afterHeader);
+  const versionDiv = `<div class="changelog-version">Version ${escapeHtml(version)}</div>`;
+  return introHtml + versionDiv + releaseHtml;
 }
 
 function escapeHtml(s: string): string {
@@ -50,12 +60,17 @@ function escapeHtml(s: string): string {
 }
 
 /**
- * Simple markdown to HTML for changelog (headers, lists, bold, code).
+ * Simple markdown to HTML for changelog (headers, lists, bold, code, images).
  * Escapes HTML in content first, then applies markdown patterns.
+ * Images: only https? URLs are allowed for security.
  */
 function markdownToHtml(md: string): string {
   const escaped = escapeHtml(md);
-  const withHeaders = escaped
+  const withImages = replaceMarkdownImages(escaped);
+  const withLinks = replaceMarkdownLinks(withImages);
+  const withHeaders = withLinks
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
     .replace(/^### (.+)$/gm, '<h3>$1</h3>')
     .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -64,6 +79,24 @@ function markdownToHtml(md: string): string {
   const withLists = withListItems.replace(/(<li>.*?<\/li>\n?)+/g, (m) => '<ul>' + m.trim() + '</ul>');
   const withParas = withLists.replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br>');
   return '<p>' + withParas + '</p>';
+}
+
+/** Replace ![](url) and ![alt](url) with <img>. Only allows https? URLs. */
+function replaceMarkdownImages(escaped: string): string {
+  return escaped.replace(/!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/g, (_m, alt, url) => {
+    const safeUrl = url.replace(/&amp;/g, '&').replace(/"/g, '&quot;');
+    const safeAlt = (alt || '').replace(/"/g, '&quot;');
+    return `<img src="${safeUrl}" alt="${safeAlt}" loading="lazy" />`;
+  });
+}
+
+/** Replace [text](url) with <a href="url">text</a>. Only allows https? URLs. */
+function replaceMarkdownLinks(escaped: string): string {
+  return escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (_m, text, url) => {
+    const safeUrl = url.replace(/&amp;/g, '&').replace(/"/g, '&quot;');
+    const safeText = (text || '').replace(/"/g, '&quot;');
+    return `<a href="${safeUrl}">${safeText}</a>`;
+  });
 }
 
 /** Default branch and raw URL base for GitHub; overridable via package.json repository. */
@@ -216,6 +249,14 @@ export class ReleaseNotesPanel {
       font-size: 0.9em;
     }
     .content strong { font-weight: 600; }
+    .content a { color: var(--vscode-textLink-foreground); }
+    .content a:hover { text-decoration: underline; }
+    .content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+      margin: 8px 0;
+    }
     .footer {
       margin-top: 24px;
       padding-top: 16px;
@@ -246,6 +287,12 @@ export class ReleaseNotesPanel {
           vscode.postMessage({ command: 'openExternal', url: el.getAttribute('data-url') });
         });
       });
+      document.querySelectorAll('a[href^="http"]').forEach(function(el) {
+        el.addEventListener('click', function(e) {
+          e.preventDefault();
+          vscode.postMessage({ command: 'openExternal', url: el.getAttribute('href') });
+        });
+      });
     })();
   </script>
 </body>
@@ -261,8 +308,10 @@ export async function checkAndShowReleaseNotes(context: vscode.ExtensionContext)
   const pkg = context.extension.packageJSON as { version?: string };
   const currentVersion = pkg?.version ?? '0.0.0';
   const lastSeen = context.globalState.get<string>(LAST_SEEN_VERSION_KEY);
+  const isFirstRun = lastSeen === undefined;
+  const isUpdate = lastSeen !== undefined && compareVersions(currentVersion, lastSeen) > 0;
 
-  if (lastSeen !== undefined && compareVersions(currentVersion, lastSeen) > 0) {
+  if (isFirstRun || isUpdate) {
     const changelogHtml = await loadChangelogSection(context);
     ReleaseNotesPanel.createOrShow(context, currentVersion, changelogHtml);
   }
