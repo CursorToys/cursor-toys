@@ -1,12 +1,43 @@
-# Change Log
+# CursorToys
 
-All notable changes to the "CursorToys" extension will be documented in this file.
+![](https://i.imgur.com/ZqWzLbf.png)
+
+The universe is vast, but your time is finite. To help you waste it efficiently, v1.11.0 introduces the CursorToys a Chrome extension that hurls web snippets into your editor via improbable deeplinks. Should the data survive the transit, it appears in an Annotation Panel with a "Send to Chat" button—ideal for those moments you copy-paste code you don't understand and want the AI to pretend it can fix it. We’ve also added a "What's New" panel that pops up after updates, ensuring you’re interrupted by release notes that statistics suggest you’ll promptly ignore. Don’t panic, but do strap in.
+
+## v1.11.0 - The Hitchhiker’s Guide to Updates
+
+### Added
+
+#### **Chrome Extension  Support**
+
+![](https://i.imgur.com/3Ab1g4t.gif)
+
+- **Web-to-Cursor workflow**: The CursorToys Cursor extension now works together with the **CursorToys Chrome extension** so you can send selected text from any web page straight into Cursor.
+- **Deeplink contract**: The extension registers a URI handler for `cursor://godrix.cursor-toys/annotation`. When the Chrome extension triggers "Send to CursorToys", it opens this deeplink with the selection and page context.
+- **Annotation panel**: Incoming deeplinks open the **Annotation panel** inside Cursor, showing:
+  - The selected text (code/content from the page)
+  - Clickable source URL and page title
+  - **Send to Chat** button to send the selection and source context to the AI chat in one click
+- **Parameters supported**: `code` (selection), `sourceUrl`, `sourceTitle`; URL length limit 8000 characters (the Chrome extension truncates or notifies when needed).
+- **Chrome Extension**: Available in the [Chrome Web Store](https://chromewebstore.google.com/detail/cursor-toys/kndhfkcjndndofieoceaknoapaadjebb).
+
+#### **Release Notes Panel ("What's New")**
+
+- **Update notification**: When the extension is updated, a **What's New** panel opens once with the latest release notes (changelog).
+- **Manual access**: You can open it anytime from the CursorToys menu (status bar) or via the command **CursorToys: What's New**.
+- **Changelog from GitHub**: Release notes are loaded from the repository at runtime so the extension package stays small (CHANGELOG is not shipped inside the .vsix).
+
+### Changed
+
+- **URI handler**: Handles annotation deeplinks from the Chrome extension; validates URL length before opening the panel.
+- **Menu**: Added **What's New** as the first option in the CursorToys quick pick menu.
 
 ## [1.10.0] - 2026-02-16
 
 ### Added
 
 #### 🧪 **HTTP Request Assertions**
+
 - **Test Automation**: Complete assertion system for HTTP request testing
   - New `@assert()` annotation syntax for validating HTTP responses
   - Parse assertions from comment blocks in `.req` files
@@ -41,17 +72,18 @@ All notable changes to the "CursorToys" extension will be documented in this fil
 - **Configurable Environments Folder**: Setting `cursorToys.environmentsFolder` (default: `.environments`) so environment files can live in `.cursor/http/.environments/` or a custom folder name
 
 #### 📝 **New Files**
-- **`src/assertionTypes.ts`**: TypeScript types and interfaces for assertion system
+
+- `**src/assertionTypes.ts`**: TypeScript types and interfaces for assertion system
   - `AssertionOperator`: All supported operators
   - `Assertion`: Assertion definition structure
   - `AssertionResult`: Validation result format
   - `ResponseData`: HTTP response structure
-- **`src/assertionParser.ts`**: Parser for extracting assertions from request files
+- `**src/assertionParser.ts**`: Parser for extracting assertions from request files
   - `extractAssertions()`: Extract all assertions from file content
   - `validateAssertionSyntax()`: Validate assertion syntax
   - `removeAssertionBlocks()`: Clean assertions from request content
   - Support for regex patterns, strings, numbers, booleans, null values
-- **`src/assertionValidator.ts`**: Validator for executing assertions against responses
+- `**src/assertionValidator.ts**`: Validator for executing assertions against responses
   - `validateAssertions()`: Run all assertions against HTTP response
   - `formatAssertionResults()`: Format results for display
   - Expression resolver with dot notation and array indexing
@@ -60,26 +92,28 @@ All notable changes to the "CursorToys" extension will be documented in this fil
 ### Changed
 
 #### 🔄 **HTTP Request Executor Enhanced**
-- **`src/httpRequestExecutor.ts`**:
+
+- `**src/httpRequestExecutor.ts`**:
   - Integrated assertion parsing and validation
   - Extract and execute assertions automatically on request execution
   - Include assertion results in response output
   - Clean request content before execution (remove assertion blocks)
-- **`src/httpCodeLensProvider.ts`**:
+- `**src/httpCodeLensProvider.ts**`:
   - Added "Run Assertions" CodeLens for request files with assertions
   - Visual indicator for testable requests
   - New command integration for running assertions
-- **`package.json`**:
+- `**package.json**`:
   - Updated version to 1.10.0
   - Added assertion configuration options
   - Registered new `cursor-toys.runAssertions` command
   - Updated extension description highlighting new assertion capabilities
 
 #### 📚 **HTTP Documentation Skill**
+
 - **Built-in skill for HTTP Requests**: Install the "HTTP Requests Documentation" Agent Skill directly from the extension
   - **How to use**: Right-click the **HTTP folder** (e.g. `.cursor/http/`) in the Explorer and choose **"CursorToys: Add Skill: HTTP Requests Documentation"**
   - Skill is installed in your personal skills folder; the AI uses it when you work with `.req`/`.request` files, environments, and assertions
-- **`src/utils.ts`** – `createHttpDocsSkill` / `generateHttpSkillContent`:
+- `**src/utils.ts`** – `createHttpDocsSkill` / `generateHttpSkillContent`:
   - Generated skill content aligned with canonical `http-request-docs-cursor-toys` SKILL.md
   - Updated frontmatter description for better discoverability
   - Full assertion operators list with categories (Comparison, String, Type Checks, Value Checks, Other)
@@ -91,6 +125,7 @@ All notable changes to the "CursorToys" extension will be documented in this fil
 ### Technical Details
 
 #### 🏗️ **Architecture**
+
 - **Separation of Concerns**: Three dedicated modules for assertions
   - Types (`assertionTypes.ts`): Clean type definitions
   - Parser (`assertionParser.ts`): Extraction and syntax validation
@@ -110,6 +145,7 @@ All notable changes to the "CursorToys" extension will be documented in this fil
   - Integration with `.res` files
 
 #### 📚 **Use Cases**
+
 - **API Testing**: Validate API responses automatically
 - **Integration Testing**: Test HTTP endpoints in development
 - **Contract Testing**: Ensure APIs meet expected contracts
@@ -117,6 +153,7 @@ All notable changes to the "CursorToys" extension will be documented in this fil
 - **Development Workflow**: Test APIs without leaving editor
 
 #### 🎯 **Example Usage**
+
 ```http
 /*
  * @assert("Status should be 200", "res.status", "equals", 200)
@@ -133,6 +170,7 @@ GET https://api.example.com/user/123
 ### Added
 
 #### 🎓 **Skills Marketplace Integration**
+
 - **Tech Leads Club Integration**: Complete integration with Tech Leads Club Agent Skills marketplace
   - Browse and discover community-driven skills from Tech Leads Club
   - New command `cursor-toys.browseRecommendations`: Browse Skills Marketplace (replaces old recommendations browser)
@@ -146,6 +184,7 @@ GET https://api.example.com/user/123
   - Automatic fallback to cached data when offline
 
 #### 🌐 **Enhanced HTTP Helper Functions**
+
 - **New Dynamic Helpers**: Added 4 new helper functions for HTTP requests
   - `{{@userAgent()}}`: Generate random browser User-Agent string (Chrome, Safari, Firefox)
   - `{{@ip()}}`: Generate random IPv4 address
@@ -154,6 +193,7 @@ GET https://api.example.com/user/123
 - **Use Cases**: Perfect for API testing, mock data generation, and load testing
 
 #### 📝 **HTTP Documentation Generator**
+
 - **llms.txt Generator**: New command `cursor-toys.generateHttpLlms`
   - Automatically generates comprehensive HTTP features documentation
   - Includes examples for all formats: cURL, REST Client, variables, helpers
@@ -164,6 +204,7 @@ GET https://api.example.com/user/123
 ### Changed
 
 #### 🔄 **Recommendations System Refactoring**
+
 - **Removed Legacy Features**: Streamlined recommendations system
   - Removed old recommendations index system (CursorToys marketplace)
   - Removed project context detection and auto-recommendations on startup
@@ -181,6 +222,7 @@ GET https://api.example.com/user/123
   - Clearer focus on Skills from Tech Leads Club
 
 #### 🛠️ **Backend Architecture**
+
 - **RecommendationsManager Refactoring**: Complete rewrite for skills-only focus
   - New method `getAllSkills()`: Fetch all skills from registry
   - Removed `getRecommendationsForContext()`: No longer needed
@@ -199,13 +241,14 @@ GET https://api.example.com/user/123
 ### Technical Details
 
 #### Enhanced Files
-- **`src/recommendationsManager.ts`**:
+
+- `**src/recommendationsManager.ts`**:
   - Simplified to focus on skills registry fetching
   - New interface `SkillsRegistry` with categories and skills
   - Smart caching with configurable TTL (1h memory, 24h disk)
   - Removed all project context detection logic
   - Maintained backward compatibility for deprecated methods
-- **`src/recommendationsBrowserPanel.ts`**:
+- `**src/recommendationsBrowserPanel.ts**`:
   - Complete UI redesign for skills marketplace
   - Category filtering with visual badges
   - Search functionality across skills
@@ -213,21 +256,21 @@ GET https://api.example.com/user/123
   - Terminal integration for direct installation
   - GitHub integration for source code viewing
   - Visual indicators for skill subfolders
-- **`src/httpRequestExecutor.ts`**:
+- `**src/httpRequestExecutor.ts**`:
   - Added 4 new helper functions: `@userAgent()`, `@ip()`, `@lorem(count)`, `@randomFrom(...)`
   - Enhanced helper function registry
   - Improved helper function documentation
-- **`src/utils.ts`**:
+- `**src/utils.ts**`:
   - New function `createHttpLlmsFile()`: Generate HTTP documentation
   - Comprehensive llms.txt template with all features documented
   - Auto-generation support for HTTP folder initialization
-- **`src/extension.ts`**:
+- `**src/extension.ts**`:
   - Removed `checkRecommendationsOnStartup()` function
   - Removed `workspaceChangeListener` for recommendations
   - Updated menu items for Skills Marketplace
   - Added `generateHttpLlms` command registration
   - Simplified command registrations (removed unused recommendation commands)
-- **`package.json`**:
+- `**package.json**`:
   - Version bumped from 1.8.1 to 1.9.0
   - Added `cursor-toys.generateHttpLlms` command
   - Updated settings: new `skillsRegistryUrl`, removed old recommendation URLs
@@ -235,12 +278,15 @@ GET https://api.example.com/user/123
   - Maintained activation events for Skills Marketplace
 
 #### New Commands
+
 - `cursor-toys.generateHttpLlms`: Generate comprehensive HTTP documentation (llms.txt)
 
 #### Removed Commands
+
 - `cursor-toys.checkRecommendations`: Automatic project recommendations (replaced by Skills Marketplace)
 
 #### Configuration Changes
+
 - **Added**: `cursorToys.skillsRegistryUrl` - URL to Tech Leads Club skills registry
 - **Removed**: `cursorToys.recommendationsIndexUrl` - Old recommendations index URL
 - **Removed**: `cursorToys.recommendationsIndexGistId` - Old Gist-based recommendations
@@ -250,6 +296,7 @@ GET https://api.example.com/user/123
 ### Use Cases
 
 **Browsing Skills Marketplace:**
+
 1. Run "CursorToys: Browse Recommendations Marketplace" command (or use main menu)
 2. Browse skills by category or search by keyword
 3. Click "Install in Cursor" to run installation in terminal
@@ -257,6 +304,7 @@ GET https://api.example.com/user/123
 5. View skill source code on GitHub
 
 **Using New HTTP Helpers:**
+
 ```http
 ## Test Request with Random Data
 POST {{BASE_URL}}/api/feedback
@@ -271,6 +319,7 @@ Content-Type: application/json
 ```
 
 **Generating HTTP Documentation:**
+
 1. Right-click on `.cursor/http/` folder in Explorer
 2. Select "CursorToys: Generate llms.txt"
 3. Comprehensive documentation is created in HTTP folder
@@ -279,12 +328,14 @@ Content-Type: application/json
 ### Migration Guide
 
 **For Users:**
+
 - Old recommendations index URLs are no longer supported
 - Skills Marketplace replaces old recommendations system
 - All skills now come from Tech Leads Club community registry
 - No action needed - just explore the new Skills Marketplace!
 
 **For Extension Developers:**
+
 - If using `getAllRecommendations()`: Now returns skills in compatible format
 - If using `getRecommendationsForContext()`: Deprecated, use `getAllSkills()` instead
 - If checking project context: Feature removed, use Skills Marketplace directly
@@ -294,6 +345,7 @@ Content-Type: application/json
 ### Added
 
 #### 🎓 **Enhanced Skills Management**
+
 - **Save as Personal Skill**: New command `cursor-toys.save-as-user-skill` to move skills from project to personal folder
   - Available via context menu for skill folders
   - Moves skills to `~/.cursor/skills/` or `~/.claude/skills/` based on configuration
@@ -310,6 +362,7 @@ Content-Type: application/json
 ### Changed
 
 #### 🔧 **AI Provider Architecture Refactoring**
+
 - **Simplified AI Implementation**: Refactored from abstract provider system to direct API implementation
   - Removed `BaseAIProvider` abstract class and `aiProviders` module
   - Added direct Gemini API implementation (`geminiApi.ts`) using native `fetch`
@@ -327,6 +380,7 @@ Content-Type: application/json
   - Better error messages for configuration issues
 
 #### 🎯 **Skills Management Improvements**
+
 - **Folder-Based Structure**: Updated Skills tree view to use folder-based structure
   - Skills are now displayed as folders (not individual files)
   - Context menu actions work on skill folders
@@ -341,6 +395,7 @@ Content-Type: application/json
   - Clearer separation between deeplink and CursorToys sharing
 
 #### ⌨️ **Keyboard Shortcuts**
+
 - **Refine Selection Shortcut**: Removed `when` clause from `refineSelectionWithAI` shortcut
   - Shortcut now works globally, not just when text is selected
   - More consistent behavior with other refinement commands
@@ -348,6 +403,7 @@ Content-Type: application/json
 ### Changed
 
 #### 🤖 **AI Text Refinement Refactoring**
+
 - **Simplified Architecture**: Refactored AI text refinement to use direct API implementation
   - Replaced abstract provider system with direct Gemini API calls (`geminiApi.ts`)
   - Removed `@google/genai` dependency in favor of native `fetch` implementation
@@ -359,23 +415,24 @@ Content-Type: application/json
 ### Technical Details
 
 #### Enhanced Files
-- **`src/geminiApi.ts`** (NEW):
+
+- `**src/geminiApi.ts`** (NEW):
   - New direct Gemini API implementation using native `fetch`
   - No external dependencies (removed `@google/genai`)
   - Improved error handling with detailed error messages
   - Better timeout handling with AbortController
   - Enhanced quota/rate limit error detection
-- **`src/aiProviders/geminiProvider.ts`** (REMOVED):
+- `**src/aiProviders/geminiProvider.ts**` (REMOVED):
   - Removed in favor of direct API implementation
-- **`src/aiProviders/index.ts`** (REMOVED):
+- `**src/aiProviders/index.ts**` (REMOVED):
   - Removed abstract provider system
-- **`src/textRefiner.ts`**:
+- `**src/textRefiner.ts**`:
   - Refactored to use direct `callGeminiApi` function
   - Added `processWithPrompt` function for custom prompt processing
   - Improved error handling flow
   - Better integration with new direct API architecture
   - Added support for reading prompts from project and personal folders
-- **`src/extension.ts`**:
+- `**src/extension.ts**`:
   - Added `save-as-user-skill` command registration
   - Added `createSkill` command registration
   - Added `shareUserCommandAsCursorToys` and `shareUserPromptAsCursorToys` commands
@@ -384,17 +441,17 @@ Content-Type: application/json
   - Updated Skills tree provider integration
   - Improved context menu organization
   - Updated command titles for consistency
-- **`src/shareableGenerator.ts`**:
+- `**src/shareableGenerator.ts**`:
   - Enhanced to support new sharing commands for Commands and Prompts
   - Improved validation for Skills sharing
-- **`src/shareableImporter.ts`**:
+- `**src/shareableImporter.ts**`:
   - Enhanced Skills import flow
   - Improved folder structure handling for Skills
-- **`src/userSkillsTreeProvider.ts`**:
+- `**src/userSkillsTreeProvider.ts**`:
   - Updated to handle folder-based items correctly
   - Improved context value handling for skill folders
   - Better integration with new commands
-- **`package.json`**:
+- `**package.json**`:
   - Version bumped from 1.7.0 to 1.8.0
   - Added new activation events for Skills commands and `processWithPrompt`
   - Updated activation events for AI commands (renamed `configureAIProvider` → `configureGeminiApiKey`)
@@ -405,6 +462,7 @@ Content-Type: application/json
   - Improved keyboard shortcut configuration
 
 #### New Commands
+
 - `cursor-toys.save-as-user-skill`: Move skill from project to personal folder
 - `cursor-toys.createSkill`: Create new skill folder with SKILL.md
 - `cursor-toys.shareUserCommandAsCursorToys`: Share personal command as CursorToys format
@@ -412,30 +470,35 @@ Content-Type: application/json
 - `cursor-toys.processWithPrompt`: Process text with a custom prompt from your prompts library
 
 #### Renamed Commands
+
 - `cursor-toys.configureAIProvider` → `cursor-toys.configureGeminiApiKey`: Configure Gemini API key
 - `cursor-toys.removeAIProviderKey` → `cursor-toys.removeGeminiApiKey`: Remove Gemini API key
 
 ### Use Cases
 
 **Moving Skills to Personal Library:**
+
 1. Right-click on skill folder in Skills view
 2. Select "Move to Personal Skills"
 3. Skill is moved to `~/.cursor/skills/` or `~/.claude/skills/`
 4. Skill is now available across all projects
 
 **Creating New Skills:**
+
 1. Click "Create Skill" button in Skills view title bar
 2. Enter skill name
 3. Choose Personal or Project location
 4. SKILL.md file is created and opened in editor
 
 **Sharing Personal Commands/Prompts:**
+
 1. Right-click on command or prompt in tree view
 2. Select "Share as CursorToys"
 3. Shareable link is copied to clipboard
 4. Share with team members
 
 **Processing Text with Custom Prompts:**
+
 1. Select text in editor or copy to clipboard
 2. Run "CursorToys: Process with Prompt" command
 3. Select a prompt from your personal or project prompts library
@@ -446,6 +509,7 @@ Content-Type: application/json
 ### Added
 
 #### 🤖 **AI-Powered Text Refinement**
+
 - **AI Text Refiner**: Refine text and code using AI providers
   - New command `cursor-toys.refineSelectionWithAI`: Refine selected text in editor with AI
   - New command `cursor-toys.refineClipboardWithAI`: Refine clipboard text with AI
@@ -469,6 +533,7 @@ Content-Type: application/json
   - `cursorToys.aiRequestTimeout`: Set request timeout in seconds (default: 30)
 
 ### Changed
+
 - **HTTP Environment Management**: Enhanced environment folder creation
   - Automatically creates HTTP folder with llms.txt when environments are initialized
   - llms.txt provides comprehensive documentation on HTTP features and usage
@@ -478,17 +543,18 @@ Content-Type: application/json
 ### Technical Details
 
 #### New Files
-- **`src/textRefiner.ts`**: Core text refinement system
+
+- `**src/textRefiner.ts`**: Core text refinement system
   - `refineClipboard()`: Refine clipboard text with AI
   - `refineSelectedText()`: Refine selected text in editor
   - `getAIProvider()`: Factory function for AI provider instances
   - Progress indicators and error handling
   - Automatic API key configuration flow
-- **`src/aiProviders/index.ts`**: AI provider interface and types
+- `**src/aiProviders/index.ts**`: AI provider interface and types
   - `AIProvider` interface: Standard interface for all AI providers
   - `AIProviderType`: Type union for supported providers
   - Provider discovery and validation
-- **`src/aiProviders/geminiProvider.ts`**: Google Gemini implementation
+- `**src/aiProviders/geminiProvider.ts**`: Google Gemini implementation
   - Singleton pattern for global access
   - API key management with VS Code Secrets
   - Text refinement with safety settings
@@ -496,20 +562,21 @@ Content-Type: application/json
   - Comprehensive error handling
 
 #### Enhanced Files
-- **`src/extension.ts`**:
+
+- `**src/extension.ts**`:
   - Registered AI refinement commands
   - Added keyboard shortcuts for refinement
   - Integrated AI provider configuration commands
   - Added context menu items for text refinement
-- **`src/environmentManager.ts`**:
+- `**src/environmentManager.ts**`:
   - Enhanced `createEnvironment()` to create HTTP folder and llms.txt
   - Enhanced `initializeDefaultEnvironments()` to ensure HTTP folder exists
   - Enhanced `createFileWatcher()` to create HTTP folder when needed
   - Automatic llms.txt creation for HTTP documentation
-- **`src/utils.ts`**:
+- `**src/utils.ts**`:
   - Added `createHttpLlmsFile()`: Creates comprehensive HTTP documentation
   - llms.txt includes all HTTP features: cURL, REST Client, variables, helpers
-- **`package.json`**:
+- `**package.json**`:
   - Version bumped from 1.6.0 to 1.7.0
   - Added AI refinement commands
   - Added AI configuration options
@@ -518,51 +585,60 @@ Content-Type: application/json
   - Added dependency: `@google/genai` for Gemini integration
 
 #### New Commands
+
 - `cursor-toys.refineSelectionWithAI`: Refine selected text with AI
 - `cursor-toys.refineClipboardWithAI`: Refine clipboard text with AI
 - `cursor-toys.configureAIProvider`: Configure AI provider and API key
 - `cursor-toys.removeAIProviderKey`: Remove stored AI provider key
 
 #### Configuration Options Added
+
 - `cursorToys.aiProvider`: AI provider to use (default: "gemini")
 - `cursorToys.aiModel`: AI model to use (optional, provider default if empty)
 - `cursorToys.aiRefinePrompt`: Prompt for text refinement
 - `cursorToys.aiRequestTimeout`: Request timeout in seconds (default: 30)
 
 #### Keyboard Shortcuts
+
 - `Cmd+Shift+R` / `Ctrl+Shift+R`: Refine selected text
 - `Cmd+Alt+Shift+R` / `Ctrl+Alt+Shift+R`: Refine clipboard text
 
 #### Dependencies Added
+
 - `@google/genai`: Google Gemini API client (version ^1.38.0)
 
 ### Use Cases
 
 **Refining Text in Editor:**
+
 1. Select text or code in editor
 2. Press `Cmd+Shift+R` or use Command Palette: "CursorToys: Refine Selection with AI"
 3. Text is refined and replaced in place
 4. First-time use prompts for API key configuration
 
 **Refining Clipboard Text:**
+
 1. Copy text to clipboard
 2. Press `Cmd+Alt+Shift+R` or use Command Palette: "CursorToys: Refine Clipboard Text with AI"
 3. Clipboard is updated with refined text
 4. Paste refined text anywhere
 
 **Configuring AI Provider:**
+
 1. Use Command Palette: "CursorToys: Configure AI Provider"
-2. Enter your Google Gemini API key (get from https://aistudio.google.com/apikey)
+2. Enter your Google Gemini API key (get from [https://aistudio.google.com/apikey](https://aistudio.google.com/apikey))
 3. Key is securely stored using VS Code Secrets API
 4. Optional: Configure AI model in settings (e.g., "gemini-2.5-pro")
 
 **Customizing Refinement Prompt:**
+
 1. Open VS Code settings
 2. Search for "CursorToys AI Refine Prompt"
 3. Customize the prompt (e.g., "Make this more concise and professional")
 4. Refinement uses your custom prompt
 
 **Benefits:**
+
 1. **Improve Code Quality**: Fix typos, improve clarity, enhance documentation
 2. **Enhance Writing**: Refine commit messages, comments, and documentation
 3. **Quick Cleanup**: Clean up messy text from external sources
@@ -574,6 +650,7 @@ Content-Type: application/json
 ### Added
 
 #### 🎯 **Skills Management**
+
 - **Skills Support**: Complete support for Cursor Skills
   - New "Skills" view in Explorer sidebar to browse and manage skills
   - Support for both personal skills (`~/.cursor/skills/`, `~/.claude/skills/`) and project skills (`workspace/.cursor/skills/`, `workspace/.claude/skills/`)
@@ -606,6 +683,7 @@ Content-Type: application/json
   - Automatic detection of SKILL.md files in skills folders
 
 #### 🎨 **UI Improvements**
+
 - **Personal Commands View**: Enhanced to match Hooks and Plans structure
   - Now displays categories at root level: "Personal (~/.cursor)" and "{workspaceName} (workspace)"
   - Better organization with clear separation between personal and project commands
@@ -616,6 +694,7 @@ Content-Type: application/json
   - Maintains backward compatibility with existing folder structure
 
 ### Changed
+
 - **UserCommandsTreeProvider**: Updated to show Personal/Workspace categories
   - Added `'category'` type to tree items
   - Root level now shows categories instead of direct files
@@ -651,7 +730,8 @@ Content-Type: application/json
 ### Technical Details
 
 #### New Files
-- **`src/userSkillsTreeProvider.ts`**: Complete skills management system
+
+- `**src/userSkillsTreeProvider.ts`**: Complete skills management system
   - Tree provider for skills with drag-and-drop support
   - Hierarchical folder structure display (Category → Skill Folder → SKILL.md)
   - Support for both personal and project skills
@@ -660,47 +740,48 @@ Content-Type: application/json
   - Visual icons for skill folders and SKILL.md files
 
 #### Enhanced Files
-- **`src/utils.ts`**:
+
+- `**src/utils.ts**`:
   - Added `getSkillsPath()`: Get skills folder path
   - Added `getPersonalSkillsPaths()`: Get personal skills paths array
   - Added `isSkillFolder()`: Check if folder is a skill folder
   - Extended `getFileTypeFromPath()` to detect `'skill'` type
-- **`src/userCommandsTreeProvider.ts`**:
+- `**src/userCommandsTreeProvider.ts**`:
   - Added `'category'` type support
   - Modified `getChildren()` to return Personal/Workspace categories at root
   - Updated `getTreeItem()` to handle category items
   - Enhanced drag-and-drop to support categories
-- **`src/userPromptsTreeProvider.ts`**:
+- `**src/userPromptsTreeProvider.ts**`:
   - Added `'category'` type support
   - Modified `getChildren()` to return Personal/Workspace categories at root
   - Updated `getTreeItem()` to handle category items
   - Enhanced drag-and-drop to support categories
-- **`src/deeplinkGenerator.ts`**:
+- `**src/deeplinkGenerator.ts**`:
   - Added `'skill'` type support
   - Extended `generateDeeplink()` to accept skill type
   - Updated `buildDeeplink()` to handle skills (uses folder name as skill name)
-- **`src/deeplinkImporter.ts`**:
+- `**src/deeplinkImporter.ts**`:
   - Added `'skill'` type support
   - Extended `parseDeeplinkUrl()` to recognize skill type
   - Updated `getDestinationPath()` to create skill folder structure
   - Enhanced import flow to create folders for skills
-- **`src/shareableGenerator.ts`**:
+- `**src/shareableGenerator.ts**`:
   - Added `generateShareableForSkillFolder()`: Generate skills bundle
   - Added `collectSkillFoldersFromFolder()`: Helper function
   - Extended all shareable functions to support skill type
-- **`src/shareableImporter.ts`**:
+- `**src/shareableImporter.ts**`:
   - Added `importSkillBundle()`: Import skills bundle
   - Extended `parseShareableUrl()` to recognize SKILL type
   - Updated `getDestinationPath()` to handle skills
-- **`src/codelensProvider.ts`**:
+- `**src/codelensProvider.ts**`:
   - Added skill type detection
   - CodeLens actions for SKILL.md files
-- **`src/extension.ts`**:
+- `**src/extension.ts**`:
   - Registered `UserSkillsTreeProvider` and tree view
   - Registered all skills-related commands
   - Added FileSystemWatcher for skills folders
   - Added helper functions for skills commands
-- **`package.json`**:
+- `**package.json**`:
   - Added `cursor-toys.userSkills` view
   - Added all skills-related commands
   - Added context menu items for skills
@@ -712,6 +793,7 @@ Content-Type: application/json
 ### Added
 
 #### 🔧 **Inline Variables and Helper Functions for HTTP Requests**
+
 - **Inline Variable Support**: Define variables directly in HTTP request files using `# @var` decorator
   - Format: `# @var VAR_NAME=value` or `# @var VAR_NAME value`
   - Support for global variables (before first `##` section)
@@ -740,6 +822,7 @@ Content-Type: application/json
   - Preserves variable definitions during request parsing
 
 #### 📋 **Cursor Plans Management**
+
 - **Plans Management**: New system to manage Cursor plan files
   - New "Cursor Plans" view in Explorer sidebar to browse and manage plans
   - Support for both personal plans (`~/.cursor/plans/`) and project plans (`workspace/.cursor/plans/`)
@@ -769,6 +852,7 @@ Content-Type: application/json
   - Support for `.plan.md` file extension
 
 ### Changed
+
 - **Shareable Generator**: Extended to support plans type
   - Added `generateShareableForPlanFolder()`: Generate shareable for plan folder bundle
   - Added plan type to all shareable functions
@@ -792,7 +876,8 @@ Content-Type: application/json
 ### Technical Details
 
 #### New Files
-- **`src/userPlansTreeProvider.ts`**: Complete plans management system
+
+- `**src/userPlansTreeProvider.ts`**: Complete plans management system
   - Tree provider for plans with drag-and-drop support
   - Hierarchical folder structure display
   - Support for both personal and project plans
@@ -801,7 +886,8 @@ Content-Type: application/json
   - Visual icons for plans files
 
 #### Enhanced Files
-- **`src/httpRequestExecutor.ts`**:
+
+- `**src/httpRequestExecutor.ts**`:
   - Added `extractFileVariables()`: Extract variables defined with `# @var` decorator
   - Added `replaceFileVariables()`: Replace `{{VAR_NAME}}` with file variable values
   - Added `replacePromptVariables()`: Replace `{{@prompt()}}` expressions with user input
@@ -809,44 +895,44 @@ Content-Type: application/json
   - Enhanced REST Client format parsing to preserve `# @var` decorators and comments
   - Improved variable substitution order: environment variables → file variables → prompt/helper expressions
   - Support for cascading variables (global → section-specific)
-- **`src/httpEnvironmentProviders.ts`**:
+- `**src/httpEnvironmentProviders.ts**`:
   - Enhanced hover provider to detect and display `# @var` variable definitions
   - Added case-insensitive variable matching for file variables
   - Improved hover tooltips to show variable source (`# @var` vs environment file)
   - Added helpful tips for defining variables when not found
   - Shows when `# @var` values override environment variables
-- **`syntaxes/http-request.tmLanguage.json`**:
+- `**syntaxes/http-request.tmLanguage.json**`:
   - Added syntax highlighting for `# @var` decorator pattern
   - Added highlighting for helper expressions (`{{@helper()}}`)
   - Proper scoping for variable decorators and helper functions
-- **`src/extension.ts`**:
+- `**src/extension.ts**`:
   - Registered UserPlansTreeProvider for plans view
   - Added 8 new plans-related commands
   - Integrated plans file watchers for real-time updates
   - Added helper functions for plans command arguments
   - Support for plans in context menus
-- **`src/shareableGenerator.ts`**:
+- `**src/shareableGenerator.ts**`:
   - Added `generateShareableForPlanFolder()` function
   - Extended type definitions to include `'plan'`
   - Validation logic for `.plan.md` file extension
   - Support for plans in project bundles
   - Added `collectPlanFilesFromFolder()` helper function
-- **`src/shareableImporter.ts`**:
+- `**src/shareableImporter.ts**`:
   - Added `importPlanBundle()` function for plan bundle import
   - Extended type definitions to include `'plan'`
   - Support for `cursortoys://PLAN:` and `cursortoys://PLAN_BUNDLE:` protocol parsing
   - Plans destination path handling
   - Support for plans in Gist imports
-- **`src/gistManager.ts`**:
+- `**src/gistManager.ts**`:
   - Extended `CursorToysMetadata` type to include `'plan'`
   - Updated type definitions in helper functions
   - Added `plan_bundle` to bundle types
-- **`src/utils.ts`**:
+- `**src/utils.ts**`:
   - Added `getPlansPath()` function
   - Added `getPersonalPlansPaths()` function
   - Added `isPlanFile()` helper function
   - Extended `getFileTypeFromPath()` to detect plan files
-- **`package.json`**:
+- `**package.json**`:
   - Added `cursor-toys.userPlans` view contribution
   - Added 8 new plans commands
   - Added plans context menu items
@@ -854,6 +940,7 @@ Content-Type: application/json
   - Added activation events for plans view
 
 #### New View
+
 - `cursor-toys.userPlans`: Cursor Plans tree view in Explorer sidebar
   - Shows both personal and project plans files
   - Displays plans organized in folders
@@ -862,6 +949,7 @@ Content-Type: application/json
 ### Use Cases
 
 **Using Inline Variables:**
+
 ```http
 # @var API_BASE=https://api.example.com
 # @var API_KEY=your-key-here
@@ -873,6 +961,7 @@ Authorization: Bearer {{API_KEY}}
 ```
 
 **Using Helper Functions:**
+
 ```http
 ## Create User with Random Data
 POST {{BASE_URL}}/api/users
@@ -888,6 +977,7 @@ Content-Type: application/json
 ```
 
 **Cascading Variables:**
+
 ```http
 # @var TIMEOUT=5000
 
@@ -902,18 +992,21 @@ GET {{BASE_URL}}/api/posts
 ```
 
 **Managing Cursor Plans:**
+
 1. View plans in "Cursor Plans" view in Explorer sidebar
 2. Create plans with `.plan.md` extension in `.cursor/plans/` folder
 3. Organize plans in subfolders with drag-and-drop
 4. Share individual plans or entire folders with team
 
 **Sharing Plans:**
+
 1. Right-click on plan in tree view
 2. Choose "Share Plan" (CursorToys format) or "Share via GitHub Gist"
 3. Share link with team members
 4. Recipients import with `Cmd+Shift+I`
 
 **Importing Plans:**
+
 1. Press `Cmd+Shift+I` in Cursor
 2. Paste plan shareable link or Gist URL
 3. Choose Personal or Project location
@@ -924,6 +1017,7 @@ GET {{BASE_URL}}/api/posts
 ### Added
 
 #### 🌐 **REST Client Format Support for HTTP Requests**
+
 - **REST Client Format**: Support for REST Client format (HTTP Request File format) in addition to curl commands
   - Format: `METHOD URL` with headers and body separated by empty line
   - Use `###` separator (three hashes) for multiple requests in same file
@@ -943,6 +1037,7 @@ GET {{BASE_URL}}/api/posts
   - Highlight `###` separator as punctuation
 
 #### 🔄 **Environment File Watchers**
+
 - **File Watchers**: Automatic monitoring of environment file changes
   - Monitor `.env` file changes in environments folder
   - Automatically invalidate cache when environment files are modified
@@ -956,6 +1051,7 @@ GET {{BASE_URL}}/api/posts
   - Per-environment cache clearing support
 
 ### Changed
+
 - **HTTP Request Parsing**: Enhanced to support multiple formats
   - Try REST Client format parsing before curl parsing
   - Support both curl commands and REST Client format in same file
@@ -968,7 +1064,8 @@ GET {{BASE_URL}}/api/posts
 ### Technical Details
 
 #### Enhanced Files
-- **`src/httpRequestExecutor.ts`**:
+
+- `**src/httpRequestExecutor.ts`**:
   - Added `parseRestClientFormat()`: Parse METHOD URL format requests
   - Added `isRestClientFormat()`: Detect REST Client format
   - Added `convertRestClientToCurl()`: Convert format for execution
@@ -976,12 +1073,12 @@ GET {{BASE_URL}}/api/posts
   - Refactored `extractCurlFromSection()` to `extractRequestFromSection()`
   - Support for `###` separator detection
   - Preserve line breaks and empty lines for body separation
-- **`src/httpCodeLensProvider.ts`**:
+- `**src/httpCodeLensProvider.ts**`:
   - Added REST Client pattern matching for METHOD URL format
   - Detect `###` separators to identify individual requests
   - Support request titles from `###` separator comments
   - Show CodeLens on request lines with proper positioning
-- **`src/environmentManager.ts`**:
+- `**src/environmentManager.ts**`:
   - Added `fileWatchers` Map and `workspacePaths` Set
   - Implemented `setupFileWatchers()`: Initialize watchers on activation
   - Added `updateFileWatchers()`: Handle workspace folder changes
@@ -989,10 +1086,10 @@ GET {{BASE_URL}}/api/posts
   - Added `clearEnvironmentCache()`: Clear cache for specific environment
   - Added `clearWorkspaceCache()`: Clear cache for workspace
   - Added `dispose()`: Clean up watchers on deactivation
-- **`src/extension.ts`**:
+- `**src/extension.ts**`:
   - Integrated file watcher setup in `activate()` function
   - Added watcher disposal in `deactivate()` function
-- **`syntaxes/http-request.tmLanguage.json`**:
+- `**syntaxes/http-request.tmLanguage.json**`:
   - Added REST Client format pattern matching
   - Highlight HTTP methods, URLs, headers, and environment variables
   - Support `###` separator highlighting as punctuation
@@ -1001,6 +1098,7 @@ GET {{BASE_URL}}/api/posts
 ### Use Cases
 
 **REST Client Format Example:**
+
 ```http
 ### Get All Users
 GET {{BASE_URL}}/api/users
@@ -1017,6 +1115,7 @@ Content-Type: application/json
 ```
 
 **Benefits:**
+
 1. **Familiar Format**: Use the same format as VS Code REST Client extension
 2. **Better Readability**: Cleaner syntax than curl commands for simple requests
 3. **Multiple Requests**: Use `###` separator to organize multiple requests in one file
@@ -1028,6 +1127,7 @@ Content-Type: application/json
 ### Added
 
 #### 🪝 **Cursor Hooks Management**
+
 - **Hooks File Management**: New system to manage Cursor hooks.json files
   - New "Cursor Hooks" view in Explorer sidebar to browse and manage hooks
   - Support for both personal hooks (`~/.cursor/hooks.json`) and project hooks (`workspace/.cursor/hooks.json`)
@@ -1061,6 +1161,7 @@ Content-Type: application/json
   - File system watchers for real-time updates
 
 ### Changed
+
 - **Shareable Generator**: Extended to support hooks type
   - Added `generateShareableForHooks()`: Generate shareable for hooks.json
   - Added `generateGistShareableForHooks()`: Create Gist for hooks.json
@@ -1086,13 +1187,14 @@ Content-Type: application/json
 ### Technical Details
 
 #### New Files
-- **`src/hooksManager.ts`**: Complete hooks management system
+
+- `**src/hooksManager.ts`**: Complete hooks management system
   - `createHooksFile()`: Create hooks.json with default structure
   - `hooksFileExists()`: Check if hooks.json exists
   - `validateHooksFile()`: Validate hooks.json structure
   - `getHookScripts()`: Extract script paths from hooks.json
   - Default hooks template with examples
-- **`src/userHooksTreeProvider.ts`**: Tree provider for hooks
+- `**src/userHooksTreeProvider.ts**`: Tree provider for hooks
   - Hierarchical display of hooks and scripts
   - Support for both personal and project hooks
   - Context menu integration
@@ -1100,30 +1202,31 @@ Content-Type: application/json
   - Visual icons for hooks file vs scripts
 
 #### Enhanced Files
-- **`src/extension.ts`**:
+
+- `**src/extension.ts**`:
   - Registered UserHooksTreeProvider for hooks view
   - Added 12 new hooks-related commands
   - Integrated hooks file watchers for real-time updates
   - Added helper functions for hooks command arguments
   - Support for hooks in context menus
-- **`src/shareableGenerator.ts`**:
+- `**src/shareableGenerator.ts**`:
   - Added `generateShareableForHooks()` function
   - Added `generateGistShareableForHooks()` function
   - Extended type definitions to include `'hooks'`
   - Validation logic for hooks.json structure
-- **`src/shareableImporter.ts`**:
+- `**src/shareableImporter.ts**`:
   - Added `importHooks()` function for hooks import
   - Extended type definitions to include `'hooks'`
   - Support for `cursortoys://HOOKS:` protocol parsing
   - Hooks destination path handling
-- **`src/gistManager.ts`**:
+- `**src/gistManager.ts**`:
   - Extended `CursorToysMetadata` type to include `'hooks'`
   - Updated type definitions in helper functions
-- **`src/utils.ts`**:
+- `**src/utils.ts**`:
   - Added `getHooksPath()` function
   - Added `getPersonalHooksPath()` function
   - Extended `getFileTypeFromPath()` to detect hooks.json
-- **`package.json`**:
+- `**package.json**`:
   - Version bumped from 1.4.2 to 1.5.0
   - Added `cursor-toys.userHooks` view contribution
   - Added 12 new hooks commands
@@ -1132,6 +1235,7 @@ Content-Type: application/json
   - Added activation events for hooks view
 
 #### New View
+
 - `cursor-toys.userHooks`: Cursor Hooks tree view in Explorer sidebar
   - Shows both personal and project hooks.json files
   - Displays hook scripts referenced in hooks.json
@@ -1140,18 +1244,21 @@ Content-Type: application/json
 ### Use Cases
 
 **Managing Cursor Hooks:**
+
 1. Click "Create Hooks File" button in Cursor Hooks view
 2. Choose between Personal (all projects) or Project (workspace-specific)
 3. Edit hooks.json to configure your hooks
 4. Referenced scripts appear automatically in the tree view
 
 **Sharing Hooks:**
+
 1. Right-click on hooks.json in tree view
 2. Choose "Share Hooks" (CursorToys format) or "Share via GitHub Gist"
 3. Share link with team members
 4. Recipients import with `Cmd+Shift+I`
 
 **Importing Hooks:**
+
 1. Press `Cmd+Shift+I` in Cursor
 2. Paste hooks shareable link or Gist URL
 3. Choose Personal or Project location
@@ -1160,10 +1267,12 @@ Content-Type: application/json
 ## [1.4.2] - 2026-01-04
 
 ### Added
+
 - **Share via GitHub Gist in Personal Commands**: Added "Share via GitHub Gist" option to context menu of Personal Commands view
 - **Share via GitHub Gist in Personal Prompts**: Added "Share via GitHub Gist" option to context menu of Personal Prompts view
 
 ### Changed
+
 - **Simplified StatusBar Menu**: Streamlined quick access menu (CursorToys icon in status bar) to show only most relevant commands:
   - Added: New Notepad, Minify File, Trim Clipboard
   - Kept: Open Marketplace, Check Recommendations, Import from URL
@@ -1174,6 +1283,7 @@ Content-Type: application/json
 ### Added
 
 #### 🔄 **Cascading Environment Decorators for HTTP Requests**
+
 - **3-Level Environment Cascading**: Environment decorators now cascade through three levels for better flexibility
   - **Section-specific**: `# @env dev` placed before a section (##) applies only to that section
   - **Previous section inheritance**: Sections without explicit decorator inherit from previous section
@@ -1196,6 +1306,7 @@ Content-Type: application/json
 ### Enhanced
 
 #### 🎨 **Syntax Highlighting for HTTP Request Files**
+
 - **Environment Decorator Syntax**: New syntax highlighting for `# @env` decorators
   - `# @env` keyword highlighted as control directive (keyword.control.directive.env)
   - Environment name highlighted as type entity (entity.name.type.env-name)
@@ -1209,6 +1320,7 @@ Content-Type: application/json
   - Consistent with other language syntax highlighting
 
 ### Changed
+
 - **Version**: Bumped from 1.4.0 to 1.4.1
 - **Environment Detection Logic**: Refactored environment detection into modular functions
   - `findSectionEnvironment()`: Finds section-specific decorator
@@ -1232,27 +1344,28 @@ Content-Type: application/json
 ### Technical Details
 
 #### Enhanced Files
-- **`src/httpCodeLensProvider.ts`**:
+
+- `**src/httpCodeLensProvider.ts`**:
   - Added global environment detection at file start
   - Changed `currentEnv` initialization to use `globalEnv` instead of `null`
   - Removed environment reset when starting new sections (maintains cascade)
   - Added comment explaining inheritance behavior: "DO NOT reset currentEnv - maintain inheritance cascade"
   - Environment inheritance now explicit: `envName: currentEnv // Inherits from previous section or global`
-- **`src/httpEnvironmentProviders.ts`**:
+- `**src/httpEnvironmentProviders.ts**`:
   - Refactored `getEnvironmentForLine()` to implement 3-level cascade
   - Added `findSectionEnvironment()`: Section-specific decorator detection
   - Added `findPreviousSectionEnvironment()`: Recursive inheritance from previous section
   - Added `findGlobalEnvironment()`: Global decorator detection at file top
   - Updated decorator search logic to stop at section boundaries or non-comment lines
   - Improved comment handling in environment detection
-- **`src/httpRequestExecutor.ts`**:
+- `**src/httpRequestExecutor.ts**`:
   - Refactored `getEnvironmentForSection()` to use modular helper functions
   - Added `findSectionEnvironment()`: Section-specific decorator detection
   - Added `findPreviousSectionEnvironment()`: Recursive inheritance detection
   - Added `findGlobalEnvironment()`: Global decorator detection
   - Updated environment detection to support 3-level cascading
   - Consistent behavior with other HTTP environment providers
-- **`syntaxes/http-request.tmLanguage.json`**:
+- `**syntaxes/http-request.tmLanguage.json**`:
   - Added block comment syntax pattern (`/* */`)
   - Added environment decorator pattern (`# @env name`)
   - Added variable pattern highlighting (`{{variableName}}`)
@@ -1294,6 +1407,7 @@ curl --request DELETE \
 ```
 
 **Benefits:**
+
 1. **Less Repetition**: Set global environment once at the top, override only when needed
 2. **Better Organization**: Group related sections with same environment
 3. **Clearer Intent**: Explicit decorators show when environment changes
@@ -1302,6 +1416,7 @@ curl --request DELETE \
 ## [1.4.0] - 2026-01-01
 
 ### Fixed
+
 - Fixed GitHub token placeholder in README to avoid false positive in package security scan
   - Changed placeholder format to use clear text instead of x's pattern
   - Prevents vsce package from detecting placeholder as real token during packaging
@@ -1309,6 +1424,7 @@ curl --request DELETE \
 ### Added
 
 #### 🎯 **Recommendations System**
+
 - **Project Context Detection**: Automatically detects project languages, frameworks, and context
   - Detects languages: JavaScript, TypeScript, Python, Java, Go, Rust, Ruby, PHP, Elixir
   - Detects frameworks: React, Next.js, Vue, Angular, Svelte, Express, NestJS, Jest, Playwright
@@ -1347,6 +1463,7 @@ curl --request DELETE \
   - Manual cache clear command
 
 ### Enhanced
+
 - **YAML Parsing**: New utility functions in `utils.ts` for parsing YAML frontmatter
 - **Context Detection**: Smart project analysis for better recommendations matching
 - **Import System**: Recommendations use existing import infrastructure for seamless installation
@@ -1356,6 +1473,7 @@ curl --request DELETE \
 ### Added
 
 #### 📓 **Project Notepads**
+
 - **Notepads Management**: New workspace-specific notepad system for project documentation
   - New "Project Notepads" view in Explorer sidebar to browse and manage notepads
   - Notepads stored in `.{baseFolder}/notepads/` folder (e.g., `.cursor/notepads/`)
@@ -1384,6 +1502,7 @@ curl --request DELETE \
   - File system watchers for real-time updates
 
 #### 🌐 **GitHub Gist Integration**
+
 - **Gist Sharing**: Share files and bundles via GitHub Gist
   - New command `cursor-toys.shareViaGist`: Share single file as GitHub Gist
   - New command `cursor-toys.shareFolderViaGist`: Share entire folder as Gist bundle
@@ -1417,6 +1536,7 @@ curl --request DELETE \
   - HTTPS request handling with error management
 
 ### Changed
+
 - **Import Command Enhanced**: Now supports GitHub Gist URLs and IDs
   - Accepts `gist.github.com` URLs, `gist.githubusercontent.com` raw URLs, and Gist IDs
   - Automatic format detection (Gist, deeplink, or CursorToys)
@@ -1452,7 +1572,8 @@ curl --request DELETE \
 ### Technical Details
 
 #### New Files
-- **`src/gistManager.ts`**: Complete GitHub Gist integration
+
+- `**src/gistManager.ts`**: Complete GitHub Gist integration
   - GistManager class with singleton pattern
   - Token management with VS Code Secrets API
   - Gist creation with validation
@@ -1461,7 +1582,7 @@ curl --request DELETE \
   - URL parsing (supports multiple formats)
   - HTTPS request handling
   - Error management with user-friendly messages
-- **`src/userNotepadsTreeProvider.ts`**: Tree provider for project notepads
+- `**src/userNotepadsTreeProvider.ts**`: Tree provider for project notepads
   - Hierarchical folder structure support
   - Drag-and-drop functionality
   - Recursive directory reading
@@ -1470,7 +1591,8 @@ curl --request DELETE \
   - Context menu integration
 
 #### Enhanced Files
-- **`src/extension.ts`**:
+
+- `**src/extension.ts**`:
   - Registered 13 new commands (notepads and Gist)
   - Added notepad-specific commands with URI/item helper functions
   - Enhanced import command to support Gist URLs and IDs
@@ -1478,23 +1600,23 @@ curl --request DELETE \
   - Added UserNotepadsTreeProvider registration
   - Added file system watchers for notepads folder
   - Extended shareable commands to support notepads
-- **`src/shareableGenerator.ts`**:
+- `**src/shareableGenerator.ts**`:
   - Added `generateShareableForNotepadFolder()`: Bundle notepad files
   - Added `generateGistShareable()`: Create GitHub Gist for single file
   - Added `generateGistShareableForBundle()`: Create Gist bundle
   - Extended all bundle functions to include notepads
   - Support for notepad type throughout
-- **`src/shareableImporter.ts`**:
+- `**src/shareableImporter.ts**`:
   - Added `importNotepadBundle()`: Import notepad bundles
   - Added `importFromGist()`: Import from GitHub Gist
   - Added Gist format validation and detection
   - Support for single file and bundle Gist imports
   - Extended project bundle to include notepads
-- **`src/utils.ts`**:
+- `**src/utils.ts**`:
   - Added `getNotepadsPath()`: Get notepads folder path
   - Extended `getFileTypeFromPath()` to detect notepads
   - Support for `.{baseFolder}/notepads/` in path detection
-- **`package.json`**:
+- `**package.json**`:
   - Version bumped from 1.2.0 to 1.3.0
   - Added 13 new commands (notepads and Gist)
   - Added `cursor-toys.userNotepads` view
@@ -1503,6 +1625,7 @@ curl --request DELETE \
   - Updated activation events for new views and commands
 
 #### New Commands
+
 - `cursor-toys.createNotepad`: Create new notepad
 - `cursor-toys.openNotepad`: Open notepad file
 - `cursor-toys.generateNotepadShareable`: Share notepad
@@ -1519,11 +1642,13 @@ curl --request DELETE \
 - `cursor-toys.removeGitHubToken`: Remove GitHub token
 
 #### Configuration Options Added
+
 - `cursorToys.gistDefaultVisibility`: Default visibility when creating GitHub Gists
   - Options: `"public"`, `"private"`, `"ask"` (default: `"ask"`)
   - Allows presetting Gist visibility or prompting each time
 
 #### New View
+
 - `cursor-toys.userNotepads`: Project Notepads tree view in Explorer sidebar
   - Shows notepads from current workspace only
   - Hierarchical folder structure
@@ -1533,12 +1658,14 @@ curl --request DELETE \
 ### Use Cases
 
 **Project Documentation with Notepads:**
+
 1. Create notepads in `.cursor/notepads/` for project-specific documentation
 2. Organize in subfolders (e.g., `architecture/`, `decisions/`, `guides/`)
 3. Share individual notepads or entire folders with team
 4. Keep documentation close to code, version-controlled
 
 **Share via GitHub Gist:**
+
 1. Right-click on any file → "CursorToys: Share via GitHub Gist"
 2. Choose public or private visibility
 3. Gist URL copied to clipboard
@@ -1546,6 +1673,7 @@ curl --request DELETE \
 5. Recipients can import via `Cmd+Shift+I` or view in browser
 
 **Import from Gist:**
+
 1. Find a CursorToys Gist on GitHub
 2. Press `Cmd+Shift+I` in Cursor
 3. Paste Gist URL or ID
@@ -1556,6 +1684,7 @@ curl --request DELETE \
 ### Added
 
 #### 🗂️ **HTTP and Environment File Sharing**
+
 - **HTTP Request Sharing**: Share HTTP requests as CursorToys shareables
   - New command `cursor-toys.shareAsCursorToysHttp`: Share single HTTP request file
   - New command `cursor-toys.shareAsCursorToysHttpWithPath`: Share HTTP request with folder structure
@@ -1586,6 +1715,7 @@ curl --request DELETE \
   - Context-aware environment file detection
 
 ### Changed
+
 - **CodeLens Filtering**: DeeplinkCodeLensProvider now only shows for command, rule, and prompt files
   - HTTP and ENV files excluded from deeplink CodeLens (have their own sharing methods)
   - Prevents CodeLens clutter on HTTP request files
@@ -1627,43 +1757,44 @@ curl --request DELETE \
 ### Technical Details
 
 #### Enhanced Files
-- **`src/extension.ts`**:
+
+- `**src/extension.ts`**:
   - Added `generateShareableWithPathValidation()` helper function for HTTP/ENV with path
   - Registered 11 new shareable commands for HTTP, ENV, and folder bundles
   - Added ENV CodeLens provider registration
   - Extended `generateShareableWithValidation()` to accept `'http' | 'env'` types
   - Added conditional extension validation based on file type
   - Enhanced import command prompt text
-- **`src/shareableGenerator.ts`**:
+- `**src/shareableGenerator.ts**`:
   - Added 8 new bundle generation functions
   - Support for folder structure preservation
   - Support for multiple file bundling
   - Added HTTP and ENV specific file filtering
   - Bundle compression and encoding for efficient sharing
-- **`src/shareableImporter.ts`**:
+- `**src/shareableImporter.ts**`:
   - Enhanced to handle bundle imports
   - Support for multiple files in single shareable
   - Automatic folder structure recreation
   - File path preservation and validation
-- **`src/codelensProvider.ts`**:
+- `**src/codelensProvider.ts**`:
   - Added filtering to exclude HTTP and ENV files
   - Only shows CodeLens for command, rule, and prompt files
   - Added default case to prevent errors
-- **`src/httpCodeLensProvider.ts`**:
+- `**src/httpCodeLensProvider.ts**`:
   - Removed share CodeLens from HTTP files
   - Added comment explaining removal
-- **`src/deeplinkGenerator.ts`**:
+- `**src/deeplinkGenerator.ts**`:
   - Added filtering to exclude HTTP and ENV types
   - Only generates deeplinks for command, rule, and prompt files
   - Type validation before deeplink generation
-- **`src/utils.ts`**:
+- `**src/utils.ts**`:
   - Extended `getFileTypeFromPath()` return type to include `'http' | 'env'`
   - Added HTTP file detection with extension validation (`.req`, `.request`)
   - Added ENV file detection with folder name validation
   - Added `getEnvironmentsFolderName()` function
   - Updated `getEnvironmentsPath()` to use configurable folder name
   - Added `isHttpOrEnvFile()` helper function
-- **`package.json`**:
+- `**package.json**`:
   - Version bumped from 1.1.0 to 1.2.0
   - Added 11 new commands for HTTP, ENV, and folder bundles
   - Added `environmentsFolder` configuration option
@@ -1673,12 +1804,14 @@ curl --request DELETE \
   - Updated import command title for clarity
 
 #### New Files
-- **`src/envCodeLensProvider.ts`**: CodeLens provider for environment files
+
+- `**src/envCodeLensProvider.ts**`: CodeLens provider for environment files
   - Validates environment file location
   - Checks for `.env*` file pattern
   - Currently returns empty array (share via context menu)
 
 #### New Commands
+
 - `cursor-toys.shareAsCursorToysHttp`: Share HTTP request file
 - `cursor-toys.shareAsCursorToysEnv`: Share environment file
 - `cursor-toys.shareAsCursorToysHttpWithPath`: Share HTTP with folder structure
@@ -1692,6 +1825,7 @@ curl --request DELETE \
 - `cursor-toys.shareAsCursorToysProject`: Share entire project as bundle
 
 #### Configuration Options Added
+
 - `cursorToys.environmentsFolder`: Name of folder to store HTTP environment files
   - Options: `.environments` (default), `environments`, `__environments__`, `_env`
   - Allows customization of environment folder organization
@@ -1699,16 +1833,19 @@ curl --request DELETE \
 ### Use Cases
 
 **Share HTTP Requests:**
+
 1. Right-click on `.req` or `.request` file in `.cursor/http/` folder
 2. Select "CursorToys: Share as CursorToys (HTTP Request)"
 3. Share the copied link with team members
 
 **Share Complete API Setup:**
+
 1. Right-click on `.cursor/http/` folder
 2. Select "CursorToys: Share Folder as CursorToys (HTTP + Environments)"
 3. Team receives both requests and environment configurations
 
 **Share Project Configuration:**
+
 1. Right-click on `.cursor` folder
 2. Select "CursorToys: Share Project as CursorToys (Complete Bundle)"
 3. Entire project setup (commands, rules, prompts, HTTP) shared in one link
@@ -1718,6 +1855,7 @@ curl --request DELETE \
 ### Added
 
 #### 🔗 **CursorToys Shareable Format**
+
 - **New Compressed Sharing Format**: Alternative to traditional deeplinks with no URL length limits
   - `cursortoys://TYPE:filename:compressedData` format
   - Uses gzip compression + base64 encoding
@@ -1748,6 +1886,7 @@ curl --request DELETE \
   - Supports personal and project locations
 
 ### Changed
+
 - **Import Command Enhanced**: `cursor-toys.import` now accepts both deeplink and CursorToys formats
   - Updated prompt text to reflect dual format support
   - Updated validation to accept both URL schemes
@@ -1771,13 +1910,14 @@ curl --request DELETE \
 ### Technical Details
 
 #### New Files
-- **`src/shareableGenerator.ts`**: Complete shareable generation system
+
+- `**src/shareableGenerator.ts`**: Complete shareable generation system
   - `generateShareable()`: Main function to create CursorToys shareables
   - `compressAndEncode()`: Gzip compression + base64 encoding
   - `buildShareableUrl()`: URL construction for CursorToys protocol
   - File validation and size checks
   - Content compression with best compression level
-- **`src/shareableImporter.ts`**: Complete shareable import system
+- `**src/shareableImporter.ts**`: Complete shareable import system
   - `importShareable()`: Main function to import CursorToys shareables
   - `parseShareableUrl()`: URL parsing and validation
   - `decodeAndDecompress()`: Base64 decode + gzip decompression
@@ -1786,18 +1926,19 @@ curl --request DELETE \
   - File overwrite confirmation
 
 #### Enhanced Files
-- **`src/extension.ts`**:
+
+- `**src/extension.ts**`:
   - Added `generateShareableWithValidation()` helper function
   - Registered three new shareable commands
   - Enhanced import command to handle both formats
   - Added shareable disposables to subscriptions
   - Removed generic generate command
-- **`src/codelensProvider.ts`**:
+- `**src/codelensProvider.ts**`:
   - Refactored to show two CodeLens actions per file
   - Added deeplink and shareable command pairs
   - Updated labels for clarity
   - Both CodeLens appear on line 0
-- **`package.json`**:
+- `**package.json**`:
   - Added three new shareable commands to contributions
   - Added activation events for shareable commands
   - Added shareable commands to context menus
@@ -1805,27 +1946,32 @@ curl --request DELETE \
   - Updated command titles for consistency
 
 #### Dependencies
+
 - Uses Node.js built-in `zlib` module for compression/decompression
 - No new external dependencies required
 
 ### Format Comparison
 
-| Aspect | Deeplink | CursorToys Shareable |
-|:-------|:---------|:--------------------|
-| **Protocol** | `cursor://` or `https://cursor.com/link/` | `cursortoys://` |
-| **Encoding** | URL encoding | Gzip + Base64 |
-| **Size Limit** | 8,000 characters | No limit (practical limit: 50MB) |
-| **Compression** | None | 60-80% reduction |
-| **Best For** | Small files, quick sharing | Large files, team distribution |
+
+| Aspect          | Deeplink                                  | CursorToys Shareable             |
+| --------------- | ----------------------------------------- | -------------------------------- |
+| **Protocol**    | `cursor://` or `https://cursor.com/link/` | `cursortoys://`                  |
+| **Encoding**    | URL encoding                              | Gzip + Base64                    |
+| **Size Limit**  | 8,000 characters                          | No limit (practical limit: 50MB) |
+| **Compression** | None                                      | 60-80% reduction                 |
+| **Best For**    | Small files, quick sharing                | Large files, team distribution   |
+
 
 ### Use Cases
 
 **Use Deeplinks when:**
+
 - File is small (< 2KB)
 - Sharing in platforms with URL support
 - Need clickable links in documentation
 
 **Use CursorToys when:**
+
 - File is large (> 5KB)
 - Deeplink exceeds URL length limit
 - Team sharing via private channels
@@ -1834,6 +1980,7 @@ curl --request DELETE \
 ## [Unreleased]
 
 ### Added
+
 - New configuration `cursorToys.baseFolder` to customize base folder name for all resources
   - Applies to commands, rules, prompts, and HTTP files
   - Allows using `.vscode`, `.ai`, or any custom folder name instead of `.cursor`
@@ -1852,6 +1999,7 @@ curl --request DELETE \
   - Ensures users can access legacy prompts after changing base folder
 
 ### Changed
+
 - `baseFolder` configuration now affects ALL resources consistently
   - Commands, rules, prompts, and HTTP all respect the same base folder
   - More intuitive and predictable behavior
@@ -1869,6 +2017,7 @@ curl --request DELETE \
   - Clarified that rules/prompts are Cursor-specific but use base folder
 
 ### Documentation
+
 - Added comprehensive VS Code compatibility section to README
 - Updated AGENTS.md with base folder configuration guidelines
 - Clarified which features work in VS Code vs Cursor
@@ -1879,13 +2028,15 @@ curl --request DELETE \
 ### 🎉 Major Release: Complete Productivity Toolkit
 
 **⚠️ BREAKING CHANGES**: This is a major version update with breaking changes. Users will need to:
+
 - Uninstall `cursor-deeplink` and install `cursor-toys`
-- Update configuration keys from `cursorDeeplink.*` to `cursorToys.*`
+- Update configuration keys from `cursorDeeplink.`* to `cursorToys.*`
 - Update any custom keybindings from `cursor-deeplink.*` to `cursor-toys.*`
 
 ### Added
 
 #### 🗜️ **File Minification System**
+
 - **Minify Files**: New command to minify files directly in the editor
   - Support for multiple file types: JSON, HTML, XML, CSS, SVG, JavaScript, TypeScript
   - One-click minification via context menu or editor title
@@ -1910,6 +2061,7 @@ curl --request DELETE \
   - `cursorToys.minify.outputSuffix`: Customize minified file suffix (default: `.min`)
 
 #### 🌍 **HTTP Environment Variables**
+
 - **Environment Management**: Complete system for managing HTTP request environments
   - Store environment variables in `.cursor/http/environments/` folder
   - Support for multiple environments: `.env`, `.env.dev`, `.env.staging`, `.env.prod`, etc.
@@ -1949,6 +2101,7 @@ curl --request DELETE \
   - `cursorToys.httpDefaultEnvironment`: Set default environment name (default: `dev`)
 
 #### 📝 **Clipboard Processing System**
+
 - **Smart Content Detection**: Automatically detects content type from clipboard
   - Recognizes JSON, HTML, XML, CSS, SVG, and other formats
   - Suggests detected type with option to override
@@ -1967,11 +2120,12 @@ curl --request DELETE \
   - `copyToClipboard()`: Copy with confirmation message
 
 ### Changed
+
 - **Package Name**: `cursor-deeplink` → `cursor-toys`
 - **Display Name**: "Cursor Commands Toys" → "CursorToys"
-- **Command Namespace**: `cursor-deeplink.*` → `cursor-toys.*`
-- **Configuration Namespace**: `cursorDeeplink.*` → `cursorToys.*`
-- **View IDs**: `cursor-deeplink.*` → `cursor-toys.*`
+- **Command Namespace**: `cursor-deeplink.`* → `cursor-toys.*`
+- **Configuration Namespace**: `cursorDeeplink.`* → `cursorToys.*`
+- **View IDs**: `cursor-deeplink.`* → `cursor-toys.*`
 - **URI Handlers**: `godrix.cursor-deeplink` → `godrix.cursor-toys`
 - **Repository**: GitHub repository updated to `cursor-toys`
 - **HTTP Request Execution**: Enhanced with environment variable support
@@ -1989,64 +2143,66 @@ If you're upgrading from `cursor-deeplink`:
 1. **Uninstall old extension**: Remove `cursor-deeplink` from VS Code
 2. **Install new extension**: Install `cursor-toys`
 3. **Update settings** (in `.vscode/settings.json` or user settings):
-   ```json
+  ```json
    // Old
    "cursorDeeplink.linkType": "web"
-   
+
    // New
    "cursorToys.linkType": "web"
-   ```
+  ```
 4. **Update keybindings** (if customized):
-   ```json
+  ```json
    // Old
    "cursor-deeplink.import"
-   
+
    // New
    "cursor-toys.import"
-   ```
+  ```
 
 ### Technical Details
 
 #### New Files
-- **`src/minifier.ts`**: Complete minification system
+
+- `**src/minifier.ts**`: Complete minification system
   - File type detection by extension and content
   - Specialized minification functions for each supported type
   - Size calculation and statistics generation
   - Result formatting utilities
-- **`src/clipboardProcessor.ts`**: Clipboard processing utilities
+- `**src/clipboardProcessor.ts**`: Clipboard processing utilities
   - Read/write clipboard with error handling
   - Content type detection from clipboard
   - Whitespace normalization
   - Minification with user prompts
   - Statistics generation
-- **`src/environmentManager.ts`**: Environment variable management
+- `**src/environmentManager.ts**`: Environment variable management
   - Singleton pattern for global access
   - Environment file parsing (.env format)
   - Variable substitution with `{{variable}}` syntax
   - Cache management for performance
   - Validation of unresolved variables
   - Environment creation and initialization
-- **`src/httpEnvironmentProviders.ts`**: Environment UI providers
+- `**src/httpEnvironmentProviders.ts**`: Environment UI providers
   - Status bar item showing active environment
   - Quick pick menu for environment selection
   - Environment folder management
 
 #### Enhanced Files
-- **`src/extension.ts`**: 
+
+- `**src/extension.ts**`: 
   - Registered minification commands
   - Registered clipboard processing commands
   - Registered environment management commands
   - Added minify context menu items
   - Integrated environment manager with HTTP requests
   - Added status bar integration for environment display
-- **`src/httpRequestExecutor.ts`**:
+- `**src/httpRequestExecutor.ts**`:
   - Enhanced with environment variable substitution
   - Added validation for unresolved variables
   - Improved error messages for missing variables
-- **`src/utils.ts`**:
+- `**src/utils.ts**`:
   - Added file type detection utilities
   - Added minification helper functions
-- **`package.json`**:
+- `**package.json**`:
   - Added minification commands
   - Added clipboard processing commands
   - Added environment management commands
@@ -2055,6 +2211,7 @@ If you're upgrading from `cursor-deeplink`:
   - Added activation events for new commands
 
 #### New Commands
+
 - `cursor-toys.minifyFile`: Minify current file and save with suffix
 - `cursor-toys.trimClipboard`: Auto-detect and minify clipboard
 - `cursor-toys.trimClipboardWithPrompt`: Select type and minify clipboard
@@ -2064,11 +2221,13 @@ If you're upgrading from `cursor-deeplink`:
 - `cursor-toys.initializeEnvironments`: Initialize environment structure
 
 #### Configuration Options Added
+
 - `cursorToys.minify.preserveComments`: Preserve comments (default: `false`)
 - `cursorToys.minify.outputSuffix`: Minified file suffix (default: `.min`)
 - `cursorToys.httpDefaultEnvironment`: Default environment name (default: `dev`)
 
 ### Keywords Added
+
 - `cursor-toys`, `rest`, `minify`, `clipboard`, `environment`, `variables` for better discoverability
 - Enhanced description highlighting productivity features
 
@@ -2077,6 +2236,7 @@ If you're upgrading from `cursor-deeplink`:
 ## [0.9.0] - 2025-12-27
 
 ### Added
+
 - **Personal Prompts Support**: Complete functionality to manage personal prompts in `~/.cursor/prompts/`, mirroring the Personal Commands system
   - New "Personal Prompts" view in Explorer sidebar to browse and manage prompts from `~/.cursor/prompts/`
   - Import prompts via deeplink with option to save as Personal (default) or Project prompt
@@ -2102,6 +2262,7 @@ If you're upgrading from `cursor-deeplink`:
   - Context menu with all management options
 
 ### Changed
+
 - **Deeplink Import Flow for Prompts**: When importing a prompt deeplink, user is now asked if they want to save as Personal (default) or Project prompt
   - Personal prompts saved to `~/.cursor/prompts/`
   - Project prompts saved to `workspace/.cursor/prompts/`
@@ -2109,6 +2270,7 @@ If you're upgrading from `cursor-deeplink`:
 - **File Type Detection**: Updated `getFileTypeFromPath()` to properly detect prompts in both workspace and user home directory
 
 ### Technical Details
+
 - **New Files**:
   - `src/userPromptsTreeProvider.ts`: Complete tree provider for personal prompts with drag-and-drop support
 - **Enhanced Files**:
@@ -2129,6 +2291,7 @@ If you're upgrading from `cursor-deeplink`:
 - **File System Watchers**: Added automatic monitoring of `~/.cursor/prompts/` for real-time updates
 
 ### Architecture
+
 - Personal prompts follow the same architecture as Personal Commands
 - Prompts always use `.cursor` folder (not `.claude`)
 - Respects `allowedExtensions` configuration
@@ -2138,6 +2301,7 @@ If you're upgrading from `cursor-deeplink`:
 ## [0.8.4] - 2025-12-25
 
 ### Added
+
 - **Drag and Drop Support**: Personal Commands tree view now supports drag and drop functionality
   - Drag files between folders within the same source (.cursor or .claude)
   - Drag files between different sources (.cursor and .claude)
@@ -2154,11 +2318,13 @@ If you're upgrading from `cursor-deeplink`:
   - Clear separation between .cursor and .claude commands when viewing both
 
 ### Changed
+
 - **Tree View Structure**: Refactored tree view to support hierarchical folder display instead of flat list
 - **Drag and Drop Controller**: Implemented `TreeDragAndDropController` interface for file management
 - **Item Types**: Added folder and file type distinction in tree view items
 
 ### Technical Details
+
 - **Enhanced Files**:
   - `src/userCommandsTreeProvider.ts`: Complete refactor to support hierarchical structure and drag-and-drop
   - `src/extension.ts`: Added `dragAndDropController` to tree view registration
@@ -2172,12 +2338,14 @@ If you're upgrading from `cursor-deeplink`:
 ## [0.8.3] - 2025-12-25
 
 ### Changed
+
 - **Build Configuration**: Updated `.gitignore` and `.vscodeignore` for better package management
   - Exclude internal documentation files from extension package
   - Add analytics local files to .gitignore
   - Reorganize .vscodeignore entries for clarity
 
 ### Documentation
+
 - **AGENTS.md**: Added comprehensive telemetry documentation
   - Document telemetry system architecture
   - Add activation event clarification (onStartupFinished)
@@ -2187,11 +2355,13 @@ If you're upgrading from `cursor-deeplink`:
 ## [0.8.2] - 2025-12-25
 
 ### Changed
+
 - **Version Bump**: Updated extension version to 0.8.2 for maintenance release
 
 ## [0.8.1] - 2025-12-25
 
 ### Fixed
+
 - **Extension Activation**: Fixed issue where commands were not being found after installing the VSIX
   - Changed activation event from individual `onCommand` to `onStartupFinished` 
   - Ensures extension is fully loaded before commands are executed
@@ -2200,6 +2370,7 @@ If you're upgrading from `cursor-deeplink`:
 ## [0.7.0] - 2025-12-25
 
 ### Added
+
 - **HTTP Request Execution**: New feature to execute HTTP requests directly from your editor
   - Create `.req` or `.request` files in `.cursor/http/` folder with curl commands or JSON format
   - Execute requests with a single click via CodeLens "Send Request" links
@@ -2226,6 +2397,7 @@ If you're upgrading from `cursor-deeplink`:
 - **Custom Response Tab Titles**: Response tabs display execution time in the title (e.g., "response (1.23s).res")
 
 ### Changed
+
 - **Version**: Bumped to 0.7.0 to reflect major new feature addition
 - **Activation Events**: Added `onCommand:cursor-toys.sendHttpRequest` activation event
 - **README**: Extensive documentation updates
@@ -2240,6 +2412,7 @@ If you're upgrading from `cursor-deeplink`:
   - Updated configuration options table
 
 ### Technical Details
+
 - **New Files**:
   - `src/httpCodeLensProvider.ts`: CodeLens provider for HTTP request files
   - `src/httpRequestExecutor.ts`: Core HTTP request execution logic with curl integration
@@ -2251,11 +2424,13 @@ If you're upgrading from `cursor-deeplink`:
   - `package.json`: Added language definitions, grammars, and new configuration options
 
 ### Requirements
+
 - `curl` command-line tool must be installed and available in system PATH
 
 ## [0.6.0] - 2025-12-06
 
 ### Added
+
 - **Chat Integration**: New commands to send code and text directly to Cursor chat
   - `cursor-toys.sendToChat`: Send custom text to Cursor chat
   - `cursor-toys.sendSelectionToChat`: Send selected code to Cursor chat with context
@@ -2263,16 +2438,17 @@ If you're upgrading from `cursor-deeplink`:
 - **Annotation Panel**: New Webview Panel that opens via deeplinks (similar to Datadog extension)
   - Opens via `cursor://godrix.cursor-toys/annotation?...` or `vscode://godrix.cursor-toys/annotation?...` deeplinks
   - Displays code, errors, and context in a formatted view
-  - "Fix in Chat" button to send content directly to Cursor chat
-- **URI Handler**: Registered custom protocol handler for `cursor://godrix.cursor-toys/*` and `vscode://godrix.cursor-toys/*`
+  - "Send to Chat" button to send content directly to Cursor chat
+- **URI Handler**: Registered custom protocol handler for `cursor://godrix.cursor-toys/`* and `vscode://godrix.cursor-toys/*`
 - **Editor Context Menu**: New submenu "Cursor Toys" when text is selected with options:
   - Send Selection to Chat
   - Copy as Prompt Deeplink (includes file path, language, and line numbers in context)
 - **Context Information**: Copy command now includes file context (relative path, language, line numbers) when copying code as prompt deeplink
 
 ### Changed
+
 - **Extension Rebranding**: Renamed extension from "Cursor Commands Share" to "Cursor Sidekick", and later to "Cursor Toys"
-- **Command IDs**: All command IDs updated from `cursor-sidekick.*` to `cursor-toys.*` for consistency
+- **Command IDs**: All command IDs updated from `cursor-sidekick.`* to `cursor-toys.*` for consistency
 - Updated all user-facing text, command titles, and documentation to reflect the new name "Cursor Toys"
 - Removed "Send to Chat" command from Command Palette (now only available via context menu)
 - CodeLens labels updated to show "Generate Cursor Toys" instead of "Generate Cursor Sidekick"
@@ -2281,12 +2457,14 @@ If you're upgrading from `cursor-deeplink`:
 ## [0.5.1] - 2025-12-02
 
 ### Added
+
 - **Configurable Personal Commands View**: New `cursorToys.personalCommandsView` setting to choose which command folders to display in the Personal Commands tree view
   - `both`: Show commands from both `.cursor/commands/` and `.claude/commands/` folders (default)
   - `cursor`: Show commands from `.cursor/commands/` folder only
   - `claude`: Show commands from `.claude/commands/` folder only
 
 ### Changed
+
 - **Enhanced Tree View**: Personal Commands tree view now supports displaying commands from multiple folders simultaneously
 - **Improved File Watchers**: File system watchers now monitor all configured command folders for real-time updates
 - **Fixed Reveal Command**: Changed `revealInExplorer` to `revealFileInOS` for better cross-platform compatibility
@@ -2295,6 +2473,7 @@ If you're upgrading from `cursor-deeplink`:
 ## [0.5.0] - 2025-12-02
 
 ### Changed
+
 - **Extension Rebranding**: Renamed extension from "Cursor Deeplink" to "Cursor Commands Share" to better reflect its purpose of sharing and managing Cursor configurations
 - Updated all user-facing text, command titles, and documentation to reflect the new name
 - Maintained backward compatibility with existing command IDs and configuration keys
@@ -2302,6 +2481,7 @@ If you're upgrading from `cursor-deeplink`:
 ## [0.4.0] - 2025-12-02
 
 ### Added
+
 - **Personal Commands Tree View**: New "Personal Commands" view in the Explorer sidebar to browse and manage user commands from `~/.cursor/commands/` or `~/.claude/commands/`
 - **User Commands Management**: New commands to manage personal commands directly from the tree view:
   - Open command file
@@ -2316,12 +2496,14 @@ If you're upgrading from `cursor-deeplink`:
 - Commands sorted alphabetically in tree view
 
 ### Changed
+
 - Enhanced user commands management with visual tree view interface
 - Improved organization of personal commands with dedicated sidebar view
 
 ## [0.3.0] - 2025-11-27
 
 ### Added
+
 - **User Commands Support**: When importing commands, choose between saving as "Project commands" (workspace-specific) or "Personal commands" (saved to `~/.cursor/commands/` or `~/.claude/commands/` and available across all projects)
 - **Save as User Command**: New command to move existing project commands to personal commands folder via context menu
 - **Organized Context Menu**: All Cursor Commands Share commands are now organized in a submenu for better user experience
@@ -2331,6 +2513,7 @@ If you're upgrading from `cursor-deeplink`:
 - Generate deeplinks from files in either `.cursor/commands/` or `.claude/commands/` folders
 
 ### Changed
+
 - Import flow now prompts for command location (project vs personal) when importing command deeplinks
 - Context menu structure improved with submenu organization
 - Import flow now respects the `commandsFolder` configuration when saving imported commands
@@ -2338,6 +2521,7 @@ If you're upgrading from `cursor-deeplink`:
 - Updated validation to accept both `.cursor/commands/` and `.claude/commands/` folders
 
 ### Notes
+
 - Only the `commands` folder is configurable; `rules` and `prompts` continue to use `.cursor/` folder
 - Configuration supports both workspace and user-level settings
 - Default behavior remains `.cursor/commands/` for backward compatibility
@@ -2345,18 +2529,21 @@ If you're upgrading from `cursor-deeplink`:
 ## [0.2.0] - 2025-11-25
 
 ### Added
+
 - **Custom Base URL Support**: Added `"custom"` option to `cursorToys.linkType` configuration
 - **Custom URL Configuration**: New `cursorToys.customBaseUrl` setting to specify your own base URL for deeplinks
 - URL validation for custom base URLs (supports http://, https://, and custom protocols)
 - Automatic trailing slash handling for custom URLs
 
 ### Changed
+
 - Enhanced link type configuration to support three formats: deeplink, web, and custom
 - Improved error messages for invalid custom URL configurations
 
 ## [0.1.0] - 2025-11-24
 
 ### Added
+
 - Generate deeplinks for Cursor commands, rules, and prompts
 - Import deeplinks to automatically create files in appropriate directories
 - Support for both `cursor://` deeplink and `https://cursor.com/link/` web link formats
@@ -2369,6 +2556,7 @@ If you're upgrading from `cursor-deeplink`:
 - Support for MDC format for rules with metadata
 
 ### Features
+
 - Right-click context menu for quick deeplink generation
 - Command palette integration
 - Keyboard shortcut for importing deeplinks (Ctrl+Shift+I / Cmd+Shift+I)

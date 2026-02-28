@@ -12,11 +12,34 @@ export function sanitizeFileName(name: string): string {
   return nameWithoutExt.replace(/[^a-zA-Z0-9._-]/g, '_');
 }
 
+/** Maximum URL length (e.g. for deeplinks and annotation URIs). */
+export const MAX_URL_LENGTH = 8000;
+
 /**
  * Validates if the URL has less than 8000 characters
  */
 export function validateUrlLength(url: string): boolean {
-  return url.length < 8000;
+  return url.length < MAX_URL_LENGTH;
+}
+
+const TRUNCATION_SUFFIX = '\n\n[Content truncated due to 8000 character URL limit.]';
+
+/**
+ * Truncates annotation content so that when encoded (e.g. as code= in a URI) it fits within the URL length limit.
+ * Appends a truncation notice at the end.
+ * @param maxEncodedLength Maximum length allowed for encodeURIComponent(truncatedContent + suffix)
+ * @param content Decoded content (e.g. code or text param)
+ * @returns Truncated content with truncation suffix appended
+ */
+export function truncateAnnotationContentToFitUrl(maxEncodedLength: number, content: string): string {
+  if (maxEncodedLength <= 0) {
+    return TRUNCATION_SUFFIX.trim();
+  }
+  let truncated = content;
+  while (truncated.length > 0 && encodeURIComponent(truncated + TRUNCATION_SUFFIX).length > maxEncodedLength) {
+    truncated = truncated.slice(0, -1);
+  }
+  return truncated + TRUNCATION_SUFFIX;
 }
 
 /**

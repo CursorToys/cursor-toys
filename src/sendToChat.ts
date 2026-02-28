@@ -29,17 +29,17 @@ export async function sendToChat(text: string, prompt?: string): Promise<boolean
     const deeplink = buildPromptDeeplink(fullText);
     if (deeplink.length > MAX_DEEPLINK_LENGTH) {
       vscode.window.showErrorMessage(
-        `Texto muito longo (${deeplink.length} caracteres). Limite: ${MAX_DEEPLINK_LENGTH} caracteres.`
+        `Text too long (${deeplink.length} characters). Limit: ${MAX_DEEPLINK_LENGTH} characters.`
       );
       return false;
     }
 
     // Abrir deeplink
     await vscode.env.openExternal(vscode.Uri.parse(deeplink));
-    vscode.window.showInformationMessage('Enviado para o chat do Cursor!');
+    vscode.window.showInformationMessage('Sent to Cursor chat!');
     return true;
   } catch (error) {
-    vscode.window.showErrorMessage(`Erro ao enviar para o chat: ${error}`);
+    vscode.window.showErrorMessage(`Error sending to chat: ${error}`);
     return false;
   }
 }
@@ -50,7 +50,7 @@ export async function sendToChat(text: string, prompt?: string): Promise<boolean
 export async function sendSelectionToChat(prompt?: string): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    vscode.window.showErrorMessage('Nenhum editor ativo');
+    vscode.window.showErrorMessage('No active editor');
     return;
   }
 
@@ -58,7 +58,7 @@ export async function sendSelectionToChat(prompt?: string): Promise<void> {
   const selectedText = editor.document.getText(selection);
 
   if (!selectedText.trim()) {
-    vscode.window.showWarningMessage('Nenhum texto selecionado');
+    vscode.window.showWarningMessage('No text selected');
     return;
   }
 
@@ -66,8 +66,8 @@ export async function sendSelectionToChat(prompt?: string): Promise<void> {
   const fileName = editor.document.fileName;
   const language = editor.document.languageId;
   const contextPrompt = prompt 
-    ? `${prompt}\n\nArquivo: ${fileName}\nLinguagem: ${language}\n\n---\n\n`
-    : `Arquivo: ${fileName}\nLinguagem: ${language}\n\n---\n\n`;
+    ? `${prompt}\n\nFile: ${fileName}\nLanguage: ${language}\n\n---\n\n`
+    : `File: ${fileName}\nLanguage: ${language}\n\n---\n\n`;
 
   await sendToChat(selectedText, contextPrompt);
 }

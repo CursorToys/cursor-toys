@@ -4,7 +4,7 @@ import { generateDeeplink } from './deeplinkGenerator';
 import { importDeeplink } from './deeplinkImporter';
 import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForEnvFolder, generateShareableForHttpFolderWithEnv, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist } from './shareableImporter';
-import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpDocsSkill } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { EnvCodeLensProvider } from './envCodeLensProvider';
@@ -26,6 +26,7 @@ import { refineSelectedText, refineClipboard, processWithPrompt, configureGemini
 import { GistManager } from './gistManager';
 import { RecommendationsManager } from './recommendationsManager';
 import { RecommendationsBrowserPanel } from './recommendationsBrowserPanel';
+import { checkAndShowReleaseNotes, ReleaseNotesPanel, loadChangelogSection } from './releaseNotesPanel';
 import * as fs from 'fs';
 
 /**
@@ -148,13 +149,71 @@ async function generateShareableWithPathValidation(
 }
 
 export function activate(context: vscode.ExtensionContext) {
+  // Register URI Handler early so cursor:// or vscode:// links open the panel as soon as the extension activates
+  const uriHandler = vscode.window.registerUriHandler({
+    handleUri(uri: vscode.Uri) {
+      try {
+        // Accept any path when query has code=, sourceUrl=, or text= (Chrome extension sends /prompt?text=...)
+        const hasAnnotationParams =
+          uri.query &&
+          (uri.query.includes('code=') || uri.query.includes('sourceUrl=') || uri.query.includes('text='));
+        if (!hasAnnotationParams) {
+          return;
+        }
+
+        const fullUri = uri.toString();
+        const params: AnnotationParams = {};
+        const query = new URLSearchParams(uri.query);
+        query.forEach((value, key) => {
+          params[key] = value;
+        });
+        // Chrome extension sends "text="; panel expects "code"
+        if (params.text !== undefined && params.code === undefined) {
+          params.code = params.text;
+        }
+
+        if (!validateUrlLength(fullUri)) {
+          const contentParam = params.code ?? '';
+          const baseUri = `${uri.scheme}://${uri.authority}${uri.path}`;
+          const otherParams = new URLSearchParams();
+          query.forEach((value, key) => {
+            if (key !== 'code' && key !== 'text') {
+              otherParams.set(key, value);
+            }
+          });
+          const baseWithQuery = otherParams.toString()
+            ? `${baseUri}?${otherParams.toString()}&`
+            : `${baseUri}?`;
+          const paramPrefix = 'code=';
+          const maxEncodedLength = MAX_URL_LENGTH - baseWithQuery.length - paramPrefix.length;
+          params.code = truncateAnnotationContentToFitUrl(maxEncodedLength, contentParam);
+          if (params.text !== undefined) {
+            params.text = params.code;
+          }
+          vscode.window.showInformationMessage(
+            `Annotation content exceeded the ${MAX_URL_LENGTH} character URL limit and was truncated. The rest was sent to the panel.`
+          );
+        }
+
+        AnnotationPanel.createOrShow(params);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`CursorToys annotation deeplink failed: ${message}`);
+      }
+    }
+  });
+  context.subscriptions.push(uriHandler);
+
   // Initialize Environment Manager and setup file watchers
   const envManager = EnvironmentManager.getInstance();
   envManager.setupFileWatchers();
   
   // Initialize Recommendations Manager
   const recsManager = RecommendationsManager.getInstance(context);
-  
+
+  // Show release notes when extension is updated (async, non-blocking)
+  checkAndShowReleaseNotes(context).catch(() => {});
+
   // Create Status Bar Item for CursorToys Menu
   const cursorToysStatusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Right,
@@ -170,6 +229,11 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('cursor-toys.showMenu', async () => {
       const items: vscode.QuickPickItem[] = [
+        {
+          label: '$(megaphone) What\'s New',
+          description: 'View release notes and changelog',
+          detail: 'Release notes'
+        },
         {
           label: '$(compass) Open Skills Marketplace',
           description: 'Browse Agent Skills from Tech Leads Club',
@@ -214,6 +278,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       // Map selection to command
       const commandMap: { [key: string]: string } = {
+        'What\'s New': 'cursor-toys.showReleaseNotes',
         'Open Skills Marketplace': 'cursor-toys.browseRecommendations',
         'Import from URL': 'cursor-toys.import',
         'New Notepad': 'cursor-toys.createNotepad',
@@ -3731,24 +3796,11 @@ Detailed instructions for the agent.
     await recsManager.clearCache();
   });
 
-  // Register URI Handler for cursor://godrix.cursor-toys/* and vscode://godrix.cursor-toys/* deeplinks
-  const uriHandler = vscode.window.registerUriHandler({
-    handleUri(uri: vscode.Uri) {
-      // Suporta ambos os formatos:
-      // - cursor://godrix.cursor-toys/annotation?...
-      // - vscode://godrix.cursor-toys/annotation?...
-      const isAnnotationPath = uri.path === '/annotation' || uri.path === 'annotation';
-      
-      if (isAnnotationPath) {
-        const params: AnnotationParams = {};
-        const query = new URLSearchParams(uri.query);
-        query.forEach((value, key) => {
-          params[key] = value;
-        });
-        
-        AnnotationPanel.createOrShow(params);
-      }
-    }
+  const showReleaseNotesCommand = vscode.commands.registerCommand('cursor-toys.showReleaseNotes', async () => {
+    const pkg = context.extension.packageJSON as { version?: string };
+    const version = pkg?.version ?? '0.0.0';
+    const changelogHtml = await loadChangelogSection(context);
+    ReleaseNotesPanel.createOrShow(context, version, changelogHtml);
   });
 
   // File system watchers to update tree when files change
@@ -4094,7 +4146,7 @@ Detailed instructions for the agent.
     removeGitHubTokenCommand,
     browseSkillsMarketplaceCommand,
     refreshSkillsCommand,
-    uriHandler
+    showReleaseNotesCommand
   );
   
   // Dispose decoration provider

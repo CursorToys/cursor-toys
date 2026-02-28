@@ -8,6 +8,10 @@ export interface AnnotationParams {
   code?: string;
   message?: string;
   type?: 'error' | 'warning' | 'info';
+  /** URL of the source page (e.g. from Chrome extension web selection) */
+  sourceUrl?: string;
+  /** Document title of the source page */
+  sourceTitle?: string;
   [key: string]: string | undefined;
 }
 
@@ -67,7 +71,6 @@ export class AnnotationPanel {
   }
 
   private async sendToChat(params: AnnotationParams) {
-    // Construir prompt estruturado
     const prompt = this.buildFixPrompt(params);
     const code = params.code || '';
     
@@ -76,31 +79,43 @@ export class AnnotationPanel {
 
   private buildFixPrompt(params: AnnotationParams): string {
     const parts: string[] = [];
-    
+
     if (params.message) {
       parts.push(`**Erro:** ${params.message}`);
     }
+    if (params.sourceUrl) {
+      parts.push(`**Source URL:** ${params.sourceUrl}`);
+      if (params.sourceTitle) {
+        parts.push(`**Source title:** ${params.sourceTitle}`);
+      }
+    }
     if (params.file) {
-      parts.push(`**Arquivo:** ${params.file}`);
+      parts.push(`**File:** ${params.file}`);
     }
     if (params.line) {
-      parts.push(`**Linha:** ${params.line}`);
+      parts.push(`**Line:** ${params.line}`);
     }
     if (params.type) {
-      parts.push(`**Tipo:** ${params.type}`);
+      parts.push(`**Type:** ${params.type}`);
     }
-    
-    parts.push('\nPor favor, corrija este problema:');
-    
+
+    // TODO add custom message from user
+    //parts.push('\nPlease fix this problem:');
+
     return parts.join('\n');
   }
 
   private getWebviewContent(params: AnnotationParams): string {
     const code = params.code || 'Nenhum código fornecido';
-    const message = params.message || 'Sem mensagem';
-    const file = params.file || 'Arquivo desconhecido';
-    const line = params.line || '?';
-    
+    const hasSourceUrl = Boolean(params.sourceUrl);
+    const message = params.message || (hasSourceUrl ? 'Content from web page' : 'Sem mensagem');
+    const file = params.file || (hasSourceUrl ? 'Web page' : 'Arquivo desconhecido');
+    const line = params.line || (hasSourceUrl ? '—' : '?');
+
+    const sourceUrlBlock = hasSourceUrl
+      ? `<strong>Source URL:</strong> <a href="${this.escapeHtml(params.sourceUrl ?? '')}" title="${this.escapeHtml(params.sourceUrl ?? '')}">${this.escapeHtml(params.sourceUrl ?? '')}</a><br>${params.sourceTitle ? `<strong>Source title:</strong> ${this.escapeHtml(params.sourceTitle)}<br>` : ''}`
+      : '';
+
     return `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -132,6 +147,9 @@ export class AnnotationPanel {
             background: var(--vscode-input-background);
             border-radius: 4px;
         }
+        .info a {
+            color: var(--vscode-textLink-foreground);
+        }
         .fix-button {
             background: var(--vscode-button-background);
             color: var(--vscode-button-foreground);
@@ -151,18 +169,18 @@ export class AnnotationPanel {
     <div class="header">
         <h2>Cursor Toys - Annotation</h2>
     </div>
+
     
     <div class="info">
-        <strong>Arquivo:</strong> ${this.escapeHtml(file)}<br>
-        <strong>Linha:</strong> ${line}<br>
-        <strong>Mensagem:</strong> ${this.escapeHtml(message)}
+        ${sourceUrlBlock}
+        <strong>File:</strong> ${this.escapeHtml(file)}<br>
+        <strong>Line:</strong> ${line}<br>
+        <strong>Message:</strong> ${this.escapeHtml(message)}
     </div>
-    
+    <button class="fix-button" onclick="fixInChat()">Send to Chat</button>
     <div class="code-block">
         <pre><code>${this.escapeHtml(code)}</code></pre>
     </div>
-    
-    <button class="fix-button" onclick="fixInChat()">Fix in Chat</button>
     
     <script>
         const vscode = acquireVsCodeApi();

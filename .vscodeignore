@@ -11,11 +11,9 @@ src/**
 tsconfig.json
 node_modules/**
 
-# Ignorar todos os arquivos .md
 *.md
 # Exceto estes específicos
 !README.md
-!CHANGELOG.md
 !LICENSE
 
 # Git files
@@ -32,5 +30,4 @@ vsc-extension-quickstart.md
 *.log
 llms.txt
 README.md
-CHANGELOG.md
 *.code-workspace

@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "1.10.1",
+  "version": "1.11.0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -45,6 +45,7 @@
   ],
   "activationEvents": [
     "onLanguage",
+    "onStartupFinished",
     "onUri",
     "onCommand:cursor-toys.generate-command",
     "onCommand:cursor-toys.generate-rule",
@@ -505,6 +506,11 @@
         "command": "cursor-toys.checkRecommendations",
         "title": "CursorToys: Check Recommendations for this Project",
         "icon": "$(compass)"
+      },
+      {
+        "command": "cursor-toys.showReleaseNotes",
+        "title": "CursorToys: What's New",
+        "icon": "$(megaphone)"
       },
       {
         "command": "cursor-toys.browseRecommendations",
