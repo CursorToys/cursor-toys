@@ -84,7 +84,7 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 - 🔄 **Multiple Formats** — Deeplink, web URL, CursorToys compressed format, or GitHub Gist
 - 👥 **Team Sync** — Everyone uses the same AI instructions
 - 📦 **CursorToys Format** — New compressed format ideal for large files (no URL length limits)
-- 🌐 **Chrome Extension** — Send web selection to Cursor via deeplink; see in the [Chrome Web Store](https://chromewebstore.google.com/detail/cursor-toys/kndhfkcjndndofieoceaknoapaadjebb)
+- 🌐 **Chrome Extension** — Send web selection to Cursor via deeplink; see in the [Chrome Web Store](https://chromewebstore.google.com/detail/cursortoys/kndhfkcjndndofieoceaknoapaadjebb)
 
 ### 🌐 In-Editor API Testing
 

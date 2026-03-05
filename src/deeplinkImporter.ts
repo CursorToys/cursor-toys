@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { decodeUrlParam, sanitizeFileName, getUserHomePath, getCommandsPath, getPromptsPath, getSkillsPath } from './utils';
+import { decodeUrlParam, sanitizeFileName, getCommandsPath, getPromptsPath, getSkillsPath } from './utils';
 
 interface DeeplinkParams {
   type: 'prompt' | 'command' | 'rule' | 'skill';
@@ -49,78 +49,96 @@ export async function importDeeplink(url: string): Promise<void> {
       return;
     }
 
-    // Determine destination folder and file name
     const workspacePath = workspaceFolder?.uri.fsPath || '';
-    const { folderPath, fileName, isSkillFolder } = getDestinationPath(params, workspacePath, isPersonal);
+    await writeDeeplinkContentToDestination(params, workspacePath, isPersonal);
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error importing deeplink: ${error}`);
+  }
+}
 
-    if (isSkillFolder) {
-      // For skills, we need to create a folder and put SKILL.md inside
-      const skillFolderPath = folderPath;
-      const skillFileUri = vscode.Uri.file(path.join(skillFolderPath, 'SKILL.md'));
-      
-      // Check if skill folder already exists
-      const skillFolderUri = vscode.Uri.file(skillFolderPath);
-      let folderExists = false;
-      try {
-        await vscode.workspace.fs.stat(skillFolderUri);
-        folderExists = true;
-      } catch {
-        // Folder doesn't exist, that's fine
+/**
+ * Saves in-memory content as a command, prompt, or skill. Asks the user for
+ * Personal vs Project (global vs workspace), then writes the file and opens it.
+ * Used by the annotation panel "Save as..." flow.
+ */
+export async function saveContentAsCommandPromptOrSkill(
+  type: 'command' | 'prompt' | 'skill',
+  content: string,
+  suggestedName?: string
+): Promise<void> {
+  try {
+    const trimmedContent = content?.trim() ?? '';
+    if (!trimmedContent) {
+      vscode.window.showWarningMessage('Content is empty. Nothing to save.');
+      return;
+    }
+
+    const itemType = type === 'command' ? 'command' : type === 'prompt' ? 'prompt' : 'skill';
+    const itemLocation = await vscode.window.showQuickPick(
+      [
+        { label: `Personal ${itemType}s`, description: `Available in all projects (~/.cursor/${itemType}s)`, value: true },
+        { label: `Project ${itemType}s`, description: 'Specific to this workspace', value: false }
+      ],
+      {
+        placeHolder: `Where do you want to save this ${itemType}?`
       }
+    );
 
-      if (folderExists) {
-        // Check if SKILL.md exists
-        let fileExists = false;
-        try {
-          await vscode.workspace.fs.stat(skillFileUri);
-          fileExists = true;
-        } catch {
-          // File doesn't exist, that's fine
-        }
+    if (itemLocation === undefined) {
+      return;
+    }
 
-        if (fileExists) {
-          const overwrite = await vscode.window.showWarningMessage(
-            `Skill "${path.basename(skillFolderPath)}" already exists. Do you want to overwrite it?`,
-            'Yes',
-            'No'
-          );
-          if (overwrite !== 'Yes') {
-            return;
-          }
-        }
-      }
+    const isPersonal = itemLocation.value;
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder && !isPersonal) {
+      vscode.window.showErrorMessage('No workspace open');
+      return;
+    }
 
-      // Create skill folder if it doesn't exist
-      try {
-        await vscode.workspace.fs.stat(skillFolderUri);
-      } catch {
-        // Folder doesn't exist, create it
-        await vscode.workspace.fs.createDirectory(skillFolderUri);
-      }
+    const name = suggestedName?.trim() || (type === 'prompt' ? undefined : 'imported');
+    const params: DeeplinkParams = { type, name, text: trimmedContent };
+    const workspacePath = workspaceFolder?.uri.fsPath || '';
+    await writeDeeplinkContentToDestination(params, workspacePath, isPersonal);
+  } catch (error) {
+    vscode.window.showErrorMessage(`Error saving content: ${error}`);
+  }
+}
 
-      // Create SKILL.md file
-      const content = Buffer.from(params.text, 'utf8');
-      await vscode.workspace.fs.writeFile(skillFileUri, content);
+/**
+ * Writes deeplink params to the appropriate destination folder (Personal or Project).
+ * Creates directories if needed, prompts for overwrite, then opens the file.
+ */
+async function writeDeeplinkContentToDestination(
+  params: DeeplinkParams,
+  workspacePath: string,
+  isPersonal: boolean
+): Promise<void> {
+  const { folderPath, fileName, isSkillFolder } = getDestinationPath(params, workspacePath, isPersonal);
 
-      vscode.window.showInformationMessage(`Skill created: ${path.basename(skillFolderPath)}`);
-      
-      // Open file
-      const document = await vscode.workspace.openTextDocument(skillFileUri);
-      await vscode.window.showTextDocument(document);
-    } else {
-      // For regular files (commands, rules, prompts)
-      const fileUri = vscode.Uri.file(path.join(folderPath, fileName));
+  if (isSkillFolder) {
+    const skillFolderPath = folderPath;
+    const skillFileUri = vscode.Uri.file(path.join(skillFolderPath, 'SKILL.md'));
+    const skillFolderUri = vscode.Uri.file(skillFolderPath);
+
+    let folderExists = false;
+    try {
+      await vscode.workspace.fs.stat(skillFolderUri);
+      folderExists = true;
+    } catch {
+      // Folder doesn't exist
+    }
+
+    if (folderExists) {
       let fileExists = false;
       try {
-        await vscode.workspace.fs.stat(fileUri);
+        await vscode.workspace.fs.stat(skillFileUri);
         fileExists = true;
       } catch {
-        // File doesn't exist, that's fine
+        // File doesn't exist
       }
-
       if (fileExists) {
         const overwrite = await vscode.window.showWarningMessage(
-          `File ${fileName} already exists. Do you want to overwrite it?`,
+          `Skill "${path.basename(skillFolderPath)}" already exists. Do you want to overwrite it?`,
           'Yes',
           'No'
         );
@@ -128,28 +146,50 @@ export async function importDeeplink(url: string): Promise<void> {
           return;
         }
       }
-
-      // Create folder if it doesn't exist
-      const folderUri = vscode.Uri.file(folderPath);
-      try {
-        await vscode.workspace.fs.stat(folderUri);
-      } catch {
-        // Folder doesn't exist, create it
-        await vscode.workspace.fs.createDirectory(folderUri);
-      }
-
-      // Create file
-      const content = Buffer.from(params.text, 'utf8');
-      await vscode.workspace.fs.writeFile(fileUri, content);
-
-      vscode.window.showInformationMessage(`File created: ${fileName}`);
-      
-      // Open file
-      const document = await vscode.workspace.openTextDocument(fileUri);
-      await vscode.window.showTextDocument(document);
     }
-  } catch (error) {
-    vscode.window.showErrorMessage(`Error importing deeplink: ${error}`);
+
+    try {
+      await vscode.workspace.fs.stat(skillFolderUri);
+    } catch {
+      await vscode.workspace.fs.createDirectory(skillFolderUri);
+    }
+
+    await vscode.workspace.fs.writeFile(skillFileUri, Buffer.from(params.text, 'utf8'));
+    vscode.window.showInformationMessage(`Skill created: ${path.basename(skillFolderPath)}`);
+    const document = await vscode.workspace.openTextDocument(skillFileUri);
+    await vscode.window.showTextDocument(document);
+  } else {
+    const fileUri = vscode.Uri.file(path.join(folderPath, fileName));
+    let fileExists = false;
+    try {
+      await vscode.workspace.fs.stat(fileUri);
+      fileExists = true;
+    } catch {
+      // File doesn't exist
+    }
+
+    if (fileExists) {
+      const overwrite = await vscode.window.showWarningMessage(
+        `File ${fileName} already exists. Do you want to overwrite it?`,
+        'Yes',
+        'No'
+      );
+      if (overwrite !== 'Yes') {
+        return;
+      }
+    }
+
+    const folderUri = vscode.Uri.file(folderPath);
+    try {
+      await vscode.workspace.fs.stat(folderUri);
+    } catch {
+      await vscode.workspace.fs.createDirectory(folderUri);
+    }
+
+    await vscode.workspace.fs.writeFile(fileUri, Buffer.from(params.text, 'utf8'));
+    vscode.window.showInformationMessage(`File created: ${fileName}`);
+    const document = await vscode.workspace.openTextDocument(fileUri);
+    await vscode.window.showTextDocument(document);
   }
 }
 

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { saveContentAsCommandPromptOrSkill } from './deeplinkImporter';
 import { sendToChat } from './sendToChat';
 
 export interface AnnotationParams {
@@ -63,6 +64,9 @@ export class AnnotationPanel {
           case 'fixInChat':
             await this.sendToChat(params);
             break;
+          case 'saveAs':
+            await this.saveAsCommandPromptOrSkill(params);
+            break;
         }
       },
       null,
@@ -75,6 +79,26 @@ export class AnnotationPanel {
     const code = params.code || '';
     
     await sendToChat(code, prompt);
+  }
+
+  private async saveAsCommandPromptOrSkill(params: AnnotationParams) {
+    const content = params.code || params.text || '';
+    const suggestedName = params.sourceTitle;
+
+    const typePick = await vscode.window.showQuickPick(
+      [
+        { label: 'Command', description: 'Save as a Cursor command (.md)', value: 'command' as const },
+        { label: 'Prompt', description: 'Save as a Cursor prompt (.md)', value: 'prompt' as const },
+        { label: 'Skill', description: 'Save as an Agent Skill (SKILL.md)', value: 'skill' as const }
+      ],
+      { placeHolder: 'Save as Command, Prompt, or Skill?' }
+    );
+
+    if (!typePick) {
+      return;
+    }
+
+    await saveContentAsCommandPromptOrSkill(typePick.value, content, suggestedName);
   }
 
   private buildFixPrompt(params: AnnotationParams): string {
@@ -158,10 +182,14 @@ export class AnnotationPanel {
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
-            margin-top: 20px;
         }
         .fix-button:hover {
             background: var(--vscode-button-hoverBackground);
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -177,7 +205,10 @@ export class AnnotationPanel {
         <strong>Line:</strong> ${line}<br>
         <strong>Message:</strong> ${this.escapeHtml(message)}
     </div>
-    <button class="fix-button" onclick="fixInChat()">Send to Chat</button>
+    <div class="button-group">
+        <button class="fix-button" onclick="fixInChat()">Send to Chat</button>
+        <button class="fix-button" onclick="saveAs()">Save as...</button>
+    </div>
     <div class="code-block">
         <pre><code>${this.escapeHtml(code)}</code></pre>
     </div>
@@ -188,6 +219,11 @@ export class AnnotationPanel {
         function fixInChat() {
             vscode.postMessage({
                 command: 'fixInChat'
+            });
+        }
+        function saveAs() {
+            vscode.postMessage({
+                command: 'saveAs'
             });
         }
     </script>

@@ -19,7 +19,7 @@ The universe is vast, but your time is finite. To help you waste it efficiently,
   - Clickable source URL and page title
   - **Send to Chat** button to send the selection and source context to the AI chat in one click
 - **Parameters supported**: `code` (selection), `sourceUrl`, `sourceTitle`; URL length limit 8000 characters (the Chrome extension truncates or notifies when needed).
-- **Chrome Extension**: Available in the [Chrome Web Store](https://chromewebstore.google.com/detail/cursor-toys/kndhfkcjndndofieoceaknoapaadjebb).
+- **Chrome Extension**: Available in the [Chrome Web Store](https://chromewebstore.google.com/detail/cursortoys/kndhfkcjndndofieoceaknoapaadjebb).
 
 #### **Release Notes Panel ("What's New")**
 
