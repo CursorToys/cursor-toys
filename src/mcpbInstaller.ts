@@ -1,13 +1,44 @@
 import * as path from 'path';
 import * as fs from 'fs';
+import * as child_process from 'child_process';
 import * as vscode from 'vscode';
-interface IAdmZipInstance {
-  getEntry: (name: string) => { isDirectory: boolean; getData: () => Buffer } | null;
-  extractAllTo: (path: string, overwrite: boolean) => void;
-}
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const AdmZip = require('adm-zip') as new (path: string) => IAdmZipInstance;
 import { getUserHomePath } from './utils';
+
+/**
+ * Extracts a ZIP file to a destination directory using the system command (unzip on macOS/Linux, PowerShell on Windows).
+ * Avoids bundling an external dependency so the extension works when installed from VSIX.
+ */
+function extractZipToDir(zipPath: string, destDir: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const zipAbs = path.resolve(zipPath);
+    const destAbs = path.resolve(destDir);
+    if (process.platform === 'win32') {
+      child_process.exec(
+        `powershell -NoProfile -Command "Expand-Archive -Path '${zipAbs.replace(/'/g, "''")}' -DestinationPath '${destAbs.replace(/'/g, "''")}' -Force"`,
+        { maxBuffer: 10 * 1024 * 1024 },
+        (err, stdout, stderr) => {
+          if (err) {
+            reject(new Error(stderr || err.message || 'Expand-Archive failed'));
+          } else {
+            resolve();
+          }
+        }
+      );
+    } else {
+      child_process.exec(
+        `unzip -o -q "${zipAbs.replace(/"/g, '\\"')}" -d "${destAbs.replace(/"/g, '\\"')}"`,
+        { maxBuffer: 10 * 1024 * 1024 },
+        (err, stdout, stderr) => {
+          if (err) {
+            reject(new Error(stderr || err.message || 'unzip failed'));
+          } else {
+            resolve();
+          }
+        }
+      );
+    }
+  });
+}
 
 /** Platform override key for current OS (darwin | win32 | linux). */
 function getCurrentPlatform(): 'darwin' | 'win32' | 'linux' {
@@ -159,27 +190,47 @@ export async function installMcpbPackage(mcpbFilePath?: string): Promise<boolean
     return false;
   }
 
-  let zip: IAdmZipInstance;
+  const mcpbRoot = getMcpbRoot();
+  if (!fs.existsSync(mcpbRoot)) {
+    fs.mkdirSync(mcpbRoot, { recursive: true });
+  }
+
+  const tempDir = path.join(mcpbRoot, `.tmp-${Date.now()}-${process.pid}`);
   try {
-    zip = new AdmZip(zipPath);
+    await extractZipToDir(zipPath, tempDir);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    vscode.window.showErrorMessage(`Failed to open MCPB file as ZIP: ${msg}`);
+    vscode.window.showErrorMessage(`Failed to extract MCPB package: ${msg}`);
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore
+    }
     return false;
   }
 
-  const manifestEntry = zip.getEntry('manifest.json');
-  if (!manifestEntry || manifestEntry.isDirectory) {
+  const manifestPath = path.join(tempDir, 'manifest.json');
+  if (!fs.existsSync(manifestPath)) {
     vscode.window.showErrorMessage('MCPB package does not contain a manifest.json in the root.');
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore
+    }
     return false;
   }
 
   let manifestJson: string;
   try {
-    manifestJson = manifestEntry.getData().toString('utf8');
+    manifestJson = fs.readFileSync(manifestPath, 'utf8');
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     vscode.window.showErrorMessage(`Failed to read manifest.json: ${msg}`);
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore
+    }
     return false;
   }
 
@@ -190,16 +241,25 @@ export async function installMcpbPackage(mcpbFilePath?: string): Promise<boolean
       vscode.window.showErrorMessage(
         'Invalid manifest: missing required fields (name, server, server.mcp_config.command).'
       );
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch {
+        // Ignore
+      }
       return false;
     }
     manifest = parsed;
   } catch {
     vscode.window.showErrorMessage('manifest.json is not valid JSON.');
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore
+    }
     return false;
   }
 
   const serverId = sanitizeServerId(manifest.name);
-  const mcpbRoot = getMcpbRoot();
   const packageDir = path.join(mcpbRoot, serverId);
 
   if (fs.existsSync(packageDir)) {
@@ -208,17 +268,38 @@ export async function installMcpbPackage(mcpbFilePath?: string): Promise<boolean
       'Overwrite',
       'Cancel'
     );
-    if (overwrite !== 'Overwrite') return false;
+    if (overwrite !== 'Overwrite') {
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch {
+        // Ignore
+      }
+      return false;
+    }
+    try {
+      fs.rmSync(packageDir, { recursive: true, force: true });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      vscode.window.showErrorMessage(`Failed to remove existing package: ${msg}`);
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch {
+        // Ignore
+      }
+      return false;
+    }
   }
 
   try {
-    if (!fs.existsSync(mcpbRoot)) {
-      fs.mkdirSync(mcpbRoot, { recursive: true });
-    }
-    zip.extractAllTo(packageDir, true);
+    fs.renameSync(tempDir, packageDir);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    vscode.window.showErrorMessage(`Failed to extract MCPB package: ${msg}`);
+    vscode.window.showErrorMessage(`Failed to finalize package directory: ${msg}`);
+    try {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore
+    }
     return false;
   }
 

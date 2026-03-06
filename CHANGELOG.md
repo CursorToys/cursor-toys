@@ -6,7 +6,11 @@
 
 **CursorToys now supports MCPB packages.** The Guide defines an MCPB as "a small, zip-shaped container that, when opened, unpacks itself into a folder in your home directory and then politely asks your editor's MCP configuration to make room for one more server—after first showing you exactly what it intends to do, which is more than most bureaucracies manage." The answer to the great question of MCP servers, configuration, and the Cursor editor is not 42; it is, rather, a preview panel with editable environment variables and two buttons. The buttons are labelled "Add to Cursor MCP" and "Cancel." The Cancel button has been described as "reassuring."
 
-## v1.12.0 - Mostly Harmless MCP Bundles
+As The Hitchhiker's Guide to the Galaxy so eloquently puts it: "The difference between something that can go wrong and something that is impossibly improbable to go wrong is that when something impossibly improbable to go wrong goes wrong, it usually turns out to be impossible to fix or, worse, to explain."
+
+In this update, we have resolved one such case of impossibility.
+
+## v1.12.1 - Mostly Harmless MCP Bundles
 
 ### Added
 
@@ -17,11 +21,15 @@
 - **Sidebar tree — MCPB Packages**: A new view in the Explorer sidebar lists installed MCPB packages under **MCPB Packages**. Each entry shows the package label (from the manifest); you may reveal the package folder in the system file manager or **Uninstall** it. Uninstalling removes the folder from `~/.mcpb` and the corresponding entry from `~/.cursor/mcp.json`. The Guide advises: "Always know where your towel is, and where your MCP servers are."
 - **Menu and commands**: **Install MCPB** appears in the CursorToys status bar menu and in the Command Palette. A refresh button on the MCPB Packages view and context actions (Reveal in Folder, Uninstall) complete the experience.
 
+### Fixed - The Case of the Vanishing Extension
+
+- **Extension not working when installed from VSIX**: The Extension that refused to exist: We discovered that when installed from a .vsix file, CursorToys suffered from an existential identity crisis and simply chose not to function. The Guide notes that this is because what works perfectly in a test environment often panics when faced with the cold, hard reality of the "real world."
+
 ### Technical notes
 
 - **Paths**: Packages live in `~/.mcpb/<serverId>/`; the server ID is derived from the manifest `name` (sanitized). The Cursor global config file used is `~/.cursor/mcp.json`.
 - **Manifest**: The extension reads `server.mcp_config` (command, args, env) and applies `platform_overrides` for the current OS (`darwin`, `win32`, `linux`). Placeholders `${__dirname}` in args and env are replaced with the package directory path.
-- **Dependency**: `adm-zip` is used to unpack the .mcpb file. So far it has not been observed to write poetry.
+- **Extraction**: .mcpb files (ZIP) are unpacked using the system (`unzip` on macOS/Linux, PowerShell on Windows); no runtime npm dependency is required (see v1.12.1).
 
 ## v1.11.0 - The Hitchhiker’s Guide to Updates
 
