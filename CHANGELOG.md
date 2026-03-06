@@ -1,8 +1,27 @@
 # CursorToys
 
-![](https://i.imgur.com/ZqWzLbf.png)
+![](https://i.imgur.com/jK8MCKn.jpeg)
 
-The universe is vast, but your time is finite. To help you waste it efficiently, v1.11.0 introduces the CursorToys a Chrome extension that hurls web snippets into your editor via improbable deeplinks. Should the data survive the transit, it appears in an Annotation Panel with a "Send to Chat" button—ideal for those moments you copy-paste code you don't understand and want the AI to pretend it can fix it. We’ve also added a "What's New" panel that pops up after updates, ensuring you’re interrupted by release notes that statistics suggest you’ll promptly ignore. Don’t panic, but do strap in.
+*The following is the entry for CursorToys in the* Hitchhiker's Guide to the Galaxy*. It has been widely dismissed as "not entirely useless" by those who have tried it.*
+
+**CursorToys now supports MCPB packages.** The Guide defines an MCPB as "a small, zip-shaped container that, when opened, unpacks itself into a folder in your home directory and then politely asks your editor's MCP configuration to make room for one more server—after first showing you exactly what it intends to do, which is more than most bureaucracies manage." The answer to the great question of MCP servers, configuration, and the Cursor editor is not 42; it is, rather, a preview panel with editable environment variables and two buttons. The buttons are labelled "Add to Cursor MCP" and "Cancel." The Cancel button has been described as "reassuring."
+
+## v1.12.0 - Mostly Harmless MCP Bundles
+
+### Added
+
+#### **MCPB (MCP Bundle) support**
+
+- **Install from .mcpb**: You may now select a `.mcpb` file (a ZIP in disguise, as per the [Model Context Protocol bundles spec](https://github.com/modelcontextprotocol/mcpb)) and have CursorToys extract it into `~/.mcpb/`, read its `manifest.json`, and offer to add the server to your Cursor MCP config (`~/.cursor/mcp.json`). Manifest versions 0.1 through 0.4 are accepted; the universe may add more later.
+- **Preview before saving**: Before anything is written to `mcp.json`, a preview panel opens. It displays the package name, server type, command, args, and—in a fit of user-friendly behaviour—**editable environment variable values**. You may adjust API keys, paths, or the meaning of life (or at least the env vars) in input fields. Only when you click **Add to Cursor MCP** does the extension write to your config. If you click **Cancel**, the extracted folder is removed and nothing is written; the Guide notes that this is "exactly the kind of thing that prevents total chaos, except when it doesn't."
+- **Sidebar tree — MCPB Packages**: A new view in the Explorer sidebar lists installed MCPB packages under **MCPB Packages**. Each entry shows the package label (from the manifest); you may reveal the package folder in the system file manager or **Uninstall** it. Uninstalling removes the folder from `~/.mcpb` and the corresponding entry from `~/.cursor/mcp.json`. The Guide advises: "Always know where your towel is, and where your MCP servers are."
+- **Menu and commands**: **Install MCPB** appears in the CursorToys status bar menu and in the Command Palette. A refresh button on the MCPB Packages view and context actions (Reveal in Folder, Uninstall) complete the experience.
+
+### Technical notes
+
+- **Paths**: Packages live in `~/.mcpb/<serverId>/`; the server ID is derived from the manifest `name` (sanitized). The Cursor global config file used is `~/.cursor/mcp.json`.
+- **Manifest**: The extension reads `server.mcp_config` (command, args, env) and applies `platform_overrides` for the current OS (`darwin`, `win32`, `linux`). Placeholders `${__dirname}` in args and env are replaced with the package directory path.
+- **Dependency**: `adm-zip` is used to unpack the .mcpb file. So far it has not been observed to write poetry.
 
 ## v1.11.0 - The Hitchhiker’s Guide to Updates
 

@@ -27,6 +27,8 @@ import { GistManager } from './gistManager';
 import { RecommendationsManager } from './recommendationsManager';
 import { RecommendationsBrowserPanel } from './recommendationsBrowserPanel';
 import { checkAndShowReleaseNotes, ReleaseNotesPanel, loadChangelogSection } from './releaseNotesPanel';
+import { installMcpbPackage, uninstallMcpbPackage, getMcpbRoot } from './mcpbInstaller';
+import { UserMcpbTreeProvider, McpbPackageItem } from './userMcpbTreeProvider';
 import * as fs from 'fs';
 
 /**
@@ -245,6 +247,11 @@ export function activate(context: vscode.ExtensionContext) {
           detail: 'Import'
         },
         {
+          label: '$(package) Install MCPB',
+          description: 'Install MCP server from .mcpb package',
+          detail: 'MCP'
+        },
+        {
           label: '$(note) New Notepad',
           description: 'Create a new notepad for quick notes',
           detail: 'Notepads'
@@ -281,6 +288,7 @@ export function activate(context: vscode.ExtensionContext) {
         'What\'s New': 'cursor-toys.showReleaseNotes',
         'Open Skills Marketplace': 'cursor-toys.browseRecommendations',
         'Import from URL': 'cursor-toys.import',
+        'Install MCPB': 'cursor-toys.installMcpb',
         'New Notepad': 'cursor-toys.createNotepad',
         'Create Skill': 'cursor-toys.createSkill',
         'Minify File': 'cursor-toys.minifyFile',
@@ -1898,6 +1906,13 @@ export function activate(context: vscode.ExtensionContext) {
     treeDataProvider: userSkillsTreeProvider,
     showCollapseAll: false,
     dragAndDropController: userSkillsTreeProvider
+  });
+
+  // Register User MCPB Tree Provider (installed MCPB packages)
+  const userMcpbTreeProvider = new UserMcpbTreeProvider();
+  const userMcpbTreeView = vscode.window.createTreeView('cursor-toys.userMcpb', {
+    treeDataProvider: userMcpbTreeProvider,
+    showCollapseAll: false
   });
 
   /**
@@ -3803,6 +3818,55 @@ Detailed instructions for the agent.
     ReleaseNotesPanel.createOrShow(context, version, changelogHtml);
   });
 
+  const installMcpbCommand = vscode.commands.registerCommand('cursor-toys.installMcpb', async () => {
+    const ok = await installMcpbPackage();
+    if (ok) {
+      userMcpbTreeProvider.refresh();
+    }
+  });
+
+  const refreshMcpbCommand = vscode.commands.registerCommand('cursor-toys.refreshMcpb', () => {
+    userMcpbTreeProvider.refresh();
+  });
+
+  const revealMcpbCommand = vscode.commands.registerCommand(
+    'cursor-toys.revealMcpb',
+    async (arg?: McpbPackageItem) => {
+      const item = arg;
+      if (!item) {
+        vscode.window.showErrorMessage('No package selected');
+        return;
+      }
+      try {
+        await vscode.commands.executeCommand('revealFileInOS', item.uri);
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error revealing folder: ${error}`);
+      }
+    }
+  );
+
+  const deleteMcpbCommand = vscode.commands.registerCommand(
+    'cursor-toys.deleteMcpb',
+    async (arg?: McpbPackageItem) => {
+      const item = arg;
+      if (!item) {
+        vscode.window.showErrorMessage('No package selected');
+        return;
+      }
+      const confirm = await vscode.window.showWarningMessage(
+        `Uninstall MCPB package "${item.label}"? This will remove the package folder and its entry from Cursor MCP config.`,
+        'Uninstall',
+        'Cancel'
+      );
+      if (confirm === 'Uninstall') {
+        const ok = await uninstallMcpbPackage(item.serverId);
+        if (ok) {
+          userMcpbTreeProvider.refresh();
+        }
+      }
+    }
+  );
+
   // File system watchers to update tree when files change
   // Create watchers for all folders that might be watched
   const createWatchers = (): vscode.FileSystemWatcher[] => {
@@ -4028,6 +4092,15 @@ Detailed instructions for the agent.
     context.subscriptions.push(watcher);
   });
 
+  // Watch ~/.mcpb for installed MCPB package changes
+  const mcpbRootUri = vscode.Uri.file(getMcpbRoot());
+  const mcpbWatcher = vscode.workspace.createFileSystemWatcher(
+    new vscode.RelativePattern(mcpbRootUri, '**')
+  );
+  mcpbWatcher.onDidCreate(() => userMcpbTreeProvider.refresh());
+  mcpbWatcher.onDidDelete(() => userMcpbTreeProvider.refresh());
+  context.subscriptions.push(mcpbWatcher);
+
   context.subscriptions.push(
     httpResponseProviderDisposable,
     tabChangeDisposable,
@@ -4146,7 +4219,12 @@ Detailed instructions for the agent.
     removeGitHubTokenCommand,
     browseSkillsMarketplaceCommand,
     refreshSkillsCommand,
-    showReleaseNotesCommand
+    showReleaseNotesCommand,
+    installMcpbCommand,
+    userMcpbTreeView,
+    refreshMcpbCommand,
+    revealMcpbCommand,
+    deleteMcpbCommand
   );
   
   // Dispose decoration provider

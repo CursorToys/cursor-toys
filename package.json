@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -76,7 +76,9 @@
     "onCommand:cursor-toys.refineClipboardWithAI",
     "onCommand:cursor-toys.processWithPrompt",
     "onCommand:cursor-toys.configureGeminiApiKey",
-    "onCommand:cursor-toys.removeGeminiApiKey"
+    "onCommand:cursor-toys.removeGeminiApiKey",
+    "onCommand:cursor-toys.installMcpb",
+    "onView:cursor-toys.userMcpb"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -100,6 +102,25 @@
       {
         "command": "cursor-toys.import",
         "title": "CursorToys: Import"
+      },
+      {
+        "command": "cursor-toys.installMcpb",
+        "title": "CursorToys: Install MCPB Package"
+      },
+      {
+        "command": "cursor-toys.refreshMcpb",
+        "title": "CursorToys: Refresh MCPB Packages",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.revealMcpb",
+        "title": "CursorToys: Reveal in Folder",
+        "icon": "$(file-directory)"
+      },
+      {
+        "command": "cursor-toys.deleteMcpb",
+        "title": "CursorToys: Uninstall MCPB Package",
+        "icon": "$(trash)"
       },
       {
         "command": "cursor-toys.shareAsCursorToysCommand",
@@ -564,6 +585,11 @@
           "id": "cursor-toys.userHooks",
           "name": "Cursor Hooks",
           "when": "true"
+        },
+        {
+          "id": "cursor-toys.userMcpb",
+          "name": "MCPB Packages",
+          "when": "true"
         }
       ]
     },
@@ -619,6 +645,16 @@
         {
           "command": "cursor-toys.refreshSkills",
           "when": "view == cursor-toys.userSkills",
+          "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.installMcpb",
+          "when": "view == cursor-toys.userMcpb",
+          "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.refreshMcpb",
+          "when": "view == cursor-toys.userMcpb",
           "group": "navigation"
         }
       ],
@@ -832,6 +868,16 @@
           "command": "cursor-toys.deleteHookScript",
           "when": "view == cursor-toys.userHooks && viewItem == hooksScript",
           "group": "2_actions"
+        },
+        {
+          "command": "cursor-toys.revealMcpb",
+          "when": "view == cursor-toys.userMcpb && viewItem == userMcpbPackage",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.deleteMcpb",
+          "when": "view == cursor-toys.userMcpb && viewItem == userMcpbPackage",
+          "group": "2_actions"
         }
       ],
       "cursor-toys": [
@@ -1041,6 +1087,10 @@
         },
         {
           "command": "cursor-toys.processWithPrompt",
+          "when": "true"
+        },
+        {
+          "command": "cursor-toys.installMcpb",
           "when": "true"
         }
       ]
@@ -1301,10 +1351,13 @@
     "package": "vsce package",
     "publish": "vsce publish"
   },
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  },
   "devDependencies": {
-    "@types/vscode": "^1.74.0",
+    "@types/adm-zip": "^0.5.7",
     "@types/node": "16.x",
+    "@types/vscode": "^1.74.0",
     "typescript": "^4.9.4"
   }
 }
-

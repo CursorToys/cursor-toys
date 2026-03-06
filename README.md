@@ -27,9 +27,19 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 | [🤖 AI Text Refinement](#-ai-text-refinement) | [🎯 Smart Recommendations](#-smart-recommendations) | [🔗 Instant Sharing](#-instant-sharing) |
 | [🌐 In-Editor API Testing](#-in-editor-api-testing) | [📚 Personal Libraries](#-personal-libraries) | [📓 Project Notepads](#-project-notepads) |
 | [🪝 Cursor Hooks](#-cursor-hooks) | [🎓 Skills Management](#-skills-management) | [🗜️ File Minification](#️-file-minification) |
-| [💬 Chat Integration](#-chat-integration) | [🌐 GitHub Gist Integration](#-github-gist-integration) | |
+| [💬 Chat Integration](#-chat-integration) | [🌐 GitHub Gist Integration](#-github-gist-integration) | [📦 MCPB Packages](#-mcpb-packages) |
 
-> **🧪 NEW in v1.10.0**: HTTP Request Assertions — Automate API testing with `@assert()` annotations!
+> **🧪 NEW in v1.10.0**: HTTP Request Assertions — Automate API testing with `@assert()` annotations!  
+> **📦 NEW in v1.12.0**: MCPB support — Install and manage MCP server bundles (.mcpb) with a preview and editable env vars.
+
+### 📦 MCPB Packages
+
+**Install and manage MCP server bundles** — One-click install for [MCP Bundle](https://github.com/modelcontextprotocol/mcpb) (.mcpb) packages into Cursor.
+
+- **Install from .mcpb**: Select a `.mcpb` file (ZIP with a manifest) and CursorToys extracts it to `~/.mcpb/` and adds the server to your Cursor MCP config (`~/.cursor/mcp.json`). Supports manifest versions 0.1–0.4.
+- **Preview before saving**: A preview panel shows package name, server type, command, args, and **editable environment variables**. Adjust API keys or paths in input fields, then confirm to write to `mcp.json` or cancel to roll back.
+- **Sidebar tree — MCPB Packages**: View installed packages in the Explorer sidebar; reveal in folder or uninstall (removes folder and mcp.json entry).
+- **Menu and commands**: **Install MCPB** in the status bar menu and Command Palette; refresh and context actions on the MCPB Packages view.
 
 ### 🤖 AI Text Refinement
 
