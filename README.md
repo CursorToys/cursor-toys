@@ -3,10 +3,17 @@
       <source media="(prefers-color-scheme: light)" srcset="./resources/icon.png" width="200" />
       <img src="./.github/assets/cursortoys_horizontal.png" width="200" alt="CursorToys" />
   </picture>
+
+  
 </p>
 <p align="center">
   <span align="center">A powerful collection of utilities that transform Cursor AI into a collaborative productivity powerhouse.</span>
 </p>
+
+[![GitHub Stars](https://img.shields.io/github/stars/CursorToys/cursor-toys?style=social)](https://github.com/CursorToys/cursor-toys)
+[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/godrix/cursor-toys?label=Open%20VSX%20downloads)](https://open-vsx.org/extension/godrix/cursor-toys)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 <h3 align="center">
   <a href="#-installation">Installation</a>
   <span> · </span>
@@ -18,6 +25,8 @@
 </h3>
 <br/><br/>
 
+
+
 ## 🔨 Utilities
 
 CursorToys includes over 10 utility categories to optimize your Cursor AI workflow:
@@ -28,9 +37,11 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 | [🌐 In-Editor API Testing](#-in-editor-api-testing) | [📚 Personal Libraries](#-personal-libraries) | [📓 Project Notepads](#-project-notepads) |
 | [🪝 Cursor Hooks](#-cursor-hooks) | [🎓 Skills Management](#-skills-management) | [🗜️ File Minification](#️-file-minification) |
 | [💬 Chat Integration](#-chat-integration) | [🌐 GitHub Gist Integration](#-github-gist-integration) | [📦 MCPB Packages](#-mcpb-packages) |
+| [📊 Spending (API usage)](#-spending-cursor-api-usage) | [💬 CursorToys Remote Chat](#cursortoys-remote-chat) | |
 
 > **🧪 NEW in v1.10.0**: HTTP Request Assertions — Automate API testing with `@assert()` annotations!  
-> **📦 NEW in v1.12.0**: MCPB support — Install and manage MCP server bundles (.mcpb) with a preview and editable env vars.
+> **📦 NEW in v1.12.0**: MCPB support — Install and manage MCP server bundles (.mcpb) with a preview and editable env vars.  
+> **💬 CursorToys Remote Chat**: Skill-driven, provider-agnostic bridge to a connected channel. One global connection; start from the CursorToys menu; init session from chat or one command.
 
 ### 📦 MCPB Packages
 
@@ -40,8 +51,46 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 - **Preview before saving**: A preview panel shows package name, server type, command, args, and **editable environment variables**. Adjust API keys or paths in input fields, then confirm to write to `mcp.json` or cancel to roll back.
 - **Sidebar tree — MCPB Packages**: View installed packages in the Explorer sidebar; reveal in folder or uninstall (removes folder and mcp.json entry).
 - **Menu and commands**: **Install MCPB** in the status bar menu and Command Palette; refresh and context actions on the MCPB Packages view.
+- **Optional official CLI**: When `cursorToys.mcpb.useOfficialCli` is enabled (default), the extension uses `npx @anthropic-ai/mcpb` for **verify** (signature check) and **unpack** (correct handling of signed bundles). Falls back to built-in extraction if the CLI is not available.
 
-### 🤖 AI Text Refinement
+### 📊 Spending (Cursor API usage)
+
+**See Cursor API usage in the status bar** — Auto % and API % at a glance.
+
+- **Status bar indicator**: Shows `Auto: X.X%` and `API: X.X%` with a tooltip that includes progress bars and spend details (used, included, remaining).
+- **Token**: Session token can be auto-detected from Cursor's local state (`state.vscdb`) or set manually via **CursorToys: Configure spending session token** (paste the `WorkosCursorSessionToken` cookie from cursor.com/dashboard → DevTools → Application → Cookies).
+- **Commands**: **CursorToys: Refresh spending usage**, **CursorToys: Configure spending session token**, **CursorToys: Hide spending**, **CursorToys: Show spending**.
+- **Settings**: `cursorToys.spending.enabled`, `cursorToys.spending.autoDetectToken`, `cursorToys.spending.sessionToken`, `cursorToys.spending.refreshInterval` (minutes).
+- Clicking the status bar opens the Cursor dashboard (Spending tab).
+
+### Cursor Remote (Telegram)
+
+**Bidirectional**: send chat summaries to Telegram and control Cursor from Telegram (like [cursor-autopilot](https://github.com/heyzgj/cursor-autopilot)). Each project has its own bot token and chat; credentials are stored in VS Code Secrets.
+
+- **To Telegram**: Summaries from `.cursor/remote/summary-*.json` are sent automatically when Remote is **Start**. The file is created by a **Cursor rule** (`.cursor/rules/after_each_chat.mdc`), not hooks—rules run at the end of each chat turn, which fits this use case.
+- **From Telegram**: When Remote is **Start**, the extension polls for messages in the configured chat. You can send:
+  - **`/start`** — Shows available commands.
+  - **`/new` _texto da tarefa_** — Opens Cursor chat and sends the text as the prompt (e.g. `/new implementar login`).
+  - **`/end`** — Hides the chat panel and replies "Session ended."
+  - **Plain text** (no command) — Same as `/new`: opens chat with that text.
+- **Status bar**: Icon shows running or paused; click for menu (Start, Pause, Send last summary, Configure, Open remote folder).
+- **Commands** (Command Palette): **CursorToys: Remote – Start**, **CursorToys: Remote – Pause**, **CursorToys: Remote – Send last summary**, **CursorToys: Remote – Configure**, **CursorToys: Remote – Open remote folder**.
+- **Credentials**: Stored per workspace via VS Code Secrets. Use **Configure** to set the Telegram bot token and chat ID.
+
+#### How to configure and test
+
+1. **Create a Telegram bot**: In Telegram, open [@BotFather](https://t.me/BotFather), send `/newbot`, follow the steps, and copy the **bot token** (e.g. `123456789:ABCdef...`).
+2. **Get your chat ID**: Send a message to your bot (or add the bot to a group). Open [@userinfobot](https://t.me/userinfobot) and forward a message from that chat, or use a getUpdates request: `https://api.telegram.org/bot<TOKEN>/getUpdates` and read `message.chat.id` (use a negative number for groups). For a step-by-step guide for private chat, channel, group, or topic, see [How to get Telegram Bot Chat ID](https://gist.github.com/nafiesl/4ad622f344cd1dc3bb1ecbe468ff9f8a).
+3. **Configure in Cursor**: Open the project (workspace), then:
+   - Click the **Remote** icon in the status bar, or run **CursorToys: Remote – Show menu** from the Command Palette (`Cmd+Shift+P`).
+   - Choose **Configure** and paste the bot token and chat ID when prompted. They are saved in VS Code Secrets for this workspace only.
+4. **Start and test**:
+   - In the same menu, choose **Start** so that new summaries are sent automatically.
+   - To test without waiting for a chat turn: create a file manually in `.cursor/remote/`, e.g. `summary-20250311-120000.json` with content `{"summary":"Test summary","current_status":"Testing"}`, or use **Send last summary** to send the latest file in `.cursor/remote` to Telegram.
+5. **Pause**: Choose **Pause** from the menu (or **CursorToys: Remote – Pause**) to stop sending and receiving; **Start** resumes it.
+6. **From Telegram**: With Remote **Start**, send `/new sua tarefa` in the bot chat to open Cursor chat with that prompt; `/end` hides the chat; `/start` lists commands.
+
+### AI Text Refinement
 
 **Enhance text and code quality with AI** — Powered by Google Gemini.
 
@@ -189,8 +238,9 @@ Click "Send Request" → See assertion results inline!
 **Send code to Cursor AI faster** — No manual copy-paste.
 
 - ✂️ **Send Selection** — Right-click → Send to Chat
+- 📝 **Open Chat with Prompt** — Command to open the editor chat with a prompt (uses `workbench.action.chat.open` when available; no URL length limit)
+- 📤 **Send to Chat** — Uses the built-in chat command when available; falls back to deeplink for compatibility
 - 🔗 **Prompt Deeplinks** — Generate shareable prompt links from selected code
-- 📝 **Custom Text** — Send any text directly to chat
 - 📍 **Context Included** — File path, language, and line numbers auto-added
 
 ### 🌐 GitHub Gist Integration
@@ -293,10 +343,22 @@ Click the "Send Request" link that appears above → See formatted response!
 | **CursorToys: Minify File** | — | Minify current file |
 | **CursorToys: Trim & Minify Clipboard** | — | Auto-detect and minify clipboard |
 | **CursorToys: Send Selection to Chat** | — | Send selected code to Cursor chat |
+| **CursorToys: Open Chat with Prompt** | — | Open chat with a prompt (workbench.action.chat.open) |
+| **CursorToys: Refresh spending usage** | — | Refresh Cursor API usage in status bar |
+| **CursorToys: Configure spending session token** | — | Set session token for spending indicator |
+| **CursorToys: Hide spending** / **Show spending** | — | Hide or show the spending status bar |
 
 **Pro Tip**: Most commands are accessible via CodeLens (clickable links in your files) or context menu (right-click)!
 
 ## ✨ What's New
+
+**Version 1.13.0 (March 2026)**
+
+- **Cursor Remote (Telegram)** — Bidirectional bridge: send chat summaries to Telegram and control Cursor from Telegram (`/new`, `/start`, `/end`). Token and chat ID per project via VS Code Secrets; status bar menu. See [Cursor Remote – How to configure and test](#how-to-configure-and-test). To get your bot token and chat ID (private chat, channel, group, or topic), see [How to get Telegram Bot Chat ID](https://gist.github.com/nafiesl/4ad622f344cd1dc3bb1ecbe468ff9f8a).
+- **Spending (Cursor API usage)** — Status bar indicator showing Auto % and API %; token auto-detected from Cursor state or set manually; refresh and configure commands; click opens dashboard.
+- **Open Chat with Prompt** — Command to open the editor chat with a prompt via `workbench.action.chat.open`.
+- **Send to Chat** — Uses the built-in chat command when available (no URL length limit); falls back to deeplink.
+- **MCPB optional official CLI** — Setting `cursorToys.mcpb.useOfficialCli` uses `npx @anthropic-ai/mcpb` for verify and unpack (signed bundles); fallback to built-in extraction.
 
 **Version 1.10.0 (16 February 2026)**
 
@@ -655,7 +717,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Made with ❤️ for the Cursor community**
 
-[![GitHub Stars](https://img.shields.io/github/stars/CursorToys/cursor-toys?style=social)](https://github.com/CursorToys/cursor-toys)
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/d/Godrix.cursor-toys.svg)](https://marketplace.visualstudio.com/items?itemName=Godrix.cursor-toys)
-[![Open VSX Downloads](https://img.shields.io/open-vsx/dt/godrix/cursor-toys?label=Open%20VSX%20downloads)](https://open-vsx.org/extension/godrix/cursor-toys)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)

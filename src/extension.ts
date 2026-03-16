@@ -29,6 +29,19 @@ import { RecommendationsBrowserPanel } from './recommendationsBrowserPanel';
 import { checkAndShowReleaseNotes, ReleaseNotesPanel, loadChangelogSection } from './releaseNotesPanel';
 import { installMcpbPackage, uninstallMcpbPackage, getMcpbRoot } from './mcpbInstaller';
 import { UserMcpbTreeProvider, McpbPackageItem } from './userMcpbTreeProvider';
+import { initSpendingStatusBar, refreshSpending, openSpendingTokenSetup } from './spendingStatusBar';
+import {
+  initRemote,
+  injectTextToChat,
+  remoteShowMenu,
+  remoteStart,
+  remotePause,
+  remoteLinkThisChat,
+  remoteInitSession,
+  remoteSendLastSummary,
+  remoteConfigure,
+  remoteOpenFolder
+} from './remoteTelegram';
 import * as fs from 'fs';
 
 /**
@@ -226,6 +239,67 @@ export function activate(context: vscode.ExtensionContext) {
   cursorToysStatusBarItem.command = 'cursor-toys.showMenu';
   cursorToysStatusBarItem.show();
   context.subscriptions.push(cursorToysStatusBarItem);
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.spending.refresh', () => {
+      refreshSpending();
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.spending.openTokenSetup', () => {
+      openSpendingTokenSetup();
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.spending.disable', async () => {
+      await vscode.workspace.getConfiguration('cursorToys').update('spending.enabled', false, vscode.ConfigurationTarget.Global);
+      vscode.window.showInformationMessage('CursorToys: Spending indicator hidden. Use "CursorToys: Show spending" (Cmd+Shift+P) to show it again.');
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.spending.enable', async () => {
+      await vscode.workspace.getConfiguration('cursorToys').update('spending.enabled', true, vscode.ConfigurationTarget.Global);
+      vscode.window.showInformationMessage('CursorToys: Spending indicator enabled.');
+    })
+  );
+  initSpendingStatusBar(context);
+
+  initRemote(context);
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursorInject.send', async (text?: string) => {
+      if (text === undefined || text === null) {
+        text = await vscode.window.showInputBox({
+          prompt: 'Enter text to inject into Cursor Chat',
+          placeHolder: 'Type your message here...'
+        });
+      }
+      if (text && text.trim()) {
+        await injectTextToChat(text.trim());
+      }
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.remote.showMenu', () => remoteShowMenu())
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.remote.start', () => remoteStart())
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.remote.pause', () => remotePause()),
+    vscode.commands.registerCommand('cursor-toys.remote.linkThisChat', () => remoteLinkThisChat()),
+    vscode.commands.registerCommand('cursor-toys.remote.initSession', () => remoteInitSession())
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.remote.sendLastSummary', () => remoteSendLastSummary())
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.remote.configure', () => remoteConfigure())
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.remote.openFolder', () => remoteOpenFolder())
+  );
   
   // Register CursorToys Menu command
   context.subscriptions.push(
@@ -235,6 +309,11 @@ export function activate(context: vscode.ExtensionContext) {
           label: '$(megaphone) What\'s New',
           description: 'View release notes and changelog',
           detail: 'Release notes'
+        },
+        {
+          label: '$(broadcast) Start Remote Chat',
+          description: 'Enable Telegram send/receive for this workspace',
+          detail: 'Remote'
         },
         {
           label: '$(compass) Open Skills Marketplace',
@@ -270,6 +349,16 @@ export function activate(context: vscode.ExtensionContext) {
           label: '$(clippy) Trim Clipboard',
           description: 'Trim and minify clipboard content',
           detail: 'Tools'
+        },
+        {
+          label: '$(refresh) Refresh spending usage',
+          description: 'Refresh Cursor API usage in status bar',
+          detail: 'Spending'
+        },
+        {
+          label: '$(key) Configure spending token',
+          description: 'Set session token for spending indicator',
+          detail: 'Spending'
         }
       ];
 
@@ -286,13 +375,16 @@ export function activate(context: vscode.ExtensionContext) {
       // Map selection to command
       const commandMap: { [key: string]: string } = {
         'What\'s New': 'cursor-toys.showReleaseNotes',
+        'Start Remote Chat': 'cursor-toys.remote.start',
         'Open Skills Marketplace': 'cursor-toys.browseRecommendations',
         'Import from URL': 'cursor-toys.import',
         'Install MCPB': 'cursor-toys.installMcpb',
         'New Notepad': 'cursor-toys.createNotepad',
         'Create Skill': 'cursor-toys.createSkill',
         'Minify File': 'cursor-toys.minifyFile',
-        'Trim Clipboard': 'cursor-toys.trimClipboard'
+        'Trim Clipboard': 'cursor-toys.trimClipboard',
+        'Refresh spending usage': 'cursor-toys.spending.refresh',
+        'Configure spending token': 'cursor-toys.spending.openTokenSetup'
       };
 
       const commandId = commandMap[selected.label.replace(/\$\([^)]+\)\s*/, '')];
@@ -3136,6 +3228,29 @@ Detailed instructions for the agent.
     }
   );
 
+  // Test command: open chat via workbench.action.chat.open (VS Code / Cursor built-in)
+  const openChatWithPromptCommand = vscode.commands.registerCommand(
+    'cursor-toys.openChatWithPrompt',
+    async () => {
+      const prompt = await vscode.window.showInputBox({
+        prompt: 'Prompt to open in chat (workbench.action.chat.open)',
+        placeHolder: 'e.g. Resuma o erro [DDCI-91235668] e sugira correção.',
+        value: 'Resuma o erro [DDCI-91235668] e sugira correção.'
+      });
+      if (prompt === undefined) {
+        return;
+      }
+      try {
+        await vscode.commands.executeCommand('workbench.action.chat.open', prompt || '');
+        if (prompt) {
+          vscode.window.showInformationMessage('Chat opened with prompt.');
+        }
+      } catch (err) {
+        vscode.window.showErrorMessage(`workbench.action.chat.open failed: ${err}`);
+      }
+    }
+  );
+
   // Command to copy selection as prompt deeplink
   const copySelectionAsPromptCommand = vscode.commands.registerCommand(
     'cursor-toys.copySelectionAsPrompt',
@@ -4196,6 +4311,7 @@ Detailed instructions for the agent.
     configWatcher,
     sendToChatCommand,
     sendSelectionToChatCommand,
+    openChatWithPromptCommand,
     copySelectionAsPromptCommand,
     sendHttpRequestCommand,
     copyCurlCommandCommand,

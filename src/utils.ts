@@ -203,6 +203,53 @@ export function getBaseFolderName(): string {
 }
 
 /**
+ * Gets the path to the remote folder (.cursor/remote or .{baseFolder}/remote) for Cursor Remote (Telegram).
+ * @param workspacePath Optional workspace root path; if not provided, uses the first workspace folder
+ * @returns Full path to the remote folder, or empty string if no workspace
+ */
+export function getRemotePath(workspacePath?: string): string {
+  const base = workspacePath || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!base) {
+    return '';
+  }
+  const baseFolderName = getBaseFolderName();
+  return path.join(base, `.${baseFolderName}`, 'remote');
+}
+
+/** Name of the file that stores the current remote session id (one line = session folder name). */
+export const REMOTE_CURRENT_SESSION_FILE = 'current-session';
+
+/**
+ * Gets the path to the remote session directory (.cursor/remote/session).
+ * All summary JSON files for the current session are stored here (summary-timestamp.json).
+ * @param workspacePath Optional workspace root path
+ * @returns Full path to the session directory, or empty string if no workspace
+ */
+export function getRemoteSessionDir(workspacePath?: string): string {
+  const remote = getRemotePath(workspacePath);
+  return remote ? path.join(remote, 'session') : '';
+}
+
+/**
+ * @deprecated Use getRemoteSessionDir. Legacy: sessions had per-session subfolders.
+ */
+export function getRemoteSessionsDir(workspacePath?: string): string {
+  const remote = getRemotePath(workspacePath);
+  return remote ? path.join(remote, 'sessions') : '';
+}
+
+/**
+ * Gets the path to the current-session marker file (.cursor/remote/current-session).
+ * When present, the cursor-toys-remote-chat skill writes to .cursor/remote/session/.
+ * @param workspacePath Optional workspace root path
+ * @returns Full path to current-session file, or empty string if no workspace
+ */
+export function getCurrentSessionFilePath(workspacePath?: string): string {
+  const remote = getRemotePath(workspacePath);
+  return remote ? path.join(remote, REMOTE_CURRENT_SESSION_FILE) : '';
+}
+
+/**
  * Gets the commands folder name based on configuration ('cursor' or 'claude')
  */
 export function getCommandsFolderName(): 'cursor' | 'claude' {

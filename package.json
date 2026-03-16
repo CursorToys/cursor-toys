@@ -1,8 +1,8 @@
 {
   "name": "cursor-toys",
-  "displayName": "CursorToys",
+  "displayName": "CursorToys - Cursor supercharged",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "1.12.1",
+  "version": "1.13.0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -67,6 +67,7 @@
     "onView:cursor-toys.userSkills",
     "onCommand:cursor-toys.sendToChat",
     "onCommand:cursor-toys.sendSelectionToChat",
+    "onCommand:cursor-toys.openChatWithPrompt",
     "onCommand:cursor-toys.copySelectionAsPrompt",
     "onCommand:cursor-toys.sendHttpRequest",
     "onCommand:cursor-toys.minifyFile",
@@ -78,7 +79,16 @@
     "onCommand:cursor-toys.configureGeminiApiKey",
     "onCommand:cursor-toys.removeGeminiApiKey",
     "onCommand:cursor-toys.installMcpb",
-    "onView:cursor-toys.userMcpb"
+    "onView:cursor-toys.userMcpb",
+    "onCommand:cursor-toys.remote.showMenu",
+    "onCommand:cursor-toys.remote.start",
+    "onCommand:cursor-toys.remote.pause",
+    "onCommand:cursor-toys.remote.linkThisChat",
+    "onCommand:cursor-toys.remote.initSession",
+    "onCommand:cursor-toys.remote.sendLastSummary",
+    "onCommand:cursor-toys.remote.configure",
+    "onCommand:cursor-toys.remote.openFolder",
+    "onCommand:cursorInject.send"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -421,6 +431,11 @@
         "icon": "$(send)"
       },
       {
+        "command": "cursor-toys.openChatWithPrompt",
+        "title": "CursorToys: Open Chat with Prompt (workbench.action.chat.open)",
+        "icon": "$(comment-discussion)"
+      },
+      {
         "command": "cursor-toys.copySelectionAsPrompt",
         "title": "CursorToys: Copy Selection as Prompt Link",
         "icon": "$(copy)"
@@ -542,6 +557,58 @@
         "command": "cursor-toys.refreshRecommendations",
         "title": "CursorToys: Refresh Recommendations Cache",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.spending.refresh",
+        "title": "CursorToys: Refresh spending usage"
+      },
+      {
+        "command": "cursor-toys.spending.openTokenSetup",
+        "title": "CursorToys: Configure spending session token"
+      },
+      {
+        "command": "cursor-toys.spending.disable",
+        "title": "CursorToys: Hide spending (disable status bar)"
+      },
+      {
+        "command": "cursor-toys.spending.enable",
+        "title": "CursorToys: Show spending (enable status bar)"
+      },
+      {
+        "command": "cursor-toys.remote.showMenu",
+        "title": "CursorToys Remote Chat: Show menu"
+      },
+      {
+        "command": "cursor-toys.remote.start",
+        "title": "CursorToys: Start Remote Chat"
+      },
+      {
+        "command": "cursor-toys.remote.pause",
+        "title": "CursorToys: Remote – Pause"
+      },
+      {
+        "command": "cursor-toys.remote.linkThisChat",
+        "title": "CursorToys: Remote – Link this chat"
+      },
+      {
+        "command": "cursor-toys.remote.initSession",
+        "title": "CursorToys: Remote – Init session in this chat"
+      },
+      {
+        "command": "cursor-toys.remote.sendLastSummary",
+        "title": "CursorToys: Remote – Send last summary"
+      },
+      {
+        "command": "cursor-toys.remote.configure",
+        "title": "CursorToys: Remote – Configure"
+      },
+      {
+        "command": "cursor-toys.remote.openFolder",
+        "title": "CursorToys: Remote – Open remote folder"
+      },
+      {
+        "command": "cursorInject.send",
+        "title": "Inject text into Cursor Chat"
       }
     ],
     "submenus": [
@@ -1275,6 +1342,33 @@
           "type": "number",
           "default": 30,
           "description": "Timeout in seconds for Gemini API requests (default: 30)"
+        },
+        "cursorToys.mcpb.useOfficialCli": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use the official MCPB CLI (npx @anthropic-ai/mcpb) for verify and unpack when available. Enables signature verification for signed packages and uses the same unpack logic as the official tooling. Falls back to built-in extraction if the CLI is not available."
+        },
+        "cursorToys.spending.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show Cursor API usage (Auto % and API %) in the status bar. Set to false to hide the spending indicator."
+        },
+        "cursorToys.spending.autoDetectToken": {
+          "type": "boolean",
+          "default": true,
+          "description": "Try to read the session token from Cursor's local state (state.vscdb). If false or detection fails, the manual session token is used."
+        },
+        "cursorToys.spending.sessionToken": {
+          "type": "string",
+          "default": "",
+          "description": "WorkosCursorSessionToken cookie value from cursor.com. Get it from DevTools > Application > Cookies when logged into cursor.com/dashboard. Used when auto-detect is disabled or fails."
+        },
+        "cursorToys.spending.refreshInterval": {
+          "type": "number",
+          "default": 20,
+          "minimum": 1,
+          "maximum": 1440,
+          "description": "Refresh interval for spending usage in minutes."
         }
       }
     },
@@ -1350,6 +1444,9 @@
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
     "publish": "vsce publish"
+  },
+  "dependencies": {
+    "sql.js": "^1.10.0"
   },
   "devDependencies": {
     "@types/node": "16.x",

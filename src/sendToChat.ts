@@ -14,18 +14,23 @@ export function buildPromptDeeplink(text: string): string {
 }
 
 /**
- * Envia texto diretamente para o chat do Cursor
- * @param text Texto a ser enviado
- * @param prompt Prompt opcional para adicionar antes do texto
+ * Sends text directly to the editor chat (Cursor/VS Code).
+ * Uses workbench.action.chat.open when available (no URL length limit);
+ * falls back to deeplink for environments where the command is not registered.
+ * @param text Text to send
+ * @param prompt Optional prompt to prepend before the text
  */
 export async function sendToChat(text: string, prompt?: string): Promise<boolean> {
-  try {
-    // Combinar prompt e texto se fornecido
-    const fullText = prompt 
-      ? `${prompt}\n\n---\n\n${text}`
-      : text;
+  const fullText = prompt
+    ? `${prompt}\n\n---\n\n${text}`
+    : text;
 
-    // Validar tamanho
+  try {
+    await vscode.commands.executeCommand('workbench.action.chat.open', fullText);
+    vscode.window.showInformationMessage('Sent to chat.');
+    return true;
+  } catch {
+    // Fallback: open via deeplink (e.g. when command not available or from external context)
     const deeplink = buildPromptDeeplink(fullText);
     if (deeplink.length > MAX_DEEPLINK_LENGTH) {
       vscode.window.showErrorMessage(
@@ -33,14 +38,9 @@ export async function sendToChat(text: string, prompt?: string): Promise<boolean
       );
       return false;
     }
-
-    // Abrir deeplink
     await vscode.env.openExternal(vscode.Uri.parse(deeplink));
     vscode.window.showInformationMessage('Sent to Cursor chat!');
     return true;
-  } catch (error) {
-    vscode.window.showErrorMessage(`Error sending to chat: ${error}`);
-    return false;
   }
 }
 

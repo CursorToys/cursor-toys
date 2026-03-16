@@ -1,15 +1,21 @@
 # CursorToys
 
-![](https://i.imgur.com/jK8MCKn.jpeg)
+![](https://i.imgur.com/mhwaZuG.jpeg)
 
-*The following is the entry for CursorToys in the* Hitchhiker's Guide to the Galaxy*. It has been widely dismissed as "not entirely useless" by those who have tried it.*
+The Guide’s entry for version 1.13.0 notes that "the existence of a modern developer is a constant battle between two fundamental forces: the need for external validation and the paralyzing fear of depleting your AI quota before lunch." This update provides tools to handle both.
 
-**CursorToys now supports MCPB packages.** The Guide defines an MCPB as "a small, zip-shaped container that, when opened, unpacks itself into a folder in your home directory and then politely asks your editor's MCP configuration to make room for one more server—after first showing you exactly what it intends to do, which is more than most bureaucracies manage." The answer to the great question of MCP servers, configuration, and the Cursor editor is not 42; it is, rather, a preview panel with editable environment variables and two buttons. The buttons are labelled "Add to Cursor MCP" and "Cancel." The Cancel button has been described as "reassuring."
+## v1.13.0 — The Guide to Distant Conversations and Depleted Budgets
 
-As The Hitchhiker's Guide to the Galaxy so eloquently puts it: "The difference between something that can go wrong and something that is impossibly improbable to go wrong is that when something impossibly improbable to go wrong goes wrong, it usually turns out to be impossible to fix or, worse, to explain."
+### Added
 
-In this update, we have resolved one such case of impossibility.
+- **Remote Chat Bridge (Telegram Connection)**: Tired of coding isolated in your own dark corner of the galaxy? You can now link your Cursor chats directly to a Telegram channel. Summaries of your progress are automatically "teleported" to the channel, and reply messages you receive there are injected back into the chat via cursorInject. The Guide classifies this as "the perfect tool for when you want your teammates to judge your code in real-time, without them actually needing to open an editor, which is more than most bureaucracies manage to achieve."
+- **AI Spending Tracker**: We’ve introduced a status bar that monitors your Cursor API usage (Auto % and API %). It uses SQL wizardry to sniff out your session token directly from Cursor’s local database. The Guide warns: "Staring at your AI quota meter is a profound experience, comparable to gazing into the event horizon of a black hole: you know the end is near, but you just can’t look away."
 
+### Technical notes
+
+- **cursor-toys-remote-chat Skill**: We’ve implemented a skill that handles writing the summaries (.cursor/remote/session/summary-*.json). The extension monitors these files and takes care of "hurling" them to the Telegram channel.
+- **Control Commands**: We’ve added commands to start/pause remote chat, link chats, initialize sessions, and configure both the Telegram and Spending bridges.
+- **SQLite Integration**: The spending tracker utilizes sql.js for session token auto-detection.
 ## v1.12.1 - Mostly Harmless MCP Bundles
 
 ### Added
@@ -23,7 +29,7 @@ In this update, we have resolved one such case of impossibility.
 
 ### Fixed - The Case of the Vanishing Extension
 
-- **Extension not working when installed from VSIX**: The Extension that refused to exist: We discovered that when installed from a .vsix file, CursorToys suffered from an existential identity crisis and simply chose not to function. The Guide notes that this is because what works perfectly in a test environment often panics when faced with the cold, hard reality of the "real world."
+- **Extension not working when installed from VSIX**: When the extension was installed from a `.vsix` package (rather than run via Debug), it could fail to activate or run correctly. This was caused by bundling a **runtime dependency** (`adm-zip`) in the extension. The VS Code packaging process does not always bundle `node_modules` from npm dependencies in the same way as the development environment, so code that works in the Extension Development Host (F5) can break when the same code runs from an installed VSIX. The fix was to remove the external dependency and extract `.mcpb` (ZIP) files using the system: `unzip` on macOS/Linux and PowerShell `Expand-Archive` on Windows. The extension now has no runtime npm dependencies and behaves the same whether you run it from Debug or install it from a VSIX.
 
 ### Technical notes
 

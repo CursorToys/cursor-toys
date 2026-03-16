@@ -4,6 +4,65 @@ import * as child_process from 'child_process';
 import * as vscode from 'vscode';
 import { getUserHomePath } from './utils';
 
+const MCPB_CLI_PACKAGE = '@anthropic-ai/mcpb';
+const MCPB_NPX_TIMEOUT_MS = 120000;
+
+/**
+ * Runs npx @anthropic-ai/mcpb with the given arguments (no shell escaping; safe for paths with spaces).
+ * @returns Exit code, stdout and stderr. Rejects on spawn error or timeout.
+ */
+function runNpxMcpb(args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const argv = [MCPB_CLI_PACKAGE, ...args];
+    const proc = child_process.spawn('npx', argv, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: true,
+      timeout: MCPB_NPX_TIMEOUT_MS
+    });
+    let stdout = '';
+    let stderr = '';
+    proc.stdout?.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
+    proc.stderr?.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+    proc.on('error', (err) => reject(err));
+    proc.on('close', (code, signal) => {
+      if (signal === 'SIGTERM') reject(new Error('MCPB CLI timed out'));
+      else resolve({ exitCode: code ?? 1, stdout, stderr });
+    });
+  });
+}
+
+/**
+ * Verifies the MCPB file signature using the official CLI.
+ * @returns 'valid' if signed and valid, 'unsigned' if not signed (install allowed), or { error } if verification failed (e.g. invalid signature).
+ */
+async function runMcpbVerify(mcpbPath: string): Promise<'valid' | 'unsigned' | { error: string }> {
+  try {
+    const absPath = path.resolve(mcpbPath);
+    const { exitCode, stderr } = await runNpxMcpb(['verify', absPath]);
+    if (exitCode === 0) return 'valid';
+    const errText = (stderr || '').toLowerCase();
+    if (errText.includes('not signed') || errText.includes('extension is not signed')) return 'unsigned';
+    return { error: stderr.trim() || 'Verification failed' };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/**
+ * Unpacks an MCPB file to the given directory using the official CLI (handles signed bundles correctly).
+ * @returns true if unpack succeeded, false otherwise.
+ */
+async function runMcpbUnpack(mcpbPath: string, outputDir: string): Promise<boolean> {
+  try {
+    const absPath = path.resolve(mcpbPath);
+    const absOut = path.resolve(outputDir);
+    const { exitCode } = await runNpxMcpb(['unpack', absPath, absOut]);
+    return exitCode === 0;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Extracts a ZIP file to a destination directory using the system command (unzip on macOS/Linux, PowerShell on Windows).
  * Avoids bundling an external dependency so the extension works when installed from VSIX.
@@ -195,18 +254,34 @@ export async function installMcpbPackage(mcpbFilePath?: string): Promise<boolean
     fs.mkdirSync(mcpbRoot, { recursive: true });
   }
 
-  const tempDir = path.join(mcpbRoot, `.tmp-${Date.now()}-${process.pid}`);
-  try {
-    await extractZipToDir(zipPath, tempDir);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    vscode.window.showErrorMessage(`Failed to extract MCPB package: ${msg}`);
-    try {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    } catch {
-      // Ignore
+  const useOfficialCli = vscode.workspace.getConfiguration('cursorToys').get<boolean>('mcpb.useOfficialCli', true);
+
+  if (useOfficialCli) {
+    const verifyResult = await runMcpbVerify(zipPath);
+    if (verifyResult !== 'valid' && verifyResult !== 'unsigned') {
+      vscode.window.showErrorMessage(`MCPB signature verification failed: ${verifyResult.error}`);
+      return false;
     }
-    return false;
+  }
+
+  const tempDir = path.join(mcpbRoot, `.tmp-${Date.now()}-${process.pid}`);
+  let extracted = false;
+  if (useOfficialCli) {
+    extracted = await runMcpbUnpack(zipPath, tempDir);
+  }
+  if (!extracted) {
+    try {
+      await extractZipToDir(zipPath, tempDir);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      vscode.window.showErrorMessage(`Failed to extract MCPB package: ${msg}`);
+      try {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      } catch {
+        // Ignore
+      }
+      return false;
+    }
   }
 
   const manifestPath = path.join(tempDir, 'manifest.json');

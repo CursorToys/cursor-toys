@@ -135,7 +135,7 @@ export class RecommendationsBrowserPanel {
   }
 
   private async copyInstallCommand(skillName: string): Promise<void> {
-    const command = `npx @tech-leads-club/agent-skills --skill ${skillName} -a cursor`;
+    const command = `npx @tech-leads-club/agent-skills install -s ${skillName} -a cursor`;
     
     await vscode.env.clipboard.writeText(command);
     
@@ -150,7 +150,7 @@ export class RecommendationsBrowserPanel {
   }
 
   private async openInTerminal(skillName: string): Promise<void> {
-    const command = `npx @tech-leads-club/agent-skills --skill ${skillName} -a cursor`;
+    const command = `npx @tech-leads-club/agent-skills install -s ${skillName} -a cursor`;
     
     // Copy to clipboard first
     await vscode.env.clipboard.writeText(command);
