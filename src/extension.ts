@@ -22,7 +22,7 @@ import { EnvironmentManager } from './environmentManager';
 import { HttpVariableHoverProvider, HttpEnvironmentCompletionProvider, HttpEnvironmentDecorationProvider } from './httpEnvironmentProviders';
 import { minifyFile, formatMinificationStats, detectFileType } from './minifier';
 import { trimClipboardAuto, trimClipboardWithPrompt } from './clipboardProcessor';
-import { refineSelectedText, refineClipboard, processWithPrompt, configureGeminiApiKey, removeGeminiApiKey } from './textRefiner';
+import { refineSelectedText, refineClipboard, refineAndGetText, processWithPrompt, configureGeminiApiKey, removeGeminiApiKey } from './textRefiner';
 import { GistManager } from './gistManager';
 import { RecommendationsManager } from './recommendationsManager';
 import { RecommendationsBrowserPanel } from './recommendationsBrowserPanel';
@@ -3665,6 +3665,22 @@ Detailed instructions for the agent.
     }
   );
 
+  // Command to refine text (selection or clipboard) and send result to chat (same inject+submit as remote chat)
+  const refineAndSendToChatCommand = vscode.commands.registerCommand(
+    'cursor-toys.refineAndSendToChat',
+    async () => {
+      const refined = await refineAndGetText(context);
+      if (refined) {
+        const sent = await injectTextToChat(refined);
+        if (sent) {
+          vscode.window.showInformationMessage('Refined text sent to chat.');
+        } else {
+          vscode.window.showWarningMessage('Chat opened but message may not have been sent. Paste and press Enter if needed.');
+        }
+      }
+    }
+  );
+
   // Command to process text with a prompt
   const processWithPromptCommand = vscode.commands.registerCommand(
     'cursor-toys.processWithPrompt',
@@ -4326,6 +4342,7 @@ Detailed instructions for the agent.
     trimClipboardWithPromptCommand,
     refineSelectionWithAICommand,
     refineClipboardWithAICommand,
+    refineAndSendToChatCommand,
     processWithPromptCommand,
     configureGeminiApiKeyCommand,
     removeGeminiApiKeyCommand,

@@ -165,6 +165,89 @@ export async function refineSelectedText(context: vscode.ExtensionContext): Prom
 }
 
 /**
+ * Refines text from selection or clipboard and returns the refined text (no editor/clipboard write).
+ * Use this when the result will be sent elsewhere (e.g. to chat).
+ * @param context Extension context (for API key)
+ * @returns Refined text, or null if no input, user cancelled, or error
+ */
+export async function refineAndGetText(context: vscode.ExtensionContext): Promise<string | null> {
+  try {
+    let textToRefine: string | null = null;
+
+    const editor = vscode.window.activeTextEditor;
+    if (editor && !editor.selection.isEmpty) {
+      const selectedText = editor.document.getText(editor.selection);
+      if (selectedText && selectedText.trim().length > 0) {
+        textToRefine = selectedText;
+      }
+    }
+
+    if (!textToRefine) {
+      const clipboardContent = await readClipboard();
+      if (clipboardContent && clipboardContent.trim().length > 0) {
+        textToRefine = clipboardContent;
+      }
+    }
+
+    if (!textToRefine) {
+      vscode.window.showWarningMessage(
+        'No text selected and clipboard is empty. Select text or copy something first.'
+      );
+      return null;
+    }
+
+    let apiKey = await getGeminiApiKey(context);
+    if (!apiKey) {
+      const configure = await vscode.window.showWarningMessage(
+        'Gemini API key not configured. Would you like to configure it now?',
+        'Yes',
+        'No'
+      );
+      if (configure === 'Yes') {
+        await configureGeminiApiKey(context);
+        apiKey = await getGeminiApiKey(context);
+        if (!apiKey) {
+          return null;
+        }
+      } else {
+        return null;
+      }
+    }
+
+    const config = getGeminiConfig();
+
+    const refinedText = await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: 'Refining text for chat...',
+        cancellable: false
+      },
+      async () => {
+        try {
+          return await callGeminiApi(textToRefine!, {
+            apiKey: apiKey!,
+            model: config.model,
+            prompt: config.prompt,
+            timeout: config.timeout
+          });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          vscode.window.showErrorMessage(`Failed to refine text: ${errorMessage}`);
+          return null;
+        }
+      }
+    );
+
+    return refinedText ?? null;
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      `Error refining text: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return null;
+  }
+}
+
+/**
  * Refines clipboard content using AI
  */
 export async function refineClipboard(context: vscode.ExtensionContext): Promise<void> {

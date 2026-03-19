@@ -75,6 +75,7 @@
     "onCommand:cursor-toys.trimClipboardWithPrompt",
     "onCommand:cursor-toys.refineSelectionWithAI",
     "onCommand:cursor-toys.refineClipboardWithAI",
+    "onCommand:cursor-toys.refineAndSendToChat",
     "onCommand:cursor-toys.processWithPrompt",
     "onCommand:cursor-toys.configureGeminiApiKey",
     "onCommand:cursor-toys.removeGeminiApiKey",
@@ -499,6 +500,11 @@
         "command": "cursor-toys.refineClipboardWithAI",
         "title": "CursorToys: Refine Clipboard with AI",
         "icon": "$(sparkle)"
+      },
+      {
+        "command": "cursor-toys.refineAndSendToChat",
+        "title": "CursorToys: Refine and Send to Chat",
+        "icon": "$(comment-discussion)"
       },
       {
         "command": "cursor-toys.processWithPrompt",
@@ -1116,6 +1122,10 @@
           "when": "editorHasSelection"
         },
         {
+          "command": "cursor-toys.refineAndSendToChat",
+          "when": "editorHasSelection"
+        },
+        {
           "command": "cursor-toys.processWithPrompt",
           "when": "editorHasSelection"
         }
@@ -1150,6 +1160,10 @@
         },
         {
           "command": "cursor-toys.refineClipboardWithAI",
+          "when": "true"
+        },
+        {
+          "command": "cursor-toys.refineAndSendToChat",
           "when": "true"
         },
         {
