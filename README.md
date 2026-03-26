@@ -352,6 +352,10 @@ Click the "Send Request" link that appears above → See formatted response!
 
 ## ✨ What's New
 
+**Version 1.13.1 (March 2026)**
+
+- **Skills tree — Share as CursorToys** — From the Explorer **Skills** view, you can share a skill as a CursorToys bundle for **personal** and **workspace** skills, and from **SKILL.md** rows. The command resolves the correct file path when launched from the tree.
+
 **Version 1.13.0 (March 2026)**
 
 - **Cursor Remote (Telegram)** — Bidirectional bridge: send chat summaries to Telegram and control Cursor from Telegram (`/new`, `/start`, `/end`). Token and chat ID per project via VS Code Secrets; status bar menu. See [Cursor Remote – How to configure and test](#how-to-configure-and-test). To get your bot token and chat ID (private chat, channel, group, or topic), see [How to get Telegram Bot Chat ID](https://gist.github.com/nafiesl/4ad622f344cd1dc3bb1ecbe468ff9f8a).

@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "1.13.0",
+  "version": "1.13.1",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -52,6 +52,7 @@
     "onCommand:cursor-toys.generate-prompt",
     "onCommand:cursor-toys.generate-skill",
     "onCommand:cursor-toys.createSkill",
+    "onCommand:cursor-toys.addSkillRemote",
     "onCommand:cursor-toys.shareAsCursorToysCommand",
     "onCommand:cursor-toys.shareAsCursorToysRule",
     "onCommand:cursor-toys.shareAsCursorToysPrompt",
@@ -89,6 +90,7 @@
     "onCommand:cursor-toys.remote.sendLastSummary",
     "onCommand:cursor-toys.remote.configure",
     "onCommand:cursor-toys.remote.openFolder",
+    "onCommand:cursorToys.command",
     "onCommand:cursorInject.send"
   ],
   "main": "./out/extension.js",
@@ -295,6 +297,11 @@
         "command": "cursor-toys.createSkill",
         "title": "CursorToys: Create Skill",
         "icon": "$(add)"
+      },
+      {
+        "command": "cursor-toys.addSkillRemote",
+        "title": "CursorToys: Add Skill Remote",
+        "icon": "$(repo-clone)"
       },
       {
         "command": "cursor-toys.createNotepad",
@@ -615,6 +622,10 @@
       {
         "command": "cursorInject.send",
         "title": "Inject text into Cursor Chat"
+      },
+      {
+        "command": "cursorToys.command",
+        "title": "CursorToys: Internal Command Router"
       }
     ],
     "submenus": [
@@ -712,6 +723,11 @@
         },
         {
           "command": "cursor-toys.createSkill",
+          "when": "view == cursor-toys.userSkills",
+          "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.addSkillRemote",
           "when": "view == cursor-toys.userSkills",
           "group": "navigation"
         },
@@ -865,6 +881,16 @@
         {
           "command": "cursor-toys.shareAsCursorToysSkill",
           "when": "view == cursor-toys.userSkills && viewItem == userSkillFolder",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareAsCursorToysSkill",
+          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolderPersonal",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareAsCursorToysSkill",
+          "when": "view == cursor-toys.userSkills && viewItem == userSkillFile",
           "group": "1_actions"
         },
         {

@@ -4,6 +4,12 @@
 
 The Guide’s entry for version 1.13.0 notes that "the existence of a modern developer is a constant battle between two fundamental forces: the need for external validation and the paralyzing fear of depleting your AI quota before lunch." This update provides tools to handle both.
 
+## v1.13.1 — Share Skills Without Leaving the Tree
+
+### Fixed
+
+- **Skills Explorer — Share as CursorToys**: **CursorToys: Share as CursorToys (Skill)** is now available from the **Skills** sidebar for **personal** skills (`~/.cursor` / `~/.claude`), **workspace** skills, and when right-clicking **SKILL.md** (not only the skill folder row). The shareable generator receives the correct `SKILL.md` path when the command is invoked from tree items (`SkillFileItem`), not only from editor URIs.
+
 ## v1.13.0 — The Guide to Distant Conversations and Depleted Budgets
 
 ### Added

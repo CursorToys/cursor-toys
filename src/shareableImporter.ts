@@ -1221,7 +1221,7 @@ function getDestinationPath(
  * @param skillPath Path where the skill folder should be created
  * @param files Array of files with relative paths and contents
  */
-async function createSkillFromStructure(
+export async function createSkillFromStructure(
   skillPath: string,
   files: Array<{ path: string; content: string }>
 ): Promise<void> {

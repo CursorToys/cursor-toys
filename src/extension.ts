@@ -2,8 +2,9 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { generateDeeplink } from './deeplinkGenerator';
 import { importDeeplink } from './deeplinkImporter';
+import { importRemoteSkillFromGitHubFolderUrl, validateGitHubSkillFolderUrl } from './skillRemoteImporter';
 import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForEnvFolder, generateShareableForHttpFolderWithEnv, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
-import { importShareable, importFromGist } from './shareableImporter';
+import { importShareable, importFromGist, createSkillFromStructure } from './shareableImporter';
 import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
@@ -89,14 +90,23 @@ async function generateDeeplinkWithValidation(
  * Helper function to generate shareable with validations
  */
 async function generateShareableWithValidation(
-  uri: vscode.Uri | undefined,
+  uri: vscode.Uri | SkillFileItem | undefined,
   forcedType?: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'plan' | 'skill'
 ): Promise<void> {
   // If no URI, try to get from active editor
   let filePath: string;
   
   if (uri) {
-    filePath = uri.fsPath;
+    if (uri instanceof vscode.Uri) {
+      filePath = uri.fsPath;
+    } else {
+      // TreeView items can pass a folder (skill) or a file item.
+      if (forcedType === 'skill' && uri.type === 'folder') {
+        filePath = path.join(uri.filePath, 'SKILL.md');
+      } else {
+        filePath = uri.filePath;
+      }
+    }
   } else {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
@@ -341,6 +351,11 @@ export function activate(context: vscode.ExtensionContext) {
           detail: 'Skills'
         },
         {
+          label: '$(repo-clone) Add Skill Remote',
+          description: 'Import a skill from a remote GitHub folder URL',
+          detail: 'Skills'
+        },
+        {
           label: '$(file-zip) Minify File',
           description: 'Minify current file (JSON, HTML, CSS, JS, etc)',
           detail: 'Tools'
@@ -381,6 +396,7 @@ export function activate(context: vscode.ExtensionContext) {
         'Install MCPB': 'cursor-toys.installMcpb',
         'New Notepad': 'cursor-toys.createNotepad',
         'Create Skill': 'cursor-toys.createSkill',
+        'Add Skill Remote': 'cursor-toys.addSkillRemote',
         'Minify File': 'cursor-toys.minifyFile',
         'Trim Clipboard': 'cursor-toys.trimClipboard',
         'Refresh spending usage': 'cursor-toys.spending.refresh',
@@ -391,6 +407,29 @@ export function activate(context: vscode.ExtensionContext) {
       if (commandId) {
         await vscode.commands.executeCommand(commandId);
       }
+    })
+  );
+
+  // Compatibility router for command-style invocations like: cursorToys.command addskillremote
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursorToys.command', async (action?: string) => {
+      const normalized = (action || '').trim().toLowerCase();
+      const commandMap: Record<string, string> = {
+        addskillremote: 'cursor-toys.addSkillRemote',
+        'add-skill-remote': 'cursor-toys.addSkillRemote',
+        createskill: 'cursor-toys.createSkill',
+        'create-skill': 'cursor-toys.createSkill',
+        showmenu: 'cursor-toys.showMenu',
+        'show-menu': 'cursor-toys.showMenu'
+      };
+
+      const commandId = commandMap[normalized];
+      if (!commandId) {
+        vscode.window.showErrorMessage(`CursorToys command not found: ${action || '(empty)'}`);
+        return;
+      }
+
+      await vscode.commands.executeCommand(commandId);
     })
   );
   
@@ -2309,6 +2348,101 @@ Detailed instructions for the agent.
         await vscode.window.showTextDocument(document);
       } catch (error) {
         vscode.window.showErrorMessage(`Error creating skill: ${error}`);
+      }
+    }
+  );
+
+  // Command to add skill from remote GitHub folder URL
+  const addSkillRemoteCommand = vscode.commands.registerCommand(
+    'cursor-toys.addSkillRemote',
+    async () => {
+      const remoteUrl = await vscode.window.showInputBox({
+        prompt: 'Enter GitHub folder URL containing SKILL.md',
+        placeHolder: 'https://github.com/owner/repo/tree/main/path/to/skill-folder',
+        validateInput: (value) => validateGitHubSkillFolderUrl(value)
+      });
+
+      if (!remoteUrl) {
+        return;
+      }
+
+      try {
+        const skill = await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: 'Importing remote skill...',
+            cancellable: false
+          },
+          async () => importRemoteSkillFromGitHubFolderUrl(remoteUrl.trim())
+        );
+
+        const location = await vscode.window.showQuickPick(
+          [
+            {
+              label: 'Personal skill',
+              description: 'Available in all projects (~/.cursor/skills)',
+              value: true
+            },
+            {
+              label: 'Project skill',
+              description: 'Specific to this workspace',
+              value: false
+            }
+          ],
+          { placeHolder: 'Where do you want to save this skill?' }
+        );
+
+        if (location === undefined) {
+          return;
+        }
+
+        const isPersonal = location.value;
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder && !isPersonal) {
+          vscode.window.showErrorMessage('No workspace open');
+          return;
+        }
+
+        const workspacePath = workspaceFolder?.uri.fsPath || '';
+        const skillsPath = getSkillsPath(workspacePath, isPersonal);
+        const skillFolderName = sanitizeFileName(skill.skillName);
+        const destinationSkillPath = path.join(skillsPath, skillFolderName);
+        const destinationSkillUri = vscode.Uri.file(destinationSkillPath);
+
+        let exists = false;
+        try {
+          await vscode.workspace.fs.stat(destinationSkillUri);
+          exists = true;
+        } catch {
+          // Destination does not exist yet.
+        }
+
+        if (exists) {
+          const overwrite = await vscode.window.showWarningMessage(
+            `Skill "${skillFolderName}" already exists. Do you want to overwrite it?`,
+            'Yes',
+            'No'
+          );
+          if (overwrite !== 'Yes') {
+            return;
+          }
+
+          await vscode.workspace.fs.delete(destinationSkillUri, { recursive: true, useTrash: false });
+        }
+
+        await createSkillFromStructure(destinationSkillPath, skill.files);
+
+        const skillFileUri = vscode.Uri.file(path.join(destinationSkillPath, 'SKILL.md'));
+        const document = await vscode.workspace.openTextDocument(skillFileUri);
+        await vscode.window.showTextDocument(document);
+
+        vscode.window.showInformationMessage(
+          `Skill "${skillFolderName}" imported successfully with ${skill.files.length} file(s)!`
+        );
+        userSkillsTreeProvider.refresh();
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        vscode.window.showErrorMessage(`Error importing remote skill: ${errorMessage}`);
       }
     }
   );
@@ -4309,6 +4443,7 @@ Detailed instructions for the agent.
     renameSkill,
     refreshSkills,
     createSkillCommand,
+    addSkillRemoteCommand,
     skillsWatcher,
     claudeSkillsWatcher,
     userHooksTreeView,
