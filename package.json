@@ -894,6 +894,41 @@
           "group": "1_actions"
         },
         {
+          "command": "cursor-toys.shareViaGist",
+          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolder",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareViaGist",
+          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolderPersonal",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareViaGist",
+          "when": "view == cursor-toys.userSkills && viewItem == userSkillFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareFolderViaGist",
+          "when": "view == cursor-toys.userSkills && viewItem == skillCategoryWorkspace",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareFolderViaGist",
+          "when": "view == cursor-toys.userSkills && viewItem == skillCategoryPersonal",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareFolderViaGist",
+          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolder",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareFolderViaGist",
+          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolderPersonal",
+          "group": "1_actions"
+        },
+        {
           "command": "cursor-toys.save-as-user-skill",
           "when": "view == cursor-toys.userSkills && viewItem == userSkillFolder && viewItem != userSkillFolderPersonal",
           "group": "1_actions"

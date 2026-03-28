@@ -154,6 +154,37 @@ export function getCursorMcpJsonPath(): string {
 }
 
 /**
+ * Resolves the workspace folder that should receive a project MCP config.
+ * - If there is no workspace open, returns null.
+ * - If multiple workspace folders are open, prompts the user to pick one.
+ */
+async function pickWorkspaceFolderForMcpConfig(): Promise<vscode.WorkspaceFolder | null> {
+  const folders = vscode.workspace.workspaceFolders;
+  if (!folders || folders.length === 0) return null;
+  if (folders.length === 1) return folders[0];
+
+  const picked = await vscode.window.showQuickPick(
+    folders.map((f) => ({
+      label: f.name,
+      description: f.uri.fsPath,
+      folder: f
+    })),
+    { title: 'Select Workspace Folder', placeHolder: 'Choose where to write .cursor/mcp.json' }
+  );
+  return picked?.folder ?? null;
+}
+
+/**
+ * Returns the path to the workspace MCP config file ({workspace}/.cursor/mcp.json).
+ * Prompts for workspace folder if multi-root.
+ */
+async function getWorkspaceCursorMcpJsonPath(): Promise<string | null> {
+  const folder = await pickWorkspaceFolderForMcpConfig();
+  if (!folder) return null;
+  return path.join(folder.uri.fsPath, '.cursor', 'mcp.json');
+}
+
+/**
  * Sanitizes a string for use as MCP server ID (JSON key): only letters, numbers, hyphens, underscores.
  */
 function sanitizeServerId(name: string): string {
@@ -404,7 +435,13 @@ export async function installMcpbPackage(mcpbFilePath?: string): Promise<boolean
 
   const finalServerConfig = result.serverConfig;
 
-  const mcpJsonPath = getCursorMcpJsonPath();
+  const installTargetLabel = result.installTarget === 'workspace' ? 'workspace' : 'global';
+  const mcpJsonPath =
+    result.installTarget === 'workspace' ? await getWorkspaceCursorMcpJsonPath() : getCursorMcpJsonPath();
+  if (!mcpJsonPath) {
+    vscode.window.showErrorMessage('No workspace folder is open. Open a folder/workspace to install MCP config in the workspace.');
+    return false;
+  }
   const cursorDir = path.dirname(mcpJsonPath);
 
   let mcpData: CursorMcpJson;
@@ -438,7 +475,7 @@ export async function installMcpbPackage(mcpbFilePath?: string): Promise<boolean
 
   const action = wasExisting ? 'updated' : 'added';
   vscode.window.showInformationMessage(
-    `MCP server "${manifest.name}" ${action} in Cursor config. You may need to restart Cursor for the server to load.`
+    `MCP server "${manifest.name}" ${action} in ${installTargetLabel} MCP config (${mcpJsonPath}). You may need to restart Cursor for the server to load.`
   );
   return true;
 }

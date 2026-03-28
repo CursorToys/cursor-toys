@@ -9,14 +9,13 @@ version: 1.6.0
 CursorToys is a VS Code/Cursor extension that transforms Cursor AI into a collaborative productivity powerhouse. It provides utilities for sharing AI configurations, testing APIs, managing personal libraries, and enhancing team collaboration.
 
 - [CursorToys GitHub](https://github.com/CursorToys/cursor-toys)
-- [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Godrix.cursor-toys)
 - [Open VSX Registry](https://open-vsx.org/extension/godrix/cursor-toys)
 
 ## Installation
 
-### VS Code Marketplace (Recommended)
+### Open VSX (Recommended)
 1. Open Extensions (`Cmd+Shift+X` / `Ctrl+Shift+X`)
-2. Search for **"Cursor Command Toys"**
+2. Search for **"Cursor Command Toys"**, or open the [Open VSX listing](https://open-vsx.org/extension/godrix/cursor-toys)
 3. Click Install
 
 ### Manual Installation via VSIX

@@ -18,7 +18,7 @@ export interface McpbPreviewData {
 
 /** Result of the preview: either confirmed with (possibly edited) serverConfig or cancelled. */
 export type McpbPreviewResult =
-  | { confirmed: true; serverConfig: McpbPreviewData['serverConfig'] }
+  | { confirmed: true; serverConfig: McpbPreviewData['serverConfig']; installTarget: 'global' | 'workspace' }
   | { confirmed: false };
 
 /**
@@ -47,13 +47,15 @@ export function showMcpbInstallPreview(data: McpbPreviewData): Promise<McpbPrevi
       resolveOnce({ confirmed: false });
     });
 
-    panel.webview.onDidReceiveMessage((msg: { command: string; serverConfig?: McpbPreviewData['serverConfig'] }) => {
-      if (msg.command === 'confirm' && msg.serverConfig) {
-        resolveOnce({ confirmed: true, serverConfig: msg.serverConfig });
+    panel.webview.onDidReceiveMessage(
+      (msg: { command: string; serverConfig?: McpbPreviewData['serverConfig']; installTarget?: 'global' | 'workspace' }) => {
+        if (msg.command === 'confirm' && msg.serverConfig && msg.installTarget) {
+          resolveOnce({ confirmed: true, serverConfig: msg.serverConfig, installTarget: msg.installTarget });
       } else if (msg.command === 'cancel') {
         resolveOnce({ confirmed: false });
       }
-    });
+      }
+    );
 
     const dataJson = JSON.stringify(data)
       .replace(/</g, '\\u003c')
@@ -186,11 +188,49 @@ function getWebviewHtml(dataJson: string): string {
       color: var(--vscode-descriptionForeground);
       margin-top: 16px;
     }
+    .select-row {
+      margin: 8px 0 0 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .select-row label {
+      font-weight: 600;
+      color: var(--vscode-descriptionForeground);
+      min-width: 120px;
+      font-size: 12px;
+    }
+    .select-row select {
+      min-width: 240px;
+      font-family: var(--vscode-font-family);
+      font-size: 12px;
+      padding: 6px 8px;
+      background-color: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border: 1px solid var(--vscode-input-border);
+      border-radius: 4px;
+    }
+    .select-row select:focus {
+      outline: 1px solid var(--vscode-focusBorder);
+    }
   </style>
 </head>
 <body>
   <h1>Review MCP server configuration</h1>
-  <p class="hint">The following will be added to your Cursor MCP config (<code>~/.cursor/mcp.json</code>). Review and confirm to proceed.</p>
+  <p class="hint" id="installHint">The following will be added to your Cursor MCP config (<code>~/.cursor/mcp.json</code>). Review and confirm to proceed.</p>
+
+  <div class="section">
+    <h2>Install target</h2>
+    <div class="select-row">
+      <label for="installTarget">Write config to</label>
+      <select id="installTarget">
+        <option value="global">Global (~/.cursor/mcp.json)</option>
+        <option value="workspace">Workspace (.cursor/mcp.json)</option>
+      </select>
+    </div>
+    <p class="hint" style="margin-top:10px;">The MCPB package itself remains installed in <code>~/.mcpb</code>.</p>
+  </div>
 
   <div id="content"></div>
 
@@ -203,6 +243,9 @@ function getWebviewHtml(dataJson: string): string {
   <script>
     const data = JSON.parse(document.getElementById('preview-data').textContent);
     const content = document.getElementById('content');
+    const installTargetSelect = document.getElementById('installTarget');
+    const installHint = document.getElementById('installHint');
+    const btnConfirm = document.getElementById('btnConfirm');
 
     function escapeHtml(s) {
       if (s == null) return '';
@@ -247,7 +290,26 @@ function getWebviewHtml(dataJson: string): string {
     content.innerHTML = html;
 
     const vscode = acquireVsCodeApi();
-    document.getElementById('btnConfirm').addEventListener('click', function() {
+    function updateInstallTargetUi() {
+      const target = (installTargetSelect && installTargetSelect.value) ? installTargetSelect.value : 'global';
+      if (installHint) {
+        if (target === 'workspace') {
+          installHint.innerHTML = 'The following will be added to your workspace MCP config (<code>.cursor/mcp.json</code>). Review and confirm to proceed.';
+        } else {
+          installHint.innerHTML = 'The following will be added to your Cursor MCP config (<code>~/.cursor/mcp.json</code>). Review and confirm to proceed.';
+        }
+      }
+      if (btnConfirm) {
+        btnConfirm.textContent = target === 'workspace' ? 'Add to Workspace MCP' : 'Add to Cursor MCP';
+      }
+    }
+
+    if (installTargetSelect) {
+      installTargetSelect.addEventListener('change', updateInstallTargetUi);
+    }
+    updateInstallTargetUi();
+
+    btnConfirm.addEventListener('click', function() {
       var serverConfig = {
         command: data.serverConfig.command,
         args: data.serverConfig.args || undefined,
@@ -260,7 +322,9 @@ function getWebviewHtml(dataJson: string): string {
         if (k) serverConfig.env[k] = inp.value;
       }
       if (Object.keys(serverConfig.env).length === 0) serverConfig.env = undefined;
-      vscode.postMessage({ command: 'confirm', serverConfig: serverConfig });
+      var installTarget = (installTargetSelect && installTargetSelect.value) ? installTargetSelect.value : 'global';
+      if (installTarget !== 'workspace') installTarget = 'global';
+      vscode.postMessage({ command: 'confirm', serverConfig: serverConfig, installTarget: installTarget });
     });
     document.getElementById('btnCancel').addEventListener('click', function() {
       vscode.postMessage({ command: 'cancel' });

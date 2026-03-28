@@ -3842,13 +3842,29 @@ Detailed instructions for the agent.
   // Command to share file via GitHub Gist
   const shareViaGistCommand = vscode.commands.registerCommand(
     'cursor-toys.shareViaGist',
-    async (uri?: vscode.Uri) => {
+    async (arg?: vscode.Uri | SkillFileItem | CommandFileItem | PromptFileItem | PlanFileItem | NotepadFileItem) => {
       try {
-        let filePath: string;
-        
-        if (uri) {
-          filePath = uri.fsPath;
-        } else {
+        let filePath: string | undefined;
+
+        if (arg instanceof vscode.Uri) {
+          filePath = arg.fsPath;
+        } else if (arg && typeof arg === 'object' && 'filePath' in arg) {
+          const fp = (arg as { filePath: string }).filePath.replace(/\\/g, '/');
+          const isSkillsTreeItem =
+            fp.includes('/skills/') ||
+            fp.endsWith('/SKILL.md') ||
+            (arg as SkillFileItem).fileName === 'SKILL.md';
+          if (isSkillsTreeItem && 'type' in arg) {
+            const skillUri = getSkillUriFromArgument(arg as SkillFileItem);
+            filePath = skillUri?.fsPath;
+          } else if ('uri' in arg && (arg as { uri?: vscode.Uri }).uri instanceof vscode.Uri) {
+            filePath = (arg as { uri: vscode.Uri }).uri.fsPath;
+          } else if (path.isAbsolute((arg as { filePath: string }).filePath)) {
+            filePath = (arg as { filePath: string }).filePath;
+          }
+        }
+
+        if (!filePath) {
           const editor = vscode.window.activeTextEditor;
           if (!editor) {
             vscode.window.showErrorMessage('No file selected');
@@ -3860,7 +3876,9 @@ Detailed instructions for the agent.
         // Detect file type
         const fileType = getFileTypeFromPath(filePath);
         if (!fileType) {
-          vscode.window.showErrorMessage('File must be in commands/, rules/, prompts/, notepads/, http/ or http/environments/ folder');
+          vscode.window.showErrorMessage(
+            'File must be in commands/, rules/, prompts/, notepads/, plans/, skills/, http/ or http/environments/ folder'
+          );
           return;
         }
 
@@ -3884,7 +3902,7 @@ Detailed instructions for the agent.
     async (arg?: CommandFileItem | PromptFileItem | PlanFileItem | SkillFileItem | NotepadFileItem | vscode.Uri) => {
       try {
         let folderPath: string;
-        let bundleType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'project' | 'plan' | null = null;
+        let bundleType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'project' | 'plan' | 'skill' | null = null;
 
         if (!arg) {
           vscode.window.showErrorMessage('Please select a folder');
@@ -3893,17 +3911,31 @@ Detailed instructions for the agent.
 
         // Handle tree view items (CommandFileItem, PromptFileItem, etc.)
         if ('type' in arg && (arg.type === 'category' || arg.type === 'folder')) {
-          // Determine bundle type and folder path based on the tree view
-          if ('fileName' in arg && arg.fileName.includes('workspace')) {
+          const skillArg = arg as SkillFileItem;
+          if (skillArg.type === 'category' && skillArg.skillsRootCategory) {
+            bundleType = 'skill';
+            folderPath = skillArg.isPersonal
+              ? getPersonalSkillsPaths()[0]
+              : skillArg.filePath;
+            if (!folderPath) {
+              vscode.window.showErrorMessage('Unable to resolve skills folder path');
+              return;
+            }
+          } else if ('fileName' in arg && arg.fileName.includes('workspace')) {
             // Workspace category
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
             if (!workspaceFolder) {
               vscode.window.showErrorMessage('No workspace folder found');
               return;
             }
-            
-            // Detect bundle type based on tree view context
-            if ('uri' in arg && arg.uri.fsPath.includes('/commands')) {
+
+            if (
+              typeof skillArg.filePath === 'string' &&
+              skillArg.filePath.replace(/\\/g, '/').includes('/skills')
+            ) {
+              bundleType = 'skill';
+              folderPath = skillArg.filePath;
+            } else if ('uri' in arg && arg.uri.fsPath.includes('/commands')) {
               bundleType = 'command';
               folderPath = getCommandsPath(workspaceFolder.uri.fsPath, false);
             } else if ('uri' in arg && arg.uri.fsPath.includes('/prompts')) {
@@ -3912,10 +3944,6 @@ Detailed instructions for the agent.
             } else if ('uri' in arg && arg.uri.fsPath.includes('/plans')) {
               bundleType = 'plan';
               folderPath = getPlansPath(workspaceFolder.uri.fsPath, false);
-            } else if ('uri' in arg && arg.uri.fsPath.includes('/skills')) {
-              // Skills don't have gist bundles yet, fallback
-              vscode.window.showErrorMessage('Skill bundles via Gist not yet supported');
-              return;
             } else {
               folderPath = workspaceFolder.uri.fsPath;
             }
@@ -3933,9 +3961,6 @@ Detailed instructions for the agent.
               bundleType = 'plan';
               const personalPaths = getPersonalPlansPaths();
               folderPath = personalPaths[0];
-            } else if ('fileName' in arg && arg.fileName.includes('Skills')) {
-              vscode.window.showErrorMessage('Skill bundles via Gist not yet supported');
-              return;
             } else {
               vscode.window.showErrorMessage('Unable to determine folder type');
               return;
@@ -3943,9 +3968,12 @@ Detailed instructions for the agent.
           } else {
             // Folder item
             folderPath = arg.filePath;
-            
+
             // Detect type from path
-            if (folderPath.includes('/commands')) {
+            const normalizedFolder = folderPath.replace(/\\/g, '/');
+            if (normalizedFolder.includes('/skills/')) {
+              bundleType = 'skill';
+            } else if (folderPath.includes('/commands')) {
               bundleType = 'command';
             } else if (folderPath.includes('/prompts')) {
               bundleType = 'prompt';
@@ -3979,6 +4007,8 @@ Detailed instructions for the agent.
             bundleType = 'http';
           } else if (folderName === 'plans' || folderPath.includes('/plans')) {
             bundleType = 'plan';
+          } else if (folderName === 'skills' || folderPath.replace(/\\/g, '/').includes('/skills/')) {
+            bundleType = 'skill';
           } else if (folderName === '.cursor' || folderName === '.vscode' || folderPath.endsWith('/.cursor') || folderPath.endsWith('/.vscode')) {
             bundleType = 'project';
           }
@@ -3997,7 +4027,8 @@ Detailed instructions for the agent.
               { label: 'Notepads Bundle', value: 'notepad' as const },
               { label: 'Plans Bundle', value: 'plan' as const },
               { label: 'HTTP Bundle', value: 'http' as const },
-              { label: 'Project Bundle', value: 'project' as const }
+              { label: 'Project Bundle', value: 'project' as const },
+              { label: 'Skills Bundle', value: 'skill' as const }
             ],
             {
               placeHolder: 'Select bundle type'

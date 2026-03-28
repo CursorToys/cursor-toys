@@ -17,6 +17,8 @@ export interface SkillFileItem {
   type: SkillTreeItemType;
   folderPath?: string; // Relative folder path for grouping
   isPersonal?: boolean; // Whether this is from personal folder
+  /** True only for Personal/Workspace root rows in the Skills Explorer view */
+  skillsRootCategory?: boolean;
   children?: SkillFileItem[]; // Children for folder/category items
 }
 
@@ -49,7 +51,7 @@ export class UserSkillsTreeProvider implements vscode.TreeDataProvider<SkillFile
         vscode.TreeItemCollapsibleState.Expanded
       );
       treeItem.iconPath = new vscode.ThemeIcon('folder');
-      treeItem.contextValue = 'skillCategory';
+      treeItem.contextValue = element.isPersonal ? 'skillCategoryPersonal' : 'skillCategoryWorkspace';
       return treeItem;
     } else if (element.type === 'folder') {
       // Skill folder item
@@ -254,6 +256,7 @@ export class UserSkillsTreeProvider implements vscode.TreeDataProvider<SkillFile
         filePath: '',
         type: 'category',
         isPersonal: true,
+        skillsRootCategory: true,
         children: groupedPersonalSkills
       });
     }
@@ -296,6 +299,7 @@ export class UserSkillsTreeProvider implements vscode.TreeDataProvider<SkillFile
           filePath: workspaceSkillsPath,
           type: 'category',
           isPersonal: false,
+          skillsRootCategory: true,
           children: groupedItems
         });
       } catch {

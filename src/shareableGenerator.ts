@@ -37,7 +37,9 @@ export async function generateShareable(
     } else {
       fileType = getFileTypeFromPath(filePath);
       if (!fileType) {
-        vscode.window.showErrorMessage('File must be in commands/, rules/, prompts/, notepads/, plans/, http/ or http/environments/ folder');
+        vscode.window.showErrorMessage(
+          'File must be in commands/, rules/, prompts/, notepads/, plans/, skills/, http/ or http/environments/ folder'
+        );
         return null;
       }
     }
@@ -1418,7 +1420,9 @@ export async function generateGistShareable(
     } else {
       fileType = getFileTypeFromPath(filePath);
       if (!fileType) {
-        vscode.window.showErrorMessage('File must be in commands/, rules/, prompts/, notepads/, plans/, http/ or http/environments/ folder');
+        vscode.window.showErrorMessage(
+          'File must be in commands/, rules/, prompts/, notepads/, plans/, skills/, http/ or http/environments/ folder'
+        );
         return null;
       }
     }
@@ -1443,6 +1447,12 @@ export async function generateGistShareable(
         vscode.window.showErrorMessage('Plan files must have .plan.md extension');
         return null;
       }
+    } else if (fileType === 'skill') {
+      const base = path.basename(filePath);
+      if (base !== 'SKILL.md') {
+        vscode.window.showErrorMessage('Skill Gist must be created from SKILL.md or a skill folder');
+        return null;
+      }
     } else {
       // For command, rule, prompt, notepad - validate extension
       if (!isAllowedExtension(filePath, allowedExtensions)) {
@@ -1453,19 +1463,45 @@ export async function generateGistShareable(
       }
     }
 
-    // Read file content
+    // Build metadata (fileType cannot be null here)
+    if (!fileType) {
+      vscode.window.showErrorMessage('Unable to determine file type');
+      return null;
+    }
+
+    // Skills: include every file under the skill folder (not only SKILL.md)
+    if (fileType === 'skill') {
+      const skillFolderPath = path.dirname(filePath);
+      const skillName = path.basename(skillFolderPath);
+      const skillFiles = await collectSkillFiles(skillFolderPath);
+      if (skillFiles.length === 0) {
+        vscode.window.showErrorMessage('No files found in skill folder');
+        return null;
+      }
+
+      const gistFiles: { [filename: string]: { content: string } } = {};
+      const fileMetadata: Array<{ name: string; type: string; size: number }> = [];
+      for (const sf of skillFiles) {
+        const key = `${skillName}/${sf.path}`.replace(/\\/g, '/');
+        gistFiles[key] = { content: sf.content };
+        fileMetadata.push({ name: key, type: 'skill', size: sf.content.length });
+      }
+
+      const metadata = gistManager.buildMetadata('skill', fileMetadata);
+      const description = gistManager.buildGistDescription('skill', skillName);
+      gistFiles['.cursortoys-metadata.json'] = { content: JSON.stringify(metadata, null, 2) };
+
+      vscode.window.showInformationMessage('Creating Gist...');
+      return await gistManager.createGist(gistFiles, description, isPublic);
+    }
+
+    // Read file content (non-skill types)
     const document = await vscode.workspace.openTextDocument(uri);
     const content = document.getText();
 
     // Get file name with extension
     const fileName = path.basename(filePath);
     const fileNameWithoutExt = path.parse(filePath).name;
-
-    // Build metadata (fileType cannot be null here)
-    if (!fileType) {
-      vscode.window.showErrorMessage('Unable to determine file type');
-      return null;
-    }
 
     const metadata = gistManager.buildMetadata(
       fileType,
@@ -1503,7 +1539,7 @@ export async function generateGistShareable(
  * @returns Gist URL or null if failed
  */
 export async function generateGistShareableForBundle(
-  bundleType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'project' | 'plan',
+  bundleType: 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'project' | 'plan' | 'skill',
   folderPath: string,
   context?: vscode.ExtensionContext
 ): Promise<string | null> {
@@ -1590,6 +1626,28 @@ export async function generateGistShareableForBundle(
         const fileName = path.basename(filePath);
         files[fileName] = { content };
         fileMetadata.push({ name: fileName, type: 'plan', size: content.length });
+      }
+    } else if (bundleType === 'skill') {
+      const skillMd = path.join(folderPath, 'SKILL.md');
+      let skillFolderPaths: string[] = [];
+      try {
+        await vscode.workspace.fs.stat(vscode.Uri.file(skillMd));
+        skillFolderPaths = [folderPath];
+      } catch {
+        skillFolderPaths = await collectSkillFoldersFromFolder(folderPath);
+      }
+      if (skillFolderPaths.length === 0) {
+        vscode.window.showWarningMessage('No skill folders found to share');
+        return null;
+      }
+      for (const skillFolderPath of skillFolderPaths) {
+        const skillName = path.basename(skillFolderPath);
+        const skillFiles = await collectSkillFiles(skillFolderPath);
+        for (const sf of skillFiles) {
+          const key = `${skillName}/${sf.path}`.replace(/\\/g, '/');
+          files[key] = { content: sf.content };
+          fileMetadata.push({ name: key, type: 'skill', size: sf.content.length });
+        }
       }
     } else if (bundleType === 'http') {
       const httpFiles = await collectHttpFilesFromFolder(folderPath);

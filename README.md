@@ -263,17 +263,16 @@ For detailed installation instructions and system requirements, visit the [compl
 But to get started quickly, choose one of the installation methods below:
 <br/><br/>
 <details open>
-<summary><strong>VS Code Marketplace (Recommended)</strong></summary>
+<summary><strong>Open VSX (Recommended)</strong></summary>
 <br/>
 
-**For Cursor/VS Code:**
+**For Cursor / VS Code-compatible editors:**
 1. Open Extensions (`Cmd+Shift+X` / `Ctrl+Shift+X`)
-2. Search for **"Cursor Command Toys"**
+2. Search for **"Cursor Command Toys"** (or open the registry link below)
 3. Click Install
 
-**Direct Links:**
-- [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=Godrix.cursor-toys)
-- [Open VSX Registry](https://open-vsx.org/extension/godrix/cursor-toys) (for Cursor and other editors)
+**Direct link:**
+- [Open VSX Registry](https://open-vsx.org/extension/godrix/cursor-toys)
 
 </details>
 
