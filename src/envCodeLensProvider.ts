@@ -21,14 +21,7 @@ export class EnvCodeLensProvider implements vscode.CodeLensProvider {
 
     const filePath = document.uri.fsPath;
     
-    // Check if the file is an environment file
     if (!isEnvironmentFile(filePath)) {
-      return [];
-    }
-
-    // Check if file is in http/environments/ folder
-    const normalizedPath = filePath.replace(/\\/g, '/');
-    if (!normalizedPath.includes('/http/environments/')) {
       return [];
     }
 

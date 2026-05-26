@@ -32,22 +32,67 @@ function execPromise(cmd: string): Promise<void> {
   });
 }
 
-/** OS-level keystroke to submit (Cmd+Enter on Mac, Ctrl+Enter on Linux). Used when IDE commands are not available. */
-async function osLevelSend(): Promise<void> {
-  if (process.platform === 'darwin') {
-    await execPromise(`osascript -e 'tell application "Cursor" to activate'`);
-    await delay(200);
-    await execPromise(`osascript -e 'tell application "System Events" to keystroke return using {command down}'`);
-  } else if (process.platform === 'linux') {
-    await execPromise('wmctrl -a "Cursor"');
-    await delay(200);
-    await execPromise('xdotool key ctrl+Return');
+/** Result of injecting text into the chat composer. */
+export interface InjectTextToChatResult {
+  pasted: boolean;
+  submitted: boolean;
+}
+
+/** User-facing submit shortcut for the current platform. */
+export function getChatSubmitShortcutLabel(): string {
+  return process.platform === 'darwin' ? 'Cmd+Enter' : 'Ctrl+Enter';
+}
+
+/**
+ * Warns when text was pasted but auto-submit failed (user must press the shortcut manually).
+ */
+export function notifyPasteWithoutSubmit(source = 'CursorToys'): void {
+  let detail = `Press ${getChatSubmitShortcutLabel()} to submit.`;
+  if (process.platform === 'linux') {
+    detail += ' On Linux, install wmctrl and xdotool if auto-send keeps failing.';
+  } else if (process.platform === 'win32') {
+    detail += ' Ensure the Cursor window is focused.';
+  }
+  void vscode.window.showWarningMessage(
+    `${source}: message pasted in chat but could not auto-send. ${detail}`
+  );
+}
+
+/** OS-level keystroke to submit (Cmd+Enter / Ctrl+Enter). Used when IDE commands are not available. */
+async function osLevelSend(): Promise<boolean> {
+  try {
+    if (process.platform === 'darwin') {
+      await execPromise(`osascript -e 'tell application "Cursor" to activate'`);
+      await delay(200);
+      await execPromise(
+        `osascript -e 'tell application "System Events" to keystroke return using {command down}'`
+      );
+      return true;
+    }
+    if (process.platform === 'linux') {
+      await execPromise('wmctrl -a "Cursor"');
+      await delay(200);
+      await execPromise('xdotool key ctrl+Return');
+      return true;
+    }
+    if (process.platform === 'win32') {
+      const ps = [
+        '$w = New-Object -ComObject WScript.Shell',
+        "if (-not $w.AppActivate('Cursor')) { exit 1 }",
+        'Start-Sleep -Milliseconds 250',
+        "$w.SendKeys('^{ENTER}')",
+      ].join('; ');
+      await execPromise(`powershell -NoProfile -NonInteractive -Command "${ps}"`);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
   }
 }
 
-/** Triggers submit (Enter) on the current chat composer. Call after workbench.action.chat.open so the message is sent. */
-async function submitCurrentChat(): Promise<void> {
-  const cmds = await vscode.commands.getCommands(true);
+/** Tries Cursor composer submit commands, keybinding, then OS-level send. */
+async function trySubmitComposer(cmds: readonly string[]): Promise<boolean> {
   for (const id of FOCUS_COMMANDS) {
     if (cmds.includes(id)) {
       await vscode.commands.executeCommand(id);
@@ -55,25 +100,25 @@ async function submitCurrentChat(): Promise<void> {
       break;
     }
   }
-  let submitted = false;
   for (const id of SUBMIT_COMMANDS) {
     if (cmds.includes(id)) {
       await vscode.commands.executeCommand(id);
-      submitted = true;
-      break;
+      return true;
     }
   }
-  if (!submitted && cmds.includes(SEND_KEYBIND)) {
+  if (cmds.includes(SEND_KEYBIND)) {
     await vscode.commands.executeCommand(SEND_KEYBIND, {
-      text: process.platform === 'darwin' ? 'cmd+enter' : 'ctrl+enter'
+      text: process.platform === 'darwin' ? 'cmd+enter' : 'ctrl+enter',
     });
-  } else if (!submitted) {
-    try {
-      await osLevelSend();
-    } catch {
-      // ignore
-    }
+    return true;
   }
+  return osLevelSend();
+}
+
+/** Triggers submit on the current chat composer. */
+async function submitCurrentChat(): Promise<boolean> {
+  const cmds = await vscode.commands.getCommands(true);
+  return trySubmitComposer(cmds);
 }
 
 const TELEGRAM_API = 'https://api.telegram.org';
@@ -338,13 +383,13 @@ async function getStoredCredentials(): Promise<{ token: string; chatId: string }
 
 /**
  * Injects text into the current Cursor chat (same thread): open/focus composer, paste text, submit.
- * Same flow as cursor-autopilot: OPEN_COMMANDS -> FOCUS_COMMANDS -> paste (clipboard + sendKeyBinding) -> SUBMIT_COMMANDS or keybind or osLevelSend.
+ * Same flow as cursor-autopilot: OPEN_COMMANDS -> FOCUS_COMMANDS -> paste -> submit (commands, keybind, or OS).
  * Exported so we can register cursorInject.send in extension.ts.
  */
-export async function injectTextToChat(text: string): Promise<boolean> {
+export async function injectTextToChat(text: string): Promise<InjectTextToChatResult> {
   const t = (text || '').trim();
   if (!t) {
-    return false;
+    return { pasted: false, submitted: false };
   }
   try {
     const cmds = await vscode.commands.getCommands(true);
@@ -368,41 +413,21 @@ export async function injectTextToChat(text: string): Promise<boolean> {
     await vscode.env.clipboard.writeText(t);
     if (cmds.includes(SEND_KEYBIND)) {
       await vscode.commands.executeCommand(SEND_KEYBIND, {
-        text: process.platform === 'darwin' ? 'cmd+v' : 'ctrl+v'
+        text: process.platform === 'darwin' ? 'cmd+v' : 'ctrl+v',
       });
     } else {
       await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
     }
     await delay(100);
 
-    let submitted = false;
-    for (const id of SUBMIT_COMMANDS) {
-      if (cmds.includes(id)) {
-        await vscode.commands.executeCommand(id);
-        submitted = true;
-        break;
-      }
-    }
-    if (!submitted && cmds.includes(SEND_KEYBIND)) {
-      await vscode.commands.executeCommand(SEND_KEYBIND, {
-        text: process.platform === 'darwin' ? 'cmd+enter' : 'ctrl+enter'
-      });
-      submitted = true;
-    }
-    if (!submitted) {
-      try {
-        await osLevelSend();
-      } catch {
-        // OS fallback failed (e.g. wmctrl/xdotool not installed on Linux)
-      }
-    }
-    return true;
+    const submitted = await trySubmitComposer(cmds);
+    return { pasted: true, submitted };
   } catch {
-    return false;
+    return { pasted: false, submitted: false };
   }
 }
 
-/** Wrapper for Telegram handler: try cursorInject.send (e.g. from cursor-autopilot) first, else our injectTextToChat. */
+/** Wrapper for Telegram handler: try cursorInject.send first, else our injectTextToChat. */
 async function injectIntoChat(text: string): Promise<boolean> {
   const t = (text || '').trim();
   if (!t) {
@@ -415,7 +440,11 @@ async function injectIntoChat(text: string): Promise<boolean> {
     } catch {
       // cursorInject.send not available or failed, use our implementation
     }
-    return await injectTextToChat(t);
+    const result = await injectTextToChat(t);
+    if (result.pasted && !result.submitted) {
+      notifyPasteWithoutSubmit('Remote Chat');
+    }
+    return result.pasted;
   } catch {
     return false;
   }

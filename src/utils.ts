@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as vscode from 'vscode';
@@ -48,7 +49,6 @@ export function truncateAnnotationContentToFitUrl(maxEncodedLength: number, cont
 export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'prompt' | 'notepad' | 'http' | 'env' | 'hooks' | 'plan' | 'skill' | null {
   const normalizedPath = filePath.replace(/\\/g, '/');
   const baseFolderName = getBaseFolderName();
-  const environmentsFolderName = getEnvironmentsFolderName();
   
   // Hooks file (hooks.json)
   if (normalizedPath.endsWith('/hooks.json') && 
@@ -97,25 +97,17 @@ export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'pro
       return 'plan';
     }
   }
-  // HTTP requests in .{baseFolder}/http/ folder (but not in environments folder)
-  if ((normalizedPath.includes(`/.${baseFolderName}/http/`) || 
-       normalizedPath.includes('/.cursor/http/')) &&
-      !normalizedPath.includes(`/${environmentsFolderName}/`) &&
-      !normalizedPath.includes('/environments/')) {
+  // HTTP requests in .{baseFolder}/http/ folder
+  if (normalizedPath.includes(`/.${baseFolderName}/http/`) ||
+      normalizedPath.includes('/.cursor/http/')) {
     const ext = getFileExtension(filePath).toLowerCase();
     if (ext === 'req' || ext === 'request') {
       return 'http';
     }
   }
-  // Environment files in .{baseFolder}/http/{environmentsFolder}/ folder
-  if (normalizedPath.includes(`/.${baseFolderName}/http/${environmentsFolderName}/`) || 
-      normalizedPath.includes(`/.cursor/http/${environmentsFolderName}/`) ||
-      normalizedPath.includes(`/.${baseFolderName}/http/environments/`) || 
-      normalizedPath.includes('/.cursor/http/environments/')) {
-    const fileName = path.basename(filePath);
-    if (fileName.startsWith('.env')) {
-      return 'env';
-    }
+  // Project-root environment files (.env, .env.local, .env.dev, etc.)
+  if (isProjectRootEnvironmentFile(filePath)) {
+    return 'env';
   }
   // Skills can be in .cursor/skills/, .claude/skills/, or custom base folder
   // Check personal folder first (home directory)
@@ -439,24 +431,81 @@ export function getHttpResponsePath(requestPath: string): string {
 }
 
 /**
- * Gets the environments folder name based on configuration
- * @returns Environments folder name (e.g., '.environments', 'environments', '__environments__', '_env')
+ * Returns the workspace root directory used for project .env files
+ * @param workspacePath Workspace path
  */
-export function getEnvironmentsFolderName(): string {
-  const config = vscode.workspace.getConfiguration('cursorToys');
-  const folderName = config.get<string>('environmentsFolder', '.environments');
-  return folderName;
+export function getProjectEnvRoot(workspacePath: string): string {
+  return workspacePath;
 }
 
 /**
- * Gets the path to the environments folder
+ * Resolves the file path for a named HTTP environment at the project root
  * @param workspacePath Workspace path
- * @returns Path to .{baseFolder}/http/{environmentsFolder}/
+ * @param envName Environment name (`default` maps to `.env`)
  */
-export function getEnvironmentsPath(workspacePath: string): string {
-  const baseFolderName = getBaseFolderName();
-  const environmentsFolderName = getEnvironmentsFolderName();
-  return path.join(workspacePath, `.${baseFolderName}`, 'http', environmentsFolderName);
+export function getProjectEnvFilePath(workspacePath: string, envName: string): string {
+  const fileName = envName === 'default' ? '.env' : `.env.${envName}`;
+  return path.join(getProjectEnvRoot(workspacePath), fileName);
+}
+
+/**
+ * Maps a project-root .env filename to an environment name
+ * @returns Environment name or null if not a runnable env file (e.g. `.env.example`)
+ */
+export function envNameFromProjectEnvFileName(fileName: string): string | null {
+  if (fileName === '.env') {
+    return 'default';
+  }
+  if (fileName === '.env.example') {
+    return null;
+  }
+  if (fileName.startsWith('.env.')) {
+    return fileName.substring(5);
+  }
+  return null;
+}
+
+/**
+ * Lists runnable .env* files at the project root (excludes `.env.example`)
+ */
+export function listProjectEnvFileNames(workspacePath: string): string[] {
+  const root = getProjectEnvRoot(workspacePath);
+  if (!fs.existsSync(root)) {
+    return [];
+  }
+  try {
+    return fs.readdirSync(root).filter((file) => {
+      if (!file.startsWith('.env')) {
+        return false;
+      }
+      return envNameFromProjectEnvFileName(file) !== null;
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Returns true when the file is a direct child .env* file of a workspace root
+ */
+export function isProjectRootEnvironmentFile(filePath: string): boolean {
+  const fileName = path.basename(filePath);
+  if (!fileName.startsWith('.env') || envNameFromProjectEnvFileName(fileName) === null) {
+    return false;
+  }
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  const parentDir = path.dirname(normalizedPath);
+  const folders = vscode.workspace.workspaceFolders;
+  if (!folders) {
+    return false;
+  }
+  for (const folder of folders) {
+    const root = folder.uri.fsPath.replace(/\\/g, '/');
+    if (parentDir === root) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -475,8 +524,7 @@ export function getHttpPath(workspacePath: string): string {
  * @returns true if the file is an environment file
  */
 export function isEnvironmentFile(filePath: string): boolean {
-  const fileName = path.basename(filePath);
-  return fileName.startsWith('.env');
+  return isProjectRootEnvironmentFile(filePath);
 }
 
 /**
@@ -716,8 +764,8 @@ Use markdown sections (\`## Section Title\`) to organize multiple requests in on
 
 ## Environment Variables
 
-Store variables in \`.cursor/http/.environments/\` folder (or configured environments folder):
-- Files: \`.env\`, \`.env.dev\`, \`.env.staging\`, \`.env.prod\`, etc.
+Store variables in project-root \`.env*\` files:
+- Files: \`.env\`, \`.env.local\`, \`.env.dev\`, \`.env.staging\`, \`.env.prod\`, etc.
 - Use \`{{variableName}}\` syntax in requests
 - Switch environments via Command Palette: "CursorToys: Select HTTP Environment"
 - Status bar shows current active environment
@@ -869,7 +917,6 @@ cursortoys http test -f api-tests.req -e prod
 - \`cursorToys.httpRequestTimeout\`: Timeout in seconds (default: 10)
 - \`cursorToys.httpRequestSaveFile\`: Save response to file or preview only (default: false)
 - \`cursorToys.httpDefaultEnvironment\`: Default environment name (default: "dev")
-- \`cursorToys.environmentsFolder\`: Folder name for environments (default: ".environments")
 
 ## Usage
 
@@ -889,7 +936,7 @@ GET https://api.github.com/users/octocat
 
 ### Example 2: Using Environment Variables
 
-1. Create \`.environments/.env.dev\`:
+1. Create \`.env.dev\` at the project root:
 \`\`\`env
 BASE_URL=http://localhost:3000
 API_KEY=dev-key-123
@@ -1016,7 +1063,7 @@ Content-Type: application/json
   Reference variables (like URLs, tokens, or custom values) using \`{{VAR_NAME}}\` placeholders to avoid hardcoding credentials and enable multi-environment support.
 
 - **Define multiple environments:**  
-  Create files like \`.env\`, \`.env.dev\`, \`.env.staging\`, etc. in the environment folder, and use \`# @env ENVNAME\` at file or section scope for easy switching.
+  Create files like \`.env\`, \`.env.local\`, \`.env.dev\`, \`.env.staging\`, etc. at the project root, and use \`# @env ENVNAME\` at file or section scope for easy switching.
 
 - **Use inline variables for request-specific overrides:**  
   Add \`# @var VAR_NAME=value\` at the top of files, sections, or before requests to override or add variables only for that context.
@@ -1044,7 +1091,7 @@ Content-Type: application/json
 - Verify file extension is \`.req\` or \`.request\`
 
 ### Environment Variables Not Resolving
-- Verify environment file exists in \`.cursor/http/.environments/\` (or configured folder)
+- Verify environment file exists at the project root (e.g. \`.env.dev\` for \`# @env dev\`)
 - Check environment name matches (case-insensitive)
 - Verify variable name matches exactly (case-insensitive)
 - Check active environment in status bar

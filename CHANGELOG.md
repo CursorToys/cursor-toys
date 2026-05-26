@@ -2,7 +2,50 @@
 
 ![](https://i.imgur.com/mhwaZuG.jpeg)
 
-The Guide’s entry for version 1.13.0 notes that "the existence of a modern developer is a constant battle between two fundamental forces: the need for external validation and the paralyzing fear of depleting your AI quota before lunch." This update provides tools to handle both.
+The Guide’s entry for version **2025.5.26** notes that the average developer, when confronted with a simple HTTP request, will usually respond by spawning *exactly seventeen* response tabs, none of which they meant to keep, all of which they will lose anyway. This release introduces a response panel that behaves more like a sensible life-form: it updates in place, politely, and without multiplying.
+
+## v2025.5.26 — Mostly Harmless Panels and Rooted Environments
+
+### HTTP Environments at Project Root
+
+### Breaking Changes
+
+- **HTTP environment files moved to the project root**: `.env`, `.env.local`, `.env.dev`, etc. must live at the workspace root. The extension no longer reads or creates `.{baseFolder}/http/environments/`, `.environments/`, or related folders.
+- **Removed setting `cursorToys.environmentsFolder`**: Use standard project-root dotenv files instead.
+
+### Added
+
+- **Project-root env discovery**: Autocomplete, hover, watchers, and `# @env` resolution use `.env*` files at the workspace root (`.env.example` is documentation-only and not listed as a runnable environment).
+- **Initialize command**: "CursorToys: Initialize Project Environment Files" creates `.env` and `.env.example` at the workspace root.
+- **HTTP response panel (default)**: HTTP responses are shown in a reusable webview panel that updates in place when you re-run the request (instead of opening many editor tabs). Configure via `cursorToys.httpRequestResponseView` (`panel`/`editor`).
+
+### Changed
+
+- **Open environments command**: Reveals `.env` at the project root (or the workspace root folder if `.env` is missing).
+- **Share/import**: Environment shareables and bundles use project-root filenames (legacy `environments/...` paths in imports are normalized to the root).
+
+### DeepFlow Sidebar
+
+### Added
+
+- **DeepFlow activity bar panel** (experimental): Dedicated activity bar icon (`resources/deepflow.svg`) opens an exclusive DeepFlow side panel. Enable under **Settings → Cursor Toys › Experimental → DeepFlow** (`cursorToys.experimental.deepflow`, default **off**).
+- **DeepFlow specs view**: Panel lists `.deepflow/specs` with **Drafts**, **In development** (active), and **Archive** stages; per-task A-B-C files (`APPROACH.md`, `BUSINESS_CONTEXT.md`, `COMPLETION_REPORT.md`).
+- **DeepFlow actions**: Send to chat uses `@` task folder refs and skill activation commands (`Initialize DeepFlow`, `Approve task`, `Complete task`). Plan/execute on a task send the draft or active folder only.
+- **Initialize DeepFlow**: When `.deepflow/specs` is missing, the tree shows **Initialize DeepFlow** (click or toolbar). If `.cursor/skills/deep-flow/SKILL.md` is missing, prompts to download the skill from [godrix/deep-flow](https://github.com/godrix/deep-flow/tree/main/deep-flow); then opens chat with `Initialize DeepFlow` (skill activation command).
+- **DeepFlow empty stages**: Stages with no task folders (e.g. `active/` only containing `.gitkeep`) show an explicit empty message instead of a blank/spinning row; removed spinning icon on **In development**.
+- **New DeepFlow Spec** panel: choose type (bug, feature, refactor, chore, docs, spike), title, and description; **Send to chat** uses Remote Telegram-style injection (`cursorInject.send` / paste flow).
+- **Open spec files**: fixed tree click on A-B-C files (stable file URI resolution).
+- **Chat auto-submit**: Windows fallback via PowerShell (`Ctrl+Enter`); warning when text is pasted but submit fails (DeepFlow, Remote Chat, inject command), with platform hints (Linux: wmctrl/xdotool).
+
+### Sidebar View Visibility
+
+### Added
+
+- **Hide sidebar resource views**: New setting `cursorToys.sidebar.hiddenViews` lets you hide individual CursorToys explorer sections (Notepads, Commands, Prompts, Cursor Plans, Skills, Cursor Hooks, MCPB Packages). Default is empty (all visible). Changes apply when you save settings without reloading the window. DeepFlow is not in this list; it uses the experimental activity bar panel instead.
+
+### Changed
+
+- **Chat injection (shared)**: DeepFlow, Remote Chat, `cursorInject.send`, and **Refine and Send to Chat** use the same paste-and-submit flow; warns when text is pasted but auto-submit fails (`Cmd+Enter` / `Ctrl+Enter`).
 
 ## v1.13.1 — Share Skills Without Leaving the Tree
 

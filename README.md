@@ -37,11 +37,12 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 | [🌐 In-Editor API Testing](#-in-editor-api-testing) | [📚 Personal Libraries](#-personal-libraries) | [📓 Project Notepads](#-project-notepads) |
 | [🪝 Cursor Hooks](#-cursor-hooks) | [🎓 Skills Management](#-skills-management) | [🗜️ File Minification](#️-file-minification) |
 | [💬 Chat Integration](#-chat-integration) | [🌐 GitHub Gist Integration](#-github-gist-integration) | [📦 MCPB Packages](#-mcpb-packages) |
-| [📊 Spending (API usage)](#-spending-cursor-api-usage) | [💬 CursorToys Remote Chat](#cursortoys-remote-chat) | |
+| [📊 Spending (API usage)](#-spending-cursor-api-usage) | [💬 CursorToys Remote Chat](#cursortoys-remote-chat) | [🧪 DeepFlow (experimental)](#-deepflow-experimental) |
 
 > **🧪 NEW in v1.10.0**: HTTP Request Assertions — Automate API testing with `@assert()` annotations!  
 > **📦 NEW in v1.12.0**: MCPB support — Install and manage MCP server bundles (.mcpb) with a preview and editable env vars.  
-> **💬 CursorToys Remote Chat**: Skill-driven, provider-agnostic bridge to a connected channel. One global connection; start from the CursorToys menu; init session from chat or one command.
+> **💬 CursorToys Remote Chat**: Skill-driven, provider-agnostic bridge to a connected channel. One global connection; start from the CursorToys menu; init session from chat or one command.  
+> **🧪 DeepFlow (experimental, off by default)**: Spec-driven development panel in the activity bar — drafts → active → archive. Enable under **Settings → Cursor Toys › Experimental**.
 
 ### 📦 MCPB Packages
 
@@ -62,6 +63,51 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 - **Commands**: **CursorToys: Refresh spending usage**, **CursorToys: Configure spending session token**, **CursorToys: Hide spending**, **CursorToys: Show spending**.
 - **Settings**: `cursorToys.spending.enabled`, `cursorToys.spending.autoDetectToken`, `cursorToys.spending.sessionToken`, `cursorToys.spending.refreshInterval` (minutes).
 - Clicking the status bar opens the Cursor dashboard (Spending tab).
+
+### 🧪 DeepFlow (experimental)
+
+**Spec-driven development in Cursor** — Visual pipeline for the [DeepFlow](https://github.com/godrix/deep-flow) workflow (`.deepflow/specs`: drafts → active → archive). **Disabled by default**; enable in **Settings → Cursor Toys › Experimental → DeepFlow** (`cursorToys.experimental.deepflow`), then reload the window.
+
+- **Activity bar panel**: Dedicated icon (`resources/deepflow.svg`) opens an exclusive **DeepFlow** side panel (not mixed with Explorer Commands/Plans trees).
+- **Specs tree**: **Drafts**, **In development** (`active/`), and **Archive**; each task folder (`NN-name`) expands to `APPROACH.md`, `BUSINESS_CONTEXT.md`, and `COMPLETION_REPORT.md`.
+- **Empty stages**: Shows a clear message when a stage has no tasks (e.g. only `.gitkeep` in `active/`).
+- **Initialize**: If `.deepflow/specs` is missing, click **Initialize DeepFlow** or use the toolbar — downloads the [deep-flow skill](https://github.com/godrix/deep-flow/tree/main/deep-flow) when missing, then sends `Initialize DeepFlow` to chat with `@.deepflow`.
+- **New spec form**: **+** in the panel title opens a form (type: bug, feature, refactor, chore, docs, spike; title; description) and **Send to chat** with `Create task <slug>` per the skill.
+- **Send to chat actions** (same injection as Remote Telegram: `cursorInject.send` → paste → submit):
+  - **Plan** — `@` draft task folder
+  - **Approve** — `@` folder + `Approve task`
+  - **Execute** — `@` active task folder
+  - **Complete** — `@` folder + `Complete task`
+- **Open spec files**: Click A-B-C files in the tree to open in the editor.
+- **Auto-submit**: Tries Cursor composer commands, then `Cmd+Enter` / `Ctrl+Enter` (macOS AppleScript, Linux `xdotool`, Windows PowerShell). Warns if pasted but not submitted.
+
+**Commands** (Command Palette):
+
+| Command | Description |
+|:--------|:------------|
+| **CursorToys: New DeepFlow Spec** | Open the create-spec form and send to chat |
+| **CursorToys: Initialize DeepFlow** | Bootstrap `.deepflow/` via chat |
+| **CursorToys: DeepFlow Send to Chat (Plan)** | Draft folder ref |
+| **CursorToys: DeepFlow Send to Chat (Approve)** | Draft folder + Approve task |
+| **CursorToys: DeepFlow Send to Chat (Execute)** | Active folder ref |
+| **CursorToys: DeepFlow Send to Chat (Complete)** | Active folder + Complete task |
+| **CursorToys: Refresh DeepFlow** | Refresh the specs tree |
+
+**Settings**:
+
+| Setting | Default | Description |
+|:--------|:--------|:------------|
+| `cursorToys.experimental.deepflow` | `false` | Show DeepFlow activity bar panel |
+
+Requires the **deep-flow** skill in `.cursor/skills/deep-flow/` (or download from the repo when initializing).
+
+### Explorer sidebar visibility
+
+Hide individual CursorToys **Explorer** sections (not DeepFlow) without disabling commands:
+
+- **Setting**: `cursorToys.sidebar.hiddenViews` — array of: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`
+- **Default**: `[]` (all Explorer sections visible)
+- Updates when you save settings (no window reload required)
 
 ### Cursor Remote (Telegram)
 
@@ -160,8 +206,9 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 - 🔧 **Inline Variables** — Define variables with `# @var VAR_NAME=value` directly in files
 - 🎯 **Helper Functions** — Dynamic values: `{{@uuid()}}`, `{{@datetime}}`, `{{@randomIn()}}`, `{{@prompt()}}`, `{{@userAgent()}}`, `{{@ip()}}`, `{{@lorem()}}`, `{{@randomFrom()}}`
 - 🔄 **Multiple Environments** — Switch between dev, staging, prod instantly
-- 💾 **Auto-Save Responses** — Or preview-only mode for quick tests
-- ⚙️ **Configurable** — Timeout, default environment, environments folder name (`.environments`), assertion options
+- 🧾 **Response panel (default)** — Responses open in a reusable webview panel that updates in place when you re-run a request (no tab explosion). Switch back to editor tabs with `cursorToys.httpRequestResponseView: "editor"`
+- 💾 **Optional save** — `cursorToys.httpRequestSaveFile` can also write the `.res`/`.response` file to disk
+- ⚙️ **Configurable** — Timeout, default environment, assertion options, response view
 - 📘 **HTTP Requests Skill** — Install a Cursor Agent Skill with full documentation: right-click the **HTTP folder** (e.g. `.cursor/http/`) in the Explorer and choose **"CursorToys: Add Skill: HTTP Requests Documentation"**. The skill is added to your personal skills; the AI will use it when you work with `.req`/`.request` files, environments, and assertions.
 
 **Quick Start - HTTP Assertions:**
@@ -240,6 +287,7 @@ Click "Send Request" → See assertion results inline!
 - ✂️ **Send Selection** — Right-click → Send to Chat
 - 📝 **Open Chat with Prompt** — Command to open the editor chat with a prompt (uses `workbench.action.chat.open` when available; no URL length limit)
 - 📤 **Send to Chat** — Uses the built-in chat command when available; falls back to deeplink for compatibility
+- 💉 **Inject to chat** — Remote Chat, DeepFlow, **Refine and Send to Chat**, and `cursorInject.send` paste into the composer and auto-submit (`cursorInject.send` when available, else clipboard + `Cmd+Enter` / `Ctrl+Enter`). Shows a warning if the text was pasted but submit failed
 - 🔗 **Prompt Deeplinks** — Generate shareable prompt links from selected code
 - 📍 **Context Included** — File path, language, and line numbers auto-added
 
@@ -346,10 +394,20 @@ Click the "Send Request" link that appears above → See formatted response!
 | **CursorToys: Refresh spending usage** | — | Refresh Cursor API usage in status bar |
 | **CursorToys: Configure spending session token** | — | Set session token for spending indicator |
 | **CursorToys: Hide spending** / **Show spending** | — | Hide or show the spending status bar |
+| **CursorToys: New DeepFlow Spec** | — | Create spec (experimental; enable in settings first) |
+| **CursorToys: Initialize DeepFlow** | — | Bootstrap `.deepflow/` via chat (experimental) |
+| **CursorToys: Refresh DeepFlow** | — | Refresh DeepFlow specs tree (experimental) |
 
 **Pro Tip**: Most commands are accessible via CodeLens (clickable links in your files) or context menu (right-click)!
 
 ## ✨ What's New
+
+**Unreleased (see [CHANGELOG](CHANGELOG.md))**
+
+- **DeepFlow (experimental)** — Activity bar panel for spec-driven tasks (`drafts` / `active` / `archive`); off by default (`cursorToys.experimental.deepflow`). New spec form, skill download on init, send-to-chat with folder `@` refs and skill commands (`Initialize DeepFlow`, `Create task`, `Approve task`, `Complete task`). Shared chat injection with auto-submit and platform fallbacks.
+- **HTTP environments at project root** — **Breaking:** `.env*` at workspace root; removed `cursorToys.environmentsFolder` and `http/environments` folders.
+- **HTTP response panel (default)** — Send Request shows responses in a reusable panel that updates in place. Configure `cursorToys.httpRequestResponseView` (`panel`/`editor`); optionally write `.res` to disk via `cursorToys.httpRequestSaveFile`.
+- **Hide Explorer sidebar sections** — `cursorToys.sidebar.hiddenViews` to hide Notepads, Commands, Prompts, Plans, Skills, Hooks, or MCPB in the Explorer.
 
 **Version 1.13.1 (March 2026)**
 
@@ -376,7 +434,13 @@ For a detailed look at the latest changes, visit the [CHANGELOG](CHANGELOG.md).
 - ✅ **Expression Resolution** — Access nested properties with dot notation (`res.body.users[0].name`)
 - ✅ **Configurable Testing** — Enable/disable assertions, inline results, fail-on-error behavior
 - ✅ **HTTP Docs Skill** — Install the "HTTP Requests Documentation" Agent Skill: **right-click the HTTP folder** (e.g. `.cursor/http/`) in the Explorer and choose **"CursorToys: Add Skill: HTTP Requests Documentation"**. The AI then uses this skill when you work with `.req` files. Content matches canonical SKILL.md (operators, best practices, CLI testing).
-- ✅ **Configurable Environments Folder** — `cursorToys.environmentsFolder` (default `.environments`) for environment files path
+- ✅ **Project-root environment files** — `.env`, `.env.local`, `.env.dev`, etc. at the workspace root (no `http/environments` folder)
+
+### DeepFlow (experimental)
+
+- **Panel**: Activity bar icon → dedicated DeepFlow sidebar with pipeline stages and A-B-C spec files.
+- **Opt-in**: `cursorToys.experimental.deepflow` (default `false`) under **Cursor Toys › Experimental**.
+- **Chat**: Actions send `@` folder references and DeepFlow skill commands; uses the same inject-and-submit flow as Remote Telegram.
 
 ### HTTP Request Assertions System
 - **Test Automation**: Write assertions directly in HTTP request files using `@assert()` annotations
@@ -509,7 +573,7 @@ For a detailed look at the latest changes, visit the [CHANGELOG](CHANGELOG.md).
 - Embedded metadata for validation
 
 ### HTTP Environments
-- Environment variables in `.cursor/http/environments/`
+- Environment variables in project-root `.env*` files
 - Support for multiple environments (dev, staging, prod)
 - `{{variableName}}` syntax for dynamic values
 - Fast switching between environments
@@ -534,6 +598,8 @@ For a detailed look at the latest changes, visit the [CHANGELOG](CHANGELOG.md).
 ### UI Improvements
 - **Personal Commands View**: Enhanced to show categories at root level (Personal/Workspace)
 - **Personal Prompts View**: Enhanced to show categories at root level (Personal/Workspace)
+- **Explorer sidebar visibility**: `cursorToys.sidebar.hiddenViews` to hide individual resource trees in the Explorer
+- **DeepFlow panel**: Separate activity bar section (experimental, not part of Explorer hidden views)
 - Better organization with clear separation between personal and project items
 - Maintains backward compatibility with existing folder structure
 

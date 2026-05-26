@@ -1,11 +1,15 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { getEnvironmentsPath, getHttpPath } from './utils';
+import {
+  getProjectEnvFilePath,
+  getProjectEnvRoot,
+  envNameFromProjectEnvFileName,
+  listProjectEnvFileNames,
+} from './utils';
 
 /**
- * Environment Manager - Gerencia variáveis de environment através de arquivos .env
- * Singleton pattern para uso global na extensão
+ * Environment Manager - loads HTTP environment variables from project-root .env files
  */
 export class EnvironmentManager {
   private static instance: EnvironmentManager;
@@ -17,11 +21,11 @@ export class EnvironmentManager {
   private workspacePaths: Set<string> = new Set();
 
   private constructor() {
-    // File watchers will be set up when extension activates
+    // File watchers are set up when the extension activates
   }
 
   /**
-   * Obtém a instância única do EnvironmentManager
+   * Returns the singleton EnvironmentManager instance
    */
   public static getInstance(): EnvironmentManager {
     if (!EnvironmentManager.instance) {
@@ -31,14 +35,14 @@ export class EnvironmentManager {
   }
 
   /**
-   * Obtém o environment ativo atual
+   * Returns the currently active environment name
    */
   public getActiveEnvironment(): string {
     return this.activeEnvironment;
   }
 
   /**
-   * Define o environment ativo
+   * Sets the active environment name
    */
   public setActiveEnvironment(name: string): void {
     this.activeEnvironment = name;
@@ -46,39 +50,32 @@ export class EnvironmentManager {
   }
 
   /**
-   * Carrega variáveis de um environment específico
-   * @param envName Nome do environment (ex: 'dev', 'prod')
-   * @param workspacePath Caminho do workspace
-   * @returns Map com as variáveis do environment ou null se não encontrado
+   * Loads variables for a named environment from the project root
+   * @param envName Environment name (e.g. 'dev', 'prod', 'default')
+   * @param workspacePath Workspace path
+   * @returns Variable map or null if the environment file was not found
    */
   public loadEnvironment(envName: string, workspacePath: string): Map<string, string> | null {
-    // Verificar cache primeiro
     const cacheKey = `${workspacePath}:${envName}`;
     if (this.environmentsCache.has(cacheKey)) {
       return this.environmentsCache.get(cacheKey)!;
     }
 
-    const envDir = getEnvironmentsPath(workspacePath);
-    
-    // Tentar carregar .env.{nome}
-    let envFilePath = path.join(envDir, `.env.${envName}`);
-    
-    if (!fs.existsSync(envFilePath)) {
-      // Fallback: tentar .env
-      envFilePath = path.join(envDir, '.env');
-      
+    let envFilePath = getProjectEnvFilePath(workspacePath, envName);
+
+    if (!fs.existsSync(envFilePath) && envName !== 'default') {
+      envFilePath = getProjectEnvFilePath(workspacePath, 'default');
       if (!fs.existsSync(envFilePath)) {
         return null;
       }
+    } else if (!fs.existsSync(envFilePath)) {
+      return null;
     }
 
     try {
       const content = fs.readFileSync(envFilePath, 'utf8');
       const variables = this.parseEnvFile(content);
-      
-      // Salvar no cache
       this.environmentsCache.set(cacheKey, variables);
-      
       return variables;
     } catch (error) {
       console.error(`Failed to load environment file: ${envFilePath}`, error);
@@ -87,9 +84,7 @@ export class EnvironmentManager {
   }
 
   /**
-   * Parseia o conteúdo de um arquivo .env
-   * @param content Conteúdo do arquivo .env
-   * @returns Map com as variáveis parseadas
+   * Parses .env file content into a variable map
    */
   private parseEnvFile(content: string): Map<string, string> {
     const variables = new Map<string, string>();
@@ -97,13 +92,11 @@ export class EnvironmentManager {
 
     for (const line of lines) {
       const trimmedLine = line.trim();
-      
-      // Ignorar linhas vazias e comentários
+
       if (!trimmedLine || trimmedLine.startsWith('#')) {
         continue;
       }
 
-      // Parsear linha no formato KEY=VALUE
       const separatorIndex = trimmedLine.indexOf('=');
       if (separatorIndex === -1) {
         continue;
@@ -112,14 +105,12 @@ export class EnvironmentManager {
       const key = trimmedLine.substring(0, separatorIndex).trim();
       let value = trimmedLine.substring(separatorIndex + 1).trim();
 
-      // Remover aspas se presentes
       if ((value.startsWith('"') && value.endsWith('"')) ||
           (value.startsWith("'") && value.endsWith("'"))) {
         value = value.substring(1, value.length - 1);
       }
 
       if (key) {
-        // Armazenar com key em lowercase para matching case-insensitive
         variables.set(key.toLowerCase(), value);
       }
     }
@@ -128,35 +119,26 @@ export class EnvironmentManager {
   }
 
   /**
-   * Substitui variáveis no formato {{varName}} no texto
-   * @param text Texto com variáveis
-   * @param envName Nome do environment
-   * @param workspacePath Caminho do workspace
-   * @returns Texto com variáveis substituídas
+   * Replaces {{varName}} placeholders using environment variables
    */
   public replaceVariables(text: string, envName: string, workspacePath: string): string {
     const variables = this.loadEnvironment(envName, workspacePath);
-    
+
     if (!variables) {
       return text;
     }
 
     let result = text;
-
-    // Substituir todas as ocorrências de {{variableName}}
-    // Excluir variáveis com @ ({{@VAR_NAME}}) que são processadas via prompt
-    // Usar regex para encontrar todas as variáveis
     const variableRegex = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g;
-    
+
     result = result.replace(variableRegex, (match, varName) => {
       const varNameLower = varName.toLowerCase();
       const value = variables.get(varNameLower);
-      
+
       if (value !== undefined) {
         return value;
       }
-      
-      // Se não encontrar a variável, manter o placeholder
+
       return match;
     });
 
@@ -164,27 +146,22 @@ export class EnvironmentManager {
   }
 
   /**
-   * Valida se há variáveis não resolvidas no texto
-   * @param text Texto para validar
-   * @param envName Nome do environment
-   * @param workspacePath Caminho do workspace
-   * @returns Array com nomes das variáveis não resolvidas
+   * Returns variable names that could not be resolved
    */
   public validateVariables(text: string, envName: string, workspacePath: string): string[] {
     const variables = this.loadEnvironment(envName, workspacePath);
-    
+
     if (!variables) {
-      // Se não conseguiu carregar o environment, considerar todas as variáveis como não resolvidas
       const allVars: string[] = [];
       const variableRegex = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g;
       let match;
-      
+
       while ((match = variableRegex.exec(text)) !== null) {
         if (!allVars.includes(match[1])) {
           allVars.push(match[1]);
         }
       }
-      
+
       return allVars;
     }
 
@@ -195,7 +172,7 @@ export class EnvironmentManager {
     while ((match = variableRegex.exec(text)) !== null) {
       const varName = match[1];
       const varNameLower = varName.toLowerCase();
-      
+
       if (!variables.has(varNameLower) && !unresolved.includes(varName)) {
         unresolved.push(varName);
       }
@@ -205,61 +182,30 @@ export class EnvironmentManager {
   }
 
   /**
-   * Lista todos os environments disponíveis no workspace
-   * @param workspacePath Caminho do workspace
-   * @returns Array com nomes dos environments disponíveis
+   * Lists available environment names from project-root .env files
    */
   public getAvailableEnvironments(workspacePath: string): string[] {
-    const envDir = getEnvironmentsPath(workspacePath);
-    
-    if (!fs.existsSync(envDir)) {
-      return [];
-    }
+    const envNames: string[] = [];
 
-    try {
-      const files = fs.readdirSync(envDir);
-      const envNames: string[] = [];
-
-      for (const file of files) {
-        if (file.startsWith('.env')) {
-          if (file === '.env') {
-            envNames.push('default');
-          } else if (file.startsWith('.env.')) {
-            // Extrair nome do environment (.env.dev -> dev)
-            const envName = file.substring(5); // Remove '.env.'
-            envNames.push(envName);
-          }
-        }
+    for (const fileName of listProjectEnvFileNames(workspacePath)) {
+      const envName = envNameFromProjectEnvFileName(fileName);
+      if (envName) {
+        envNames.push(envName);
       }
-
-      return envNames.sort();
-    } catch (error) {
-      console.error(`Failed to read environments directory: ${envDir}`, error);
-      return [];
     }
+
+    return envNames.sort();
   }
 
-  /**
-   * Limpa o cache de environments
-   */
   public clearCache(): void {
     this.environmentsCache.clear();
   }
 
-  /**
-   * Limpa o cache de um environment específico
-   * @param envName Nome do environment
-   * @param workspacePath Caminho do workspace
-   */
   public clearEnvironmentCache(envName: string, workspacePath: string): void {
     const cacheKey = `${workspacePath}:${envName}`;
     this.environmentsCache.delete(cacheKey);
   }
 
-  /**
-   * Limpa o cache de todos os environments de um workspace
-   * @param workspacePath Caminho do workspace
-   */
   public clearWorkspaceCache(workspacePath: string): void {
     const keysToDelete: string[] = [];
     for (const key of this.environmentsCache.keys()) {
@@ -271,39 +217,31 @@ export class EnvironmentManager {
   }
 
   /**
-   * Configura file watchers para monitorar mudanças nos arquivos .env
-   * Deve ser chamado na ativação da extensão
+   * Watches project-root .env files for changes
    */
   public setupFileWatchers(): void {
-    // Watch for workspace folder changes
     vscode.workspace.onDidChangeWorkspaceFolders(() => {
       this.updateFileWatchers();
     });
 
-    // Watch for file changes in existing workspaces
     this.updateFileWatchers();
   }
 
-  /**
-   * Atualiza os file watchers para todos os workspaces
-   */
   private updateFileWatchers(): void {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) {
       return;
     }
 
-    // Remove watchers for workspaces that no longer exist
     const currentPaths = new Set(workspaceFolders.map(f => f.uri.fsPath));
-    for (const [path, watcher] of this.fileWatchers.entries()) {
-      if (!currentPaths.has(path)) {
+    for (const [watchedPath, watcher] of this.fileWatchers.entries()) {
+      if (!currentPaths.has(watchedPath)) {
         watcher.dispose();
-        this.fileWatchers.delete(path);
-        this.workspacePaths.delete(path);
+        this.fileWatchers.delete(watchedPath);
+        this.workspacePaths.delete(watchedPath);
       }
     }
 
-    // Add watchers for new workspaces
     for (const folder of workspaceFolders) {
       const workspacePath = folder.uri.fsPath;
       if (!this.workspacePaths.has(workspacePath)) {
@@ -313,76 +251,27 @@ export class EnvironmentManager {
     }
   }
 
-  /**
-   * Cria um file watcher para um workspace específico
-   * @param workspacePath Caminho do workspace
-   */
   private createFileWatcher(workspacePath: string): void {
-    const envDir = getEnvironmentsPath(workspacePath);
-    const httpPath = getHttpPath(workspacePath);
-    
-    // Create HTTP folder and llms.txt if needed
-    if (!fs.existsSync(httpPath)) {
-      try {
-        fs.mkdirSync(httpPath, { recursive: true });
-      } catch (error) {
-        console.warn(`Failed to create HTTP directory: ${httpPath}`, error);
-      }
-    }
-    
-    // Create directory if it doesn't exist (watcher needs it to exist)
-    if (!fs.existsSync(envDir)) {
-      try {
-        fs.mkdirSync(envDir, { recursive: true });
-      } catch (error) {
-        // Directory creation failed, but continue anyway
-        console.warn(`Failed to create environments directory: ${envDir}`, error);
-      }
-    }
-    
-    // Watch for changes in .env files
-    const pattern = new vscode.RelativePattern(
-      vscode.Uri.file(envDir),
-      '.env*'
-    );
-
+    const envRoot = getProjectEnvRoot(workspacePath);
+    const pattern = new vscode.RelativePattern(vscode.Uri.file(envRoot), '.env*');
     const watcher = vscode.workspace.createFileSystemWatcher(pattern);
-    
-    watcher.onDidChange((uri) => {
-      // File was modified - clear cache for this workspace
+
+    watcher.onDidChange(() => {
       this.clearWorkspaceCache(workspacePath);
-      
-      // Extract environment name from file path
-      const fileName = path.basename(uri.fsPath);
-      let envName: string;
-      if (fileName === '.env') {
-        envName = 'default';
-      } else if (fileName.startsWith('.env.')) {
-        envName = fileName.substring(5); // Remove '.env.'
-      } else {
-        return;
-      }
-      
-      // Fire event to notify listeners
-      this._onDidChangeEnvironment.fire(envName);
+      this._onDidChangeEnvironment.fire(this.activeEnvironment);
     });
 
-    watcher.onDidCreate((uri) => {
-      // New .env file created - clear cache to force reload
+    watcher.onDidCreate(() => {
       this.clearWorkspaceCache(workspacePath);
     });
 
-    watcher.onDidDelete((uri) => {
-      // .env file deleted - clear cache
+    watcher.onDidDelete(() => {
       this.clearWorkspaceCache(workspacePath);
     });
 
     this.fileWatchers.set(workspacePath, watcher);
   }
 
-  /**
-   * Limpa todos os file watchers (usado na desativação da extensão)
-   */
   public dispose(): void {
     for (const watcher of this.fileWatchers.values()) {
       watcher.dispose();
@@ -393,34 +282,15 @@ export class EnvironmentManager {
   }
 
   /**
-   * Cria um novo arquivo de environment com template
-   * @param envName Nome do environment
-   * @param workspacePath Caminho do workspace
-   * @returns true se criado com sucesso
+   * Creates a new project-root environment file with a template
    */
   public async createEnvironment(envName: string, workspacePath: string): Promise<boolean> {
-    const envDir = getEnvironmentsPath(workspacePath);
-    const httpPath = getHttpPath(workspacePath);
-    
-    // Create HTTP folder and llms.txt if needed
-    if (!fs.existsSync(httpPath)) {
-      fs.mkdirSync(httpPath, { recursive: true });
-    }
-    
-    // Criar diretório se não existir
-    if (!fs.existsSync(envDir)) {
-      fs.mkdirSync(envDir, { recursive: true });
-    }
+    const filePath = getProjectEnvFilePath(workspacePath, envName);
 
-    const fileName = envName === 'default' ? '.env' : `.env.${envName}`;
-    const filePath = path.join(envDir, fileName);
-
-    // Verificar se já existe
     if (fs.existsSync(filePath)) {
       return false;
     }
 
-    // Template padrão
     const template = `# Environment: ${envName}
 # Add your environment variables below in the format KEY=VALUE
 
@@ -439,37 +309,19 @@ TIMEOUT=10000
   }
 
   /**
-   * Inicializa environments padrão no workspace se não existirem
-   * @param workspacePath Caminho do workspace
+   * Creates default .env and .env.example at the project root when missing
    */
   public async initializeDefaultEnvironments(workspacePath: string): Promise<void> {
-    const envDir = getEnvironmentsPath(workspacePath);
-    const httpPath = getHttpPath(workspacePath);
-    
-    // Create HTTP folder and llms.txt if needed
-    if (!fs.existsSync(httpPath)) {
-      fs.mkdirSync(httpPath, { recursive: true });
-    }
-    
-    // Verificar se diretório já existe e tem arquivos
-    if (fs.existsSync(envDir)) {
-      const files = fs.readdirSync(envDir);
-      if (files.some(f => f.startsWith('.env'))) {
-        // Já tem arquivos .env, não criar
-        return;
-      }
+    const envRoot = getProjectEnvRoot(workspacePath);
+    const hasRunnableEnv = listProjectEnvFileNames(workspacePath).length > 0;
+    if (hasRunnableEnv) {
+      return;
     }
 
-    // Criar diretório
-    if (!fs.existsSync(envDir)) {
-      fs.mkdirSync(envDir, { recursive: true });
-    }
-
-    // Criar .env (default environment usado quando decorator presente)
-    const defaultEnvPath = path.join(envDir, '.env');
+    const defaultEnvPath = path.join(envRoot, '.env');
     if (!fs.existsSync(defaultEnvPath)) {
-      const defaultContent = `# Default Environment Variables
-# Usado quando # @env default ou quando .env.{nome} não existe
+      const defaultContent = `# Default environment variables
+# Used with # @env default or when a named .env.{name} file is missing
 
 BASE_URL=http://localhost:3000
 API_KEY=your-api-key-here
@@ -478,59 +330,25 @@ TIMEOUT=10000
       fs.writeFileSync(defaultEnvPath, defaultContent, 'utf8');
     }
 
-    // Criar .env.example (exemplo de como criar novos environments)
-    const exampleEnvPath = path.join(envDir, '.env.example');
+    const exampleEnvPath = path.join(envRoot, '.env.example');
     if (!fs.existsSync(exampleEnvPath)) {
-      const exampleContent = `# Example Environment File
-# 
-# Como usar:
-# 1. Copie este arquivo e renomeie para .env.{nome}
-#    Exemplo: .env.dev, .env.staging, .env.prod
-# 
-# 2. No arquivo .req, use o decorator:
-#    # @env dev
-#    ## Minha Request
-#    curl --request GET \\
-#      --url {{base_url}}/api/endpoint
+      const exampleContent = `# Example environment file
 #
-# 3. As variáveis {{base_url}}, {{api_key}}, etc serão substituídas
-#    pelos valores definidos aqui
+# Usage:
+# 1. Copy and rename to .env.{name} (e.g. .env.dev, .env.staging, .env.prod)
+# 2. In .req files use: # @env dev
+# 3. Reference variables as {{BASE_URL}}, {{API_KEY}}, etc.
 #
-# Sintaxe:
-# - Uma variável por linha no formato: NOME=valor
-# - Nomes em MAIÚSCULAS (por convenção)
-# - Sem espaços ao redor do =
-# - Linhas iniciadas com # são comentários
-#
-# Exemplos de variáveis:
+# Project-root files (not under .cursor/http/):
+#   .env         -> # @env default
+#   .env.local   -> # @env local
+#   .env.dev     -> # @env dev
 
 BASE_URL=http://localhost:3000
 API_KEY=your-api-key-here
 TIMEOUT=10000
-AUTH_TOKEN=your-auth-token
-API_VERSION=v1
-
-# Dicas:
-# - Use .env para valores padrão
-# - Crie .env.dev para desenvolvimento
-# - Crie .env.prod para produção
-# - Adicione .env.local ao .gitignore para valores pessoais
 `;
       fs.writeFileSync(exampleEnvPath, exampleContent, 'utf8');
     }
-
-    // Criar .gitignore no diretório environments
-    const gitignorePath = path.join(envDir, '.gitignore');
-    if (!fs.existsSync(gitignorePath)) {
-      const gitignoreContent = `# Ignore local environment files
-.env.local
-*.local
-
-# Keep example file
-!.env.example
-`;
-      fs.writeFileSync(gitignorePath, gitignoreContent, 'utf8');
-    }
   }
 }
-

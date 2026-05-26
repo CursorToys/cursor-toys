@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import { sanitizeFileName, getCommandsPath, getPromptsPath, getRulesPath, getNotepadsPath, getPlansPath, getSkillsPath, getHttpPath, getEnvironmentsPath, getHooksPath } from './utils';
+import { sanitizeFileName, getCommandsPath, getPromptsPath, getRulesPath, getNotepadsPath, getPlansPath, getSkillsPath, getHttpPath, getProjectEnvRoot, getHooksPath } from './utils';
 import { GistManager, GistResponse, CursorToysMetadata } from './gistManager';
 
 interface ShareableParams {
@@ -1180,21 +1180,17 @@ function getDestinationPath(
         fileName = `${params.name}.req`;
       }
       break;
-    case 'env':
-      // ENV files go to project workspace environments folder
+    case 'env': {
+      folderPath = getProjectEnvRoot(workspacePath);
       if (params.relativePath) {
-        // Use relative path from ENV_PATH type
-        const envBasePath = getEnvironmentsPath(workspacePath);
-        const dirName = path.dirname(params.relativePath);
-        folderPath = dirName === '.' ? envBasePath : path.join(envBasePath, dirName);
-        fileName = path.basename(params.relativePath);
+        const normalizedRelative = params.relativePath.replace(/\\/g, '/');
+        const legacyMatch = normalizedRelative.match(/^(?:\.environments|environments|__environments__|_env)\/(.+)$/);
+        fileName = legacyMatch ? legacyMatch[1] : path.basename(normalizedRelative);
       } else {
-        // Default: save directly in environments/ folder
-        folderPath = getEnvironmentsPath(workspacePath);
-        // Preserve .env prefix in the name
         fileName = params.name.startsWith('.env') ? params.name : `.env.${params.name}`;
       }
       break;
+    }
     case 'hooks':
       // Hooks files (hooks.json)
       folderPath = path.dirname(getHooksPath(workspacePath, isPersonal));
@@ -1464,7 +1460,7 @@ async function importSingleFileFromGist(
       folderPath = getHttpPath(workspacePath);
       break;
     case 'env':
-      folderPath = getEnvironmentsPath(workspacePath);
+      folderPath = getProjectEnvRoot(workspacePath);
       break;
     case 'hooks':
       folderPath = path.dirname(getHooksPath(workspacePath, isPersonal));
@@ -1583,7 +1579,7 @@ async function importBundleFromGist(
         destPath = path.join(getPlansPath(workspacePath), finalFileName);
       } else if (bundleType === 'http_bundle') {
         if (fileName.startsWith('.env')) {
-          destPath = path.join(getEnvironmentsPath(workspacePath), fileName);
+          destPath = path.join(getProjectEnvRoot(workspacePath), fileName);
         } else {
           destPath = path.join(getHttpPath(workspacePath), fileName);
         }
@@ -1596,7 +1592,7 @@ async function importBundleFromGist(
         } else if (fileName.endsWith('.req') || fileName.endsWith('.request')) {
           destPath = path.join(getHttpPath(workspacePath), fileName);
         } else if (fileName.startsWith('.env')) {
-          destPath = path.join(getEnvironmentsPath(workspacePath), fileName);
+          destPath = path.join(getProjectEnvRoot(workspacePath), fileName);
         } else {
           errorCount++;
           continue;

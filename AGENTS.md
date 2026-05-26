@@ -160,7 +160,7 @@ A extensão suporta customização da pasta base através da configuração `cur
 - `getRulesPath()`: Path para pasta de rules
 - `getPromptsPath()`: Path para pasta de prompts
 - `getHttpPath()`: Path para pasta HTTP
-- `getEnvironmentsPath()`: Path para environments HTTP
+- `getProjectEnvRoot()` / `getProjectEnvFilePath()`: Project-root `.env*` paths for HTTP
 
 **Nunca** usar paths hardcoded como `.cursor/` diretamente no código.
 

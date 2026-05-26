@@ -4,6 +4,11 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { getHttpResponsePath } from './utils';
 import { EnvironmentManager } from './environmentManager';
+import {
+  buildHttpResponsePanelKey,
+  HttpResponsePanel,
+} from './httpResponsePanel';
+import type { AssertionResult } from './assertionTypes';
 
 // Store execution times for response files
 const executionTimes: Map<string, string> = new Map();
@@ -1734,7 +1739,11 @@ export async function executeHttpRequestFromFile(
     // Get timeout and save file settings from configuration
     const timeoutConfig = vscode.workspace.getConfiguration('cursorToys');
     const timeout = timeoutConfig.get<number>('httpRequestTimeout', 10);
-    const saveFile = timeoutConfig.get<boolean>('httpRequestSaveFile', true);
+    const saveFile = timeoutConfig.get<boolean>('httpRequestSaveFile', false);
+    const responseView = timeoutConfig.get<'panel' | 'editor'>(
+      'httpRequestResponseView',
+      'panel'
+    );
     
     // Show progress
     await vscode.window.withProgress({
@@ -1786,91 +1795,96 @@ export async function executeHttpRequestFromFile(
         
         // Format response with payload and assertions
         const responseText = formatHttpResponse(result, requestPayload, assertionResults);
-        
+
+        const contentType = result.headers['Content-Type'] || result.headers['content-type'];
+        const displayBody =
+          result.body && result.statusCode > 0
+            ? formatResponseBody(result.body, contentType)
+            : result.body || '';
+
         let responseUri: vscode.Uri | undefined;
-        let responseDoc: vscode.TextDocument;
-        
+
         if (saveFile) {
-          // Save to file mode
-          // Use the response path calculated above
           responseUri = vscode.Uri.file(responsePath);
-          
-          // Write response file
           const encoder = new TextEncoder();
           await vscode.workspace.fs.writeFile(responseUri, encoder.encode(responseText));
-          
-          progress.report({ increment: 100, message: 'Response saved' });
-          
-          // Store execution time before opening
           executionTimes.set(responseUri.toString(), executionTimeSeconds);
-          
-          // Open the saved file
-          responseDoc = await vscode.workspace.openTextDocument(responseUri);
-        } else {
-          // Preview mode: create a temporary document without saving
+        }
+
+        if (responseView === 'panel') {
           progress.report({ increment: 100, message: 'Response ready' });
-          
-          // Create untitled document with response content
-          responseDoc = await vscode.workspace.openTextDocument({
-            language: 'http-response',
-            content: responseText
-          });
-          
-          // Store execution time
-          executionTimes.set(responseDoc.uri.toString(), executionTimeSeconds);
-        }
-        
-        // Determine which column to open the response file
-        // Try to find the column where the request file is open
-        let targetColumn = vscode.ViewColumn.Beside;
-        const requestDoc = vscode.window.visibleTextEditors.find(
-          editor => editor.document.uri.toString() === requestUri.toString()
-        );
-        if (requestDoc) {
-          // If request file is open, open response beside it
-          targetColumn = vscode.ViewColumn.Beside;
-        } else {
-          // If request file is not open, open response in active column
-          targetColumn = vscode.ViewColumn.Active;
-        }
-        
-        if (saveFile && responseUri) {
-          // Open saved file with custom URI to show execution time in title
-          const fileName = path.basename(responseUri.fsPath);
-          const fileNameWithoutExt = path.parse(fileName).name;
-          const ext = path.extname(fileName);
-          const dirName = path.dirname(responseUri.fsPath);
-          
-          // Create a custom URI with execution time in the path for custom tab title
-          // Format: (time) filename.ext
-          const customFileName = `(${executionTimeSeconds}s) ${fileNameWithoutExt}${ext}`;
-          const customPath = path.join(dirName, customFileName).replace(/\\/g, '/');
-          // Format: http-response:///full/path/to/filename (time).ext?originalPath=...
-          const customUri = vscode.Uri.parse(
-            `http-response://${customPath}?originalPath=${encodeURIComponent(responseUri.toString())}&time=${executionTimeSeconds}`
+          const panelKey = buildHttpResponsePanelKey(
+            requestUri,
+            startLine,
+            endLine,
+            sectionTitle
           );
-          
-          try {
-            const customDoc = await vscode.workspace.openTextDocument(customUri);
-            await vscode.window.showTextDocument(customDoc, {
-              preview: false,
-              viewColumn: targetColumn
-            });
-          } catch (error) {
-            // Fallback to regular file opening if custom scheme fails
-            await vscode.window.showTextDocument(responseDoc, {
-              preview: false,
-              viewColumn: targetColumn
-            });
-            // Update tab title with execution time (will try to update via tab API)
-            updateTabTitleWithExecutionTime(responseUri, executionTimeSeconds);
-          }
-        } else {
-          // Open preview document (untitled)
-          await vscode.window.showTextDocument(responseDoc, {
-            preview: true,
-            viewColumn: targetColumn
+          HttpResponsePanel.showOrUpdate(panelKey, {
+            requestLabel: `${config.method || 'GET'} ${config.url}`,
+            statusCode: result.statusCode,
+            statusText: result.statusText,
+            executionTimeSeconds,
+            envName: envUsed && envName ? envName : undefined,
+            headers: result.headers,
+            body: displayBody,
+            requestPayload,
+            assertionResults: assertionResults as AssertionResult[],
+            rawFormatted: responseText,
+            savePath: saveFile ? responsePath : undefined,
           });
+        } else {
+          let responseDoc: vscode.TextDocument;
+
+          if (saveFile && responseUri) {
+            progress.report({ increment: 100, message: 'Response saved' });
+            responseDoc = await vscode.workspace.openTextDocument(responseUri);
+          } else {
+            progress.report({ increment: 100, message: 'Response ready' });
+            responseDoc = await vscode.workspace.openTextDocument({
+              language: 'http-response',
+              content: responseText,
+            });
+            executionTimes.set(responseDoc.uri.toString(), executionTimeSeconds);
+          }
+
+          let targetColumn = vscode.ViewColumn.Beside;
+          const requestEditor = vscode.window.visibleTextEditors.find(
+            (editor) => editor.document.uri.toString() === requestUri.toString()
+          );
+          if (!requestEditor) {
+            targetColumn = vscode.ViewColumn.Active;
+          }
+
+          if (saveFile && responseUri) {
+            const fileName = path.basename(responseUri.fsPath);
+            const fileNameWithoutExt = path.parse(fileName).name;
+            const ext = path.extname(fileName);
+            const dirName = path.dirname(responseUri.fsPath);
+            const customFileName = `(${executionTimeSeconds}s) ${fileNameWithoutExt}${ext}`;
+            const customPath = path.join(dirName, customFileName).replace(/\\/g, '/');
+            const customUri = vscode.Uri.parse(
+              `http-response://${customPath}?originalPath=${encodeURIComponent(responseUri.toString())}&time=${executionTimeSeconds}`
+            );
+
+            try {
+              const customDoc = await vscode.workspace.openTextDocument(customUri);
+              await vscode.window.showTextDocument(customDoc, {
+                preview: false,
+                viewColumn: targetColumn,
+              });
+            } catch {
+              await vscode.window.showTextDocument(responseDoc, {
+                preview: false,
+                viewColumn: targetColumn,
+              });
+              updateTabTitleWithExecutionTime(responseUri, executionTimeSeconds);
+            }
+          } else {
+            await vscode.window.showTextDocument(responseDoc, {
+              preview: true,
+              viewColumn: targetColumn,
+            });
+          }
         }
         
         // Build message based on result
@@ -1895,8 +1909,11 @@ export async function executeHttpRequestFromFile(
           if (envUsed && envName) {
             message += ` [${envName}]`;
           }
-          if (!saveFile) {
+          if (!saveFile && responseView === 'editor') {
             message += ' - Preview mode';
+          }
+          if (responseView === 'panel') {
+            message += ' - Panel';
           }
           vscode.window.showInformationMessage(message);
         }

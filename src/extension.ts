@@ -5,7 +5,7 @@ import { importDeeplink } from './deeplinkImporter';
 import { importRemoteSkillFromGitHubFolderUrl, validateGitHubSkillFolderUrl } from './skillRemoteImporter';
 import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForEnvFolder, generateShareableForHttpFolderWithEnv, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist, createSkillFromStructure } from './shareableImporter';
-import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getEnvironmentsPath, getEnvironmentsFolderName, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getProjectEnvRoot, getProjectEnvFilePath, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { EnvCodeLensProvider } from './envCodeLensProvider';
@@ -13,6 +13,24 @@ import { UserCommandsTreeProvider, CommandFileItem } from './userCommandsTreePro
 import { UserPromptsTreeProvider, PromptFileItem } from './userPromptsTreeProvider';
 import { UserNotepadsTreeProvider, NotepadFileItem } from './userNotepadsTreeProvider';
 import { UserPlansTreeProvider, PlanFileItem } from './userPlansTreeProvider';
+import {
+  DeepFlowTreeProvider,
+  DeepFlowTreeItem,
+  createDeepflowWatcherPattern,
+  getTaskFolderUriFromArg,
+} from './deepflowTreeProvider';
+import {
+  buildApproveChatMessage,
+  buildCompleteChatMessage,
+  buildExecuteChatMessage,
+  buildInitializeChatMessage,
+  buildPlanChatMessage,
+} from './deepflowChatPrompts';
+import { syncDeepflowNeedsInit, syncDeepflowPanelEnabled } from './deepflowContext';
+import { DeepflowCreateTaskPanel } from './deepflowCreateTaskPanel';
+import { openDeepflowSpecFile } from './deepflowFileOps';
+import { sendDeepflowToChat } from './deepflowSendToChat';
+import { ensureDeepflowSkillOrPromptDownload } from './deepflowSkillInstaller';
 import { UserHooksTreeProvider, HooksFileItem } from './userHooksTreeProvider';
 import { UserSkillsTreeProvider, SkillFileItem } from './userSkillsTreeProvider';
 import { createHooksFile, hooksFileExists, validateHooksFile } from './hooksManager';
@@ -34,6 +52,7 @@ import { initSpendingStatusBar, refreshSpending, openSpendingTokenSetup } from '
 import {
   initRemote,
   injectTextToChat,
+  notifyPasteWithoutSubmit,
   remoteShowMenu,
   remoteStart,
   remotePause,
@@ -44,6 +63,7 @@ import {
   remoteOpenFolder
 } from './remoteTelegram';
 import * as fs from 'fs';
+import { syncSidebarViewVisibility } from './sidebarVisibility';
 
 /**
  * Helper function to generate deeplink with validations
@@ -173,7 +193,10 @@ async function generateShareableWithPathValidation(
   }
 }
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  await syncSidebarViewVisibility();
+  await syncDeepflowPanelEnabled();
+
   // Register URI Handler early so cursor:// or vscode:// links open the panel as soon as the extension activates
   const uriHandler = vscode.window.registerUriHandler({
     handleUri(uri: vscode.Uri) {
@@ -285,7 +308,10 @@ export function activate(context: vscode.ExtensionContext) {
         });
       }
       if (text && text.trim()) {
-        await injectTextToChat(text.trim());
+        const result = await injectTextToChat(text.trim());
+        if (result.pasted && !result.submitted) {
+          notifyPasteWithoutSubmit('CursorToys');
+        }
       }
     })
   );
@@ -703,24 +729,15 @@ export function activate(context: vscode.ExtensionContext) {
   // Command to share entire ENV folder
   const shareEnvFolderCommand = vscode.commands.registerCommand(
     'cursor-toys.shareAsCursorToysEnvFolder',
-    async (uri?: vscode.Uri) => {
+    async () => {
       try {
-        let folderPath: string;
-        
-        if (uri) {
-          // Get folder path from URI
-          const stat = await vscode.workspace.fs.stat(uri);
-          if (stat.type !== vscode.FileType.Directory) {
-            vscode.window.showErrorMessage('Please select a folder');
-            return;
-          }
-          folderPath = uri.fsPath;
-        } else {
-          vscode.window.showErrorMessage('Please select a folder');
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+          vscode.window.showErrorMessage('No workspace folder open');
           return;
         }
 
-        // Generate shareables for all files in folder
+        const folderPath = workspaceFolders[0].uri.fsPath;
         const shareables = await generateShareableForEnvFolder(folderPath);
         if (shareables && shareables.length > 0) {
           // Join all shareables with newlines
@@ -2023,6 +2040,20 @@ export function activate(context: vscode.ExtensionContext) {
     showCollapseAll: false,
     dragAndDropController: userPlansTreeProvider
   });
+
+  const deepflowTreeProvider = new DeepFlowTreeProvider();
+  const deepflowTreeView = vscode.window.createTreeView('cursor-toys.deepflow', {
+    treeDataProvider: deepflowTreeProvider,
+    showCollapseAll: true,
+  });
+
+  const refreshDeepflowState = async (): Promise<void> => {
+    await syncDeepflowNeedsInit();
+    deepflowTreeProvider.refresh();
+  };
+
+  void syncDeepflowNeedsInit();
+  void syncDeepflowPanelEnabled();
 
   // Register User Hooks Tree Provider
   const userHooksTreeProvider = new UserHooksTreeProvider();
@@ -3339,6 +3370,95 @@ Detailed instructions for the agent.
     }
   );
 
+  const refreshDeepflow = vscode.commands.registerCommand(
+    'cursor-toys.deepflow.refresh',
+    () => {
+      void refreshDeepflowState();
+    }
+  );
+
+  const deepflowInitialize = vscode.commands.registerCommand(
+    'cursor-toys.deepflow.initialize',
+    async () => {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (!workspaceFolder) {
+        vscode.window.showErrorMessage('Open a workspace folder to initialize DeepFlow.');
+        return;
+      }
+      const skillReady = await ensureDeepflowSkillOrPromptDownload(workspaceFolder.uri);
+      if (!skillReady) {
+        return;
+      }
+      await sendDeepflowToChat(buildInitializeChatMessage());
+    }
+  );
+
+  const openDeepflowAbcFile = vscode.commands.registerCommand(
+    'cursor-toys.deepflow.openAbcFile',
+    async (arg?: unknown) => {
+      await openDeepflowSpecFile(arg);
+    }
+  );
+
+  const deepflowCreateTask = vscode.commands.registerCommand(
+    'cursor-toys.deepflow.createTask',
+    () => {
+      DeepflowCreateTaskPanel.createOrShow();
+    }
+  );
+
+  const deepflowApproveTask = vscode.commands.registerCommand(
+    'cursor-toys.deepflow.approveTask',
+    async (arg?: DeepFlowTreeItem) => {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      const taskUri = getTaskFolderUriFromArg(arg);
+      if (!workspaceFolder || !taskUri) {
+        vscode.window.showErrorMessage('No draft task selected');
+        return;
+      }
+      await sendDeepflowToChat(buildApproveChatMessage(workspaceFolder.uri.fsPath, taskUri));
+    }
+  );
+
+  const deepflowCompleteTask = vscode.commands.registerCommand(
+    'cursor-toys.deepflow.completeTask',
+    async (arg?: DeepFlowTreeItem) => {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      const taskUri = getTaskFolderUriFromArg(arg);
+      if (!workspaceFolder || !taskUri) {
+        vscode.window.showErrorMessage('No active task selected');
+        return;
+      }
+      await sendDeepflowToChat(buildCompleteChatMessage(workspaceFolder.uri.fsPath, taskUri));
+    }
+  );
+
+  const deepflowSendToChatExecute = vscode.commands.registerCommand(
+    'cursor-toys.deepflow.sendToChatExecute',
+    async (arg?: DeepFlowTreeItem) => {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      const taskUri = getTaskFolderUriFromArg(arg);
+      if (!workspaceFolder || !taskUri) {
+        vscode.window.showErrorMessage('No active task selected');
+        return;
+      }
+      await sendDeepflowToChat(buildExecuteChatMessage(workspaceFolder.uri.fsPath, taskUri));
+    }
+  );
+
+  const deepflowSendToChatPlan = vscode.commands.registerCommand(
+    'cursor-toys.deepflow.sendToChatPlan',
+    async (arg?: DeepFlowTreeItem) => {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      const taskUri = getTaskFolderUriFromArg(arg);
+      if (!workspaceFolder || !taskUri) {
+        vscode.window.showErrorMessage('No draft task selected');
+        return;
+      }
+      await sendDeepflowToChat(buildPlanChatMessage(workspaceFolder.uri.fsPath, taskUri));
+    }
+  );
+
   // Command to send text to chat
   const sendToChatCommand = vscode.commands.registerCommand(
     'cursor-toys.sendToChat',
@@ -3537,7 +3657,7 @@ Detailed instructions for the agent.
 
       if (availableEnvs.length === 0) {
         vscode.window.showWarningMessage(
-          'No environment files found. Right-click on .cursor/http/ folder and select "Create Environments Folder" to set up environment variables.'
+          'No environment files found at the project root. Run "CursorToys: Initialize Project Environment Files" or create .env / .env.dev at the workspace root.'
         );
         return;
       }
@@ -3572,20 +3692,16 @@ Detailed instructions for the agent.
       }
 
       const workspacePath = workspaceFolders[0].uri.fsPath;
-      const envDir = getEnvironmentsPath(workspacePath);
+      const envRoot = getProjectEnvRoot(workspacePath);
+      const defaultEnvPath = getProjectEnvFilePath(workspacePath, 'default');
 
-      // Check if directory exists
-      if (!fs.existsSync(envDir)) {
-        const baseFolderName = getBaseFolderName();
-        vscode.window.showWarningMessage(
-          `Environments folder not found. Right-click on .${baseFolderName}/http/ folder and select "Create Environments Folder" to set up environment variables.`
-        );
+      if (fs.existsSync(defaultEnvPath)) {
+        await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(defaultEnvPath));
         return;
       }
 
-      // Open folder in file explorer
-      const envDirUri = vscode.Uri.file(envDir);
-      await vscode.commands.executeCommand('revealFileInOS', envDirUri);
+      const envRootUri = vscode.Uri.file(envRoot);
+      await vscode.commands.executeCommand('revealFileInOS', envRootUri);
     }
   );
 
@@ -3622,9 +3738,7 @@ Detailed instructions for the agent.
           vscode.window.showInformationMessage(`Environment '${envName}' created successfully`);
           
           // Open the file
-          const fileName = envName === 'default' ? '.env' : `.env.${envName}`;
-          const envDir = getEnvironmentsPath(workspacePath);
-          const filePath = path.join(envDir, fileName);
+          const filePath = getProjectEnvFilePath(workspacePath, envName);
           const fileUri = vscode.Uri.file(filePath);
           const document = await vscode.workspace.openTextDocument(fileUri);
           await vscode.window.showTextDocument(document);
@@ -3646,25 +3760,15 @@ Detailed instructions for the agent.
       }
 
       const workspacePath = workspaceFolders[0].uri.fsPath;
-      const envDir = getEnvironmentsPath(workspacePath);
-
-      // Check if directory already exists
-      if (fs.existsSync(envDir)) {
-        const files = fs.readdirSync(envDir);
-        if (files.some(f => f.startsWith('.env'))) {
-          vscode.window.showWarningMessage('Environments folder already exists with environment files.');
-          return;
-        }
-      }
-
       const envManager = EnvironmentManager.getInstance();
       await envManager.initializeDefaultEnvironments(workspacePath);
-      const baseFolderName = getBaseFolderName();
-      vscode.window.showInformationMessage(`Environments folder created successfully at .${baseFolderName}/http/environments/`);
-      
-      // Open the folder in explorer
-      const envDirUri = vscode.Uri.file(envDir);
-      await vscode.commands.executeCommand('revealFileInOS', envDirUri);
+      vscode.window.showInformationMessage('Project environment files initialized at the workspace root (.env, .env.example).');
+
+      const defaultEnvPath = getProjectEnvFilePath(workspacePath, 'default');
+      if (fs.existsSync(defaultEnvPath)) {
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(defaultEnvPath));
+        await vscode.window.showTextDocument(document);
+      }
     }
   );
 
@@ -3805,11 +3909,17 @@ Detailed instructions for the agent.
     async () => {
       const refined = await refineAndGetText(context);
       if (refined) {
-        const sent = await injectTextToChat(refined);
-        if (sent) {
-          vscode.window.showInformationMessage('Refined text sent to chat.');
+        const result = await injectTextToChat(refined);
+        if (result.pasted) {
+          if (result.submitted) {
+            vscode.window.showInformationMessage('Refined text sent to chat.');
+          } else {
+            notifyPasteWithoutSubmit('CursorToys');
+          }
         } else {
-          vscode.window.showWarningMessage('Chat opened but message may not have been sent. Paste and press Enter if needed.');
+          vscode.window.showWarningMessage(
+            'Could not paste into chat. Copy your text and send manually.'
+          );
         }
       }
     }
@@ -3877,7 +3987,7 @@ Detailed instructions for the agent.
         const fileType = getFileTypeFromPath(filePath);
         if (!fileType) {
           vscode.window.showErrorMessage(
-            'File must be in commands/, rules/, prompts/, notepads/, plans/, skills/, http/ or http/environments/ folder'
+            'File must be in commands/, rules/, prompts/, notepads/, plans/, skills/, http/, or a project-root .env file'
           );
           return;
         }
@@ -4359,8 +4469,30 @@ Detailed instructions for the agent.
 
   let userPlansWatchers = createPlansWatchers();
 
+  const deepflowWatcherPattern = createDeepflowWatcherPattern();
+  const deepflowWatcher = deepflowWatcherPattern
+    ? vscode.workspace.createFileSystemWatcher(deepflowWatcherPattern)
+    : undefined;
+  if (deepflowWatcher) {
+    const refreshDeepflowTree = () => void refreshDeepflowState();
+    deepflowWatcher.onDidCreate(refreshDeepflowTree);
+    deepflowWatcher.onDidDelete(refreshDeepflowTree);
+    deepflowWatcher.onDidChange(refreshDeepflowTree);
+    context.subscriptions.push(deepflowWatcher);
+  }
+
   // Watch for configuration changes
   const configWatcher = vscode.workspace.onDidChangeConfiguration((e) => {
+    if (e.affectsConfiguration('cursorToys.sidebar.hiddenViews')) {
+      void syncSidebarViewVisibility();
+    }
+    if (
+      e.affectsConfiguration('cursorToys.experimental.deepflow') ||
+      e.affectsConfiguration('cursorToys.deepflow.enabled')
+    ) {
+      void syncDeepflowPanelEnabled();
+      void refreshDeepflowState();
+    }
     if (e.affectsConfiguration('cursorToys.commandsFolder') || 
         e.affectsConfiguration('cursorToys.personalCommandsView')) {
       // Dispose old watchers
@@ -4467,6 +4599,15 @@ Detailed instructions for the agent.
     revealPlan,
     renamePlan,
     refreshPlans,
+    deepflowTreeView,
+    refreshDeepflow,
+    deepflowInitialize,
+    deepflowCreateTask,
+    openDeepflowAbcFile,
+    deepflowApproveTask,
+    deepflowCompleteTask,
+    deepflowSendToChatExecute,
+    deepflowSendToChatPlan,
     userSkillsTreeView,
     openSkill,
     deleteSkill,

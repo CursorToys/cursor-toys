@@ -95,7 +95,7 @@ export class HttpVariableHoverProvider implements vscode.HoverProvider {
       const markdown = new vscode.MarkdownString();
       markdown.appendMarkdown(`**${varName}** \`[${envName}]\`\n\n`);
       markdown.appendMarkdown(`_Environment file not found_\n\n`);
-      markdown.appendMarkdown(`Tip: Create \`.env.${envName}\` in \`.cursor/http/environments/\`\n\n`);
+      markdown.appendMarkdown(`Tip: Create \`.env.${envName}\` at the project root\n\n`);
       markdown.appendMarkdown(`Or use \`# @env default\` to use the default \`.env\` file`);
       return new vscode.Hover(markdown);
     }

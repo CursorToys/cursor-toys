@@ -110,7 +110,7 @@ curl --request GET \
 ```
 
 **Environment Variables:**
-- Store variables in `.cursor/http/.environments/` folder (or `environments/`, `__environments__/`, `_env/`)
+- Store variables in project-root `.env*` files (`.env`, `.env.local`, `.env.dev`, etc.)
 - Files: `.env`, `.env.dev`, `.env.staging`, `.env.prod`, etc.
 - Use `{{variableName}}` syntax in requests
 - Switch environments via Command Palette: "CursorToys: Select HTTP Environment"
@@ -151,16 +151,17 @@ GET {{BASE_URL}}/api/posts
 ```
 
 **Response Handling:**
-- Responses saved to `.res` or `.response` files (or preview-only mode)
+- Responses shown in a reusable **response panel** by default (updates in place when re-running requests)
+- Optional: also write responses to `.res` or `.response` files on disk
 - Automatic JSON and XML formatting
 - Execution time displayed in response tab title
 - Syntax highlighting for both request and response files
 
 **Configuration:**
 - `cursorToys.httpRequestTimeout`: Timeout in seconds (default: 10)
-- `cursorToys.httpRequestSaveFile`: Save response to file or preview only (default: false)
+- `cursorToys.httpRequestResponseView`: Where to show responses: `panel` (default) or `editor`
+- `cursorToys.httpRequestSaveFile`: Also write the response to `.res`/`.response` on disk (default: false)
 - `cursorToys.httpDefaultEnvironment`: Default environment name (default: "dev")
-- `cursorToys.environmentsFolder`: Folder name for environments (default: ".environments")
 
 ### 3. Personal Libraries
 Build reusable libraries of commands, prompts, and skills that work across all projects.
@@ -384,7 +385,7 @@ workspace/
 │   ├── notepads/              # Project notepads
 │   └── http/                   # HTTP requests
 │       ├── api.req            # Request files
-│       └── .environments/     # Environment variables
+│   (project root) .env*       # HTTP environment variables
 │           ├── .env           # Default environment
 │           ├── .env.dev       # Development environment
 │           └── .env.prod      # Production environment
@@ -452,7 +453,7 @@ If using `cursorToys.commandsFolder: "claude"`:
 - **Project only**: No personal HTTP folder
 
 ### Environment Files
-- **Location**: `.cursor/http/.environments/` (or `environments/`, `__environments__/`, `_env/`)
+- **Location**: Workspace root (`.env`, `.env.local`, `.env.dev`, etc.)
 - **Extensions**: `.env`, `.env.*` (e.g., `.env.dev`, `.env.prod`)
 - **Project only**: No personal environments folder
 
@@ -506,7 +507,6 @@ Maximum compatibility format:
 - `cursorToys.baseFolder`: Base folder name (default: `"cursor"`)
 - `cursorToys.commandsFolder`: Commands folder (`cursor` or `claude`, default: `cursor`)
 - `cursorToys.personalCommandsView`: Show commands from (`both`, `cursor`, `claude`, default: `both`)
-- `cursorToys.environmentsFolder`: Environments folder name (default: `".environments"`)
 
 ### HTTP Request Settings
 - `cursorToys.httpRequestTimeout`: Timeout in seconds (default: `10`)
@@ -607,6 +607,15 @@ Maximum compatibility format:
 - `cursor-toys.renamePlan`: Rename Plan
 - `cursor-toys.revealPlan`: Reveal Plan in Folder
 - `cursor-toys.refreshPlans`: Refresh Plans
+- DeepFlow panel: enable `cursorToys.experimental.deepflow` (Settings → Cursor Toys › Experimental); default off
+- `cursor-toys.deepflow.refresh`: Refresh DeepFlow specs tree
+- `cursor-toys.deepflow.createTask`: Open form to create a new spec (type, title, description) and send to chat
+- `cursor-toys.deepflow.initialize`: Download deep-flow skill if missing, then chat: `@.deepflow` + `Initialize DeepFlow`
+- `cursor-toys.deepflow.approveTask`: `@` draft task folder + `Approve task`
+- `cursor-toys.deepflow.completeTask`: `@` active task folder + `Complete task`
+- `cursor-toys.deepflow.sendToChatExecute`: `@` active task folder (implementation per skill)
+- `cursor-toys.deepflow.sendToChatPlan`: `@` draft task folder (planning per skill)
+- `cursor-toys.deepflow.openAbcFile`: Open DeepFlow A-B-C markdown file
 
 ### Hooks Commands
 - `cursor-toys.createHooksFile`: Create Hooks File
@@ -662,7 +671,7 @@ GET https://api.github.com/users/octocat
 4. Execution time is shown in the tab title
 
 ### Example 3: Use Environment Variables
-1. Create `.cursor/http/.environments/.env.dev`:
+1. Create `.env.dev` at the project root:
 ```env
 BASE_URL=http://localhost:3000
 API_KEY=dev-key-123
@@ -767,7 +776,7 @@ Content-Type: application/json
 - Check environment variables are defined if using `{{variable}}` syntax
 
 ### Environment Variables Not Resolving
-- Verify environment file exists in `.cursor/http/.environments/`
+- Verify environment file exists at the project root (e.g. `.env.dev` for `# @env dev`)
 - Check environment name matches (case-insensitive)
 - Verify variable name matches exactly (case-insensitive)
 - Check active environment in status bar

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import { getFileTypeFromPath, sanitizeFileName, isAllowedExtension, getBaseFolderName, getEnvironmentsFolderName } from './utils';
+import { getFileTypeFromPath, sanitizeFileName, isAllowedExtension, getBaseFolderName, getProjectEnvRoot, listProjectEnvFileNames } from './utils';
 import { GistManager } from './gistManager';
 
 const MAX_CONTENT_SIZE = 50 * 1024 * 1024; // 50MB limit for safety
@@ -38,7 +38,7 @@ export async function generateShareable(
       fileType = getFileTypeFromPath(filePath);
       if (!fileType) {
         vscode.window.showErrorMessage(
-          'File must be in commands/, rules/, prompts/, notepads/, plans/, skills/, http/ or http/environments/ folder'
+          'File must be in commands/, rules/, prompts/, notepads/, plans/, skills/, http/, or a project-root .env file'
         );
         return null;
       }
@@ -214,7 +214,7 @@ export async function generateShareableWithPath(
         fileType = null;
       }
       if (!fileType) {
-        vscode.window.showErrorMessage('File must be in http/ or http/environments/ folder');
+        vscode.window.showErrorMessage('File must be in http/ or a project-root .env file');
         return null;
       }
     }
@@ -246,16 +246,13 @@ export async function generateShareableWithPath(
       return null;
     }
 
-    // Extract relative path from http/ or http/{environmentsFolder}/
     const normalizedPath = filePath.replace(/\\/g, '/');
     const baseFolderName = getBaseFolderName();
-    const environmentsFolderName = getEnvironmentsFolderName();
     
     let relativePath = '';
-    let fileName = path.basename(filePath);
+    const fileName = path.basename(filePath);
     
     if (fileType === 'http') {
-      // Extract path after http/ folder
       const httpFolderPattern = new RegExp(`\\.${baseFolderName}\\/http\\/(.+)$`);
       const cursorHttpPattern = /\.cursor\/http\/(.+)$/;
       
@@ -270,25 +267,7 @@ export async function generateShareableWithPath(
         relativePath = fileName;
       }
     } else if (fileType === 'env') {
-      // Extract path after http/{environmentsFolder}/ folder
-      const envFolderPattern = new RegExp(`\\.${baseFolderName}\\/http\\/${environmentsFolderName}\\/(.+)$`);
-      const cursorEnvPattern = new RegExp(`\\.cursor\\/http\\/${environmentsFolderName}\\/(.+)$`);
-      // Also support legacy 'environments' folder
-      const legacyEnvPattern = new RegExp(`\\.(${baseFolderName}|cursor)\\/http\\/environments\\/(.+)$`);
-      
-      const envMatch = normalizedPath.match(envFolderPattern);
-      const cursorMatch = normalizedPath.match(cursorEnvPattern);
-      const legacyMatch = normalizedPath.match(legacyEnvPattern);
-      
-      if (envMatch) {
-        relativePath = envMatch[1];
-      } else if (cursorMatch) {
-        relativePath = cursorMatch[1];
-      } else if (legacyMatch) {
-        relativePath = legacyMatch[2];
-      } else {
-        relativePath = fileName;
-      }
+      relativePath = fileName;
     }
 
     // Get file name without extension for display
@@ -311,7 +290,7 @@ export async function generateShareableWithPath(
 /**
  * Builds the shareable URL with folder structure
  * @param type File type (http or env)
- * @param relativePath Relative path from http/ or http/environments/
+ * @param relativePath Relative path from http/ or project-root .env filename
  * @param fileName Sanitized file name
  * @param compressedData Compressed and encoded content
  * @returns Shareable URL
@@ -593,81 +572,19 @@ export async function generateShareableForHttpFolderWithEnv(
       });
     }
 
-    // Check if environments folder exists (try configured name first, then legacy)
-    const environmentsFolderName = getEnvironmentsFolderName();
-    const environmentsPath = path.join(httpFolderPath, environmentsFolderName);
-    const legacyEnvironmentsPath = path.join(httpFolderPath, 'environments');
-    
-    // Try configured environments folder
-    try {
-      const envStat = await vscode.workspace.fs.stat(vscode.Uri.file(environmentsPath));
-      if (envStat.type === vscode.FileType.Directory) {
-        // Collect environment files
-        const envFiles = await collectEnvFilesFromFolder(environmentsPath);
-        
-        for (const filePath of envFiles) {
-          // Read file content
-          const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
-          const content = document.getText();
-          
-          // Extract relative path
-          const normalizedPath = filePath.replace(/\\/g, '/');
-          const envFolderPattern = new RegExp(`\\.${baseFolderName}\\/http\\/${environmentsFolderName}\\/(.+)$`);
-          const cursorEnvPattern = new RegExp(`\\.cursor\\/http\\/${environmentsFolderName}\\/(.+)$`);
-          
-          const envMatch = normalizedPath.match(envFolderPattern);
-          const cursorMatch = normalizedPath.match(cursorEnvPattern);
-          
-          let relativePath = '';
-          if (envMatch) {
-            relativePath = `${environmentsFolderName}/${envMatch[1]}`;
-          } else if (cursorMatch) {
-            relativePath = `${environmentsFolderName}/${cursorMatch[1]}`;
-          } else {
-            relativePath = `${environmentsFolderName}/${path.basename(filePath)}`;
-          }
-          
-          files.push({
-            type: 'env',
-            relativePath: relativePath,
-            content: content
-          });
-        }
-      }
-    } catch {
-      // Configured folder doesn't exist, try legacy
-      try {
-        const legacyEnvStat = await vscode.workspace.fs.stat(vscode.Uri.file(legacyEnvironmentsPath));
-        if (legacyEnvStat.type === vscode.FileType.Directory && environmentsFolderName !== 'environments') {
-          // Collect environment files from legacy folder
-          const envFiles = await collectEnvFilesFromFolder(legacyEnvironmentsPath);
-          
-          for (const filePath of envFiles) {
-            // Read file content
-            const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
-            const content = document.getText();
-            
-            // Extract relative path
-            const normalizedPath = filePath.replace(/\\/g, '/');
-            const legacyEnvPattern = new RegExp(`\\.(${baseFolderName}|cursor)\\/http\\/environments\\/(.+)$`);
-            const legacyMatch = normalizedPath.match(legacyEnvPattern);
-            
-            let relativePath = '';
-            if (legacyMatch) {
-              relativePath = `environments/${legacyMatch[2]}`;
-            } else {
-              relativePath = `environments/${path.basename(filePath)}`;
-            }
-            
-            files.push({
-              type: 'env',
-              relativePath: relativePath,
-              content: content
-            });
-          }
-        }
-      } catch {
-        // Neither folder exists, that's OK
+    const workspaceFolder = vscode.workspace.workspaceFolders?.find(
+      (folder) => httpFolderPath.startsWith(folder.uri.fsPath)
+    );
+    if (workspaceFolder) {
+      const workspacePath = workspaceFolder.uri.fsPath;
+      for (const fileName of listProjectEnvFileNames(workspacePath)) {
+        const envFilePath = path.join(getProjectEnvRoot(workspacePath), fileName);
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(envFilePath));
+        files.push({
+          type: 'env',
+          relativePath: fileName,
+          content: document.getText(),
+        });
       }
     }
 
@@ -1315,7 +1232,6 @@ export async function generateShareableForProject(
     const httpPath = path.join(cursorFolderPath, 'http');
     try {
       const httpFiles = await collectHttpFilesFromFolder(httpPath);
-      const environmentsFolderName = getEnvironmentsFolderName();
       
       for (const filePath of httpFiles) {
         const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
@@ -1330,23 +1246,16 @@ export async function generateShareableForProject(
         });
       }
       
-      // Collect environment files
-      const environmentsPath = path.join(httpPath, environmentsFolderName);
-      try {
-        const envFiles = await collectEnvFilesFromFolder(environmentsPath);
-        for (const filePath of envFiles) {
-          const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
-          const normalizedPath = filePath.replace(/\\/g, '/');
-          const envMatch = normalizedPath.match(new RegExp(`\\/${environmentsFolderName}\\/(.+)$`));
-          const relativePath = envMatch ? `${environmentsFolderName}/${envMatch[1]}` : path.basename(filePath);
-          
-          bundle.http.push({
-            type: 'env',
-            relativePath: relativePath,
-            content: document.getText()
-          });
-        }
-      } catch {}
+      const workspacePath = path.dirname(cursorFolderPath);
+      for (const fileName of listProjectEnvFileNames(workspacePath)) {
+        const envFilePath = path.join(getProjectEnvRoot(workspacePath), fileName);
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(envFilePath));
+        bundle.http.push({
+          type: 'env',
+          relativePath: fileName,
+          content: document.getText()
+        });
+      }
     } catch {}
 
     // Check if we have any files
@@ -1421,7 +1330,7 @@ export async function generateGistShareable(
       fileType = getFileTypeFromPath(filePath);
       if (!fileType) {
         vscode.window.showErrorMessage(
-          'File must be in commands/, rules/, prompts/, notepads/, plans/, skills/, http/ or http/environments/ folder'
+          'File must be in commands/, rules/, prompts/, notepads/, plans/, skills/, http/, or a project-root .env file'
         );
         return null;
       }
@@ -1659,20 +1568,18 @@ export async function generateGistShareableForBundle(
         fileMetadata.push({ name: fileName, type: 'http', size: content.length });
       }
 
-      // Also collect environment files if they exist
-      const environmentsFolderName = getEnvironmentsFolderName();
-      const environmentsPath = path.join(folderPath, environmentsFolderName);
-      try {
-        const envFiles = await collectEnvFilesFromFolder(environmentsPath);
-        for (const filePath of envFiles) {
-          const document = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+      const workspaceFolder = vscode.workspace.workspaceFolders?.find(
+        (folder) => folderPath.startsWith(folder.uri.fsPath)
+      );
+      if (workspaceFolder) {
+        const workspacePath = workspaceFolder.uri.fsPath;
+        for (const fileName of listProjectEnvFileNames(workspacePath)) {
+          const envFilePath = path.join(getProjectEnvRoot(workspacePath), fileName);
+          const document = await vscode.workspace.openTextDocument(vscode.Uri.file(envFilePath));
           const content = document.getText();
-          const fileName = path.basename(filePath);
           files[fileName] = { content };
           fileMetadata.push({ name: fileName, type: 'env', size: content.length });
         }
-      } catch {
-        // No environment files, that's OK
       }
     } else if (bundleType === 'project') {
       // Collect all file types from project

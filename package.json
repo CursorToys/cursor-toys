@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.3.28",
+  "version": "2026.5.26",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -66,6 +66,7 @@
     "onView:cursor-toys.userPrompts",
     "onView:cursor-toys.userNotepads",
     "onView:cursor-toys.userSkills",
+    "onView:cursor-toys.deepflow",
     "onCommand:cursor-toys.sendToChat",
     "onCommand:cursor-toys.sendSelectionToChat",
     "onCommand:cursor-toys.openChatWithPrompt",
@@ -361,6 +362,46 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "cursor-toys.deepflow.refresh",
+        "title": "CursorToys: Refresh DeepFlow",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.deepflow.initialize",
+        "title": "CursorToys: Initialize DeepFlow",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "cursor-toys.deepflow.createTask",
+        "title": "CursorToys: New DeepFlow Spec",
+        "icon": "$(add)"
+      },
+      {
+        "command": "cursor-toys.deepflow.openAbcFile",
+        "title": "CursorToys: Open DeepFlow Spec File",
+        "icon": "$(file-text)"
+      },
+      {
+        "command": "cursor-toys.deepflow.approveTask",
+        "title": "CursorToys: DeepFlow Send to Chat (Approve)",
+        "icon": "$(check)"
+      },
+      {
+        "command": "cursor-toys.deepflow.completeTask",
+        "title": "CursorToys: DeepFlow Send to Chat (Complete)",
+        "icon": "$(archive)"
+      },
+      {
+        "command": "cursor-toys.deepflow.sendToChatExecute",
+        "title": "CursorToys: DeepFlow Send to Chat (Execute)",
+        "icon": "$(run)"
+      },
+      {
+        "command": "cursor-toys.deepflow.sendToChatPlan",
+        "title": "CursorToys: DeepFlow Send to Chat (Plan)",
+        "icon": "$(comment-discussion)"
+      },
+      {
         "command": "cursor-toys.shareAsCursorToysPlan",
         "title": "CursorToys: Share as CursorToys (Plan)"
       },
@@ -469,7 +510,7 @@
       },
       {
         "command": "cursor-toys.openEnvironments",
-        "title": "CursorToys: Open HTTP Environments Folder"
+        "title": "CursorToys: Open Project Environment Files"
       },
       {
         "command": "cursor-toys.createEnvironment",
@@ -477,7 +518,7 @@
       },
       {
         "command": "cursor-toys.initializeEnvironments",
-        "title": "CursorToys: Create Environments Folder"
+        "title": "CursorToys: Initialize Project Environment Files"
       },
       {
         "command": "cursor-toys.generateHttpLlms",
@@ -638,42 +679,59 @@
         "label": "Cursor Toys"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cursor-toys-deepflow",
+          "title": "DeepFlow",
+          "icon": "resources/deepflow.svg",
+          "when": "cursorToys.deepflow.panelEnabled"
+        }
+      ]
+    },
     "views": {
+      "cursor-toys-deepflow": [
+        {
+          "id": "cursor-toys.deepflow",
+          "name": "Specs",
+          "when": "cursorToys.deepflow.panelEnabled"
+        }
+      ],
       "explorer": [
         {
           "id": "cursor-toys.userNotepads",
           "name": "Notepads",
-          "when": "true"
+          "when": "cursorToys.sidebar.notepadsVisible"
         },
         {
           "id": "cursor-toys.userCommands",
           "name": "Commands",
-          "when": "true"
+          "when": "cursorToys.sidebar.commandsVisible"
         },
         {
           "id": "cursor-toys.userPrompts",
           "name": "Prompts",
-          "when": "true"
+          "when": "cursorToys.sidebar.promptsVisible"
         },
         {
           "id": "cursor-toys.userPlans",
           "name": "Cursor Plans",
-          "when": "true"
+          "when": "cursorToys.sidebar.plansVisible"
         },
         {
           "id": "cursor-toys.userSkills",
           "name": "Skills",
-          "when": "true"
+          "when": "cursorToys.sidebar.skillsVisible"
         },
         {
           "id": "cursor-toys.userHooks",
           "name": "Cursor Hooks",
-          "when": "true"
+          "when": "cursorToys.sidebar.hooksVisible"
         },
         {
           "id": "cursor-toys.userMcpb",
           "name": "MCPB Packages",
-          "when": "true"
+          "when": "cursorToys.sidebar.mcpbVisible"
         }
       ]
     },
@@ -710,6 +768,21 @@
           "command": "cursor-toys.refreshPlans",
           "when": "view == cursor-toys.userPlans",
           "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.deepflow.refresh",
+          "when": "view == cursor-toys.deepflow",
+          "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.deepflow.createTask",
+          "when": "view == cursor-toys.deepflow",
+          "group": "navigation@1"
+        },
+        {
+          "command": "cursor-toys.deepflow.initialize",
+          "when": "view == cursor-toys.deepflow && cursorToys.deepflow.needsInit",
+          "group": "navigation@2"
         },
         {
           "command": "cursor-toys.createHooksFile",
@@ -872,6 +945,36 @@
           "command": "cursor-toys.deletePlan",
           "when": "view == cursor-toys.userPlans && viewItem == userPlanFile",
           "group": "2_actions"
+        },
+        {
+          "command": "cursor-toys.deepflow.initialize",
+          "when": "view == cursor-toys.deepflow && viewItem == deepflowEmptyNeedInit",
+          "group": "inline"
+        },
+        {
+          "command": "cursor-toys.deepflow.approveTask",
+          "when": "view == cursor-toys.deepflow && viewItem == deepflowTaskDraft",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.deepflow.sendToChatPlan",
+          "when": "view == cursor-toys.deepflow && viewItem == deepflowTaskDraft",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.deepflow.sendToChatExecute",
+          "when": "view == cursor-toys.deepflow && viewItem == deepflowTaskActive",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.deepflow.completeTask",
+          "when": "view == cursor-toys.deepflow && viewItem == deepflowTaskActive",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.deepflow.openAbcFile",
+          "when": "view == cursor-toys.deepflow && viewItem == deepflowAbcFile",
+          "group": "inline"
         },
         {
           "command": "cursor-toys.openSkill",
@@ -1106,7 +1209,7 @@
         },
         {
           "command": "cursor-toys.shareAsCursorToysEnv",
-          "when": "resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]http[\\\\/](environments|\\.environments|__environments__|_env)[\\\\/]\\.env/ && !explorerResourceIsFolder"
+          "when": "resourceFilename =~ /^\\.env/ && !(resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]http[\\\\/]) && !explorerResourceIsFolder"
         },
         {
           "command": "cursor-toys.shareAsCursorToysHttpWithPath",
@@ -1114,7 +1217,7 @@
         },
         {
           "command": "cursor-toys.shareAsCursorToysEnvWithPath",
-          "when": "resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]http[\\\\/](environments|\\.environments|__environments__|_env)[\\\\/]\\.env/ && !explorerResourceIsFolder"
+          "when": "resourceFilename =~ /^\\.env/ && !(resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]http[\\\\/]) && !explorerResourceIsFolder"
         },
         {
           "command": "cursor-toys.shareAsCursorToysHttpFolder",
@@ -1126,7 +1229,7 @@
         },
         {
           "command": "cursor-toys.shareAsCursorToysEnvFolder",
-          "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]http[\\\\/](environments|\\.environments|__environments__|_env)($|[\\\\/])/"
+          "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)$/"
         },
         {
           "command": "cursor-toys.shareAsCursorToysProject",
@@ -1237,9 +1340,10 @@
         }
       ]
     },
-    "configuration": {
-      "title": "Cursor Toys",
-      "properties": {
+    "configuration": [
+      {
+        "title": "Cursor Toys",
+        "properties": {
         "cursorToys.linkType": {
           "type": "string",
           "enum": [
@@ -1305,6 +1409,23 @@
           "default": "both",
           "description": "Which command folders to show in Personal Commands view: 'both' for .cursor and .claude, 'cursor' for .cursor only, or 'claude' for .claude only"
         },
+        "cursorToys.sidebar.hiddenViews": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "notepads",
+              "commands",
+              "prompts",
+              "plans",
+              "skills",
+              "hooks",
+              "mcpb"
+            ]
+          },
+          "default": [],
+          "markdownDescription": "Explorer sidebar sections to hide under CursorToys. Keys: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`. Empty list shows all sections. Command Palette and file actions still work for hidden resources."
+        },
         "cursorToys.httpRequestTimeout": {
           "type": "number",
           "default": 10,
@@ -1313,7 +1434,20 @@
         "cursorToys.httpRequestSaveFile": {
           "type": "boolean",
           "default": false,
-          "description": "Save HTTP response to file. If false, only shows preview without saving."
+          "description": "Also write the HTTP response to a .res/.response file on disk. The response is always shown in the response panel (or editor, if configured)."
+        },
+        "cursorToys.httpRequestResponseView": {
+          "type": "string",
+          "enum": [
+            "panel",
+            "editor"
+          ],
+          "enumDescriptions": [
+            "Show responses in a reusable webview panel (updates in place on re-run)",
+            "Open each response in the text editor (legacy behavior; may open many tabs)"
+          ],
+          "default": "panel",
+          "description": "Where to display HTTP responses after Send Request."
         },
         "cursorToys.httpAssertionsEnabled": {
           "type": "boolean",
@@ -1334,23 +1468,6 @@
           "type": "string",
           "default": "dev",
           "description": "Default HTTP environment name (used for reference in status bar)"
-        },
-        "cursorToys.environmentsFolder": {
-          "type": "string",
-          "enum": [
-            ".environments",
-            "environments",
-            "__environments__",
-            "_env"
-          ],
-          "enumDescriptions": [
-            "Hidden folder: .environments (recommended)",
-            "Standard folder: environments",
-            "Special folder: __environments__",
-            "Short hidden folder: _env"
-          ],
-          "default": ".environments",
-          "description": "Name of the folder to store HTTP environment files inside the http/ directory"
         },
         "cursorToys.minify.preserveComments": {
           "type": "boolean",
@@ -1447,6 +1564,18 @@
         }
       }
     },
+    {
+      "title": "Cursor Toys › Experimental",
+        "properties": {
+          "cursorToys.experimental.deepflow": {
+            "type": "boolean",
+            "default": false,
+            "order": 1,
+            "markdownDescription": "Enable the **DeepFlow** activity bar panel: spec-driven tasks (drafts → in development → archive) in a dedicated sidebar. Off by default; reload the window after changing."
+          }
+        }
+      }
+    ],
     "languages": [
       {
         "id": "http-request",
