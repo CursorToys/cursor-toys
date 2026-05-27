@@ -37,11 +37,10 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 | [🌐 In-Editor API Testing](#-in-editor-api-testing) | [📚 Personal Libraries](#-personal-libraries) | [📓 Project Notepads](#-project-notepads) |
 | [🪝 Cursor Hooks](#-cursor-hooks) | [🎓 Skills Management](#-skills-management) | [🗜️ File Minification](#️-file-minification) |
 | [💬 Chat Integration](#-chat-integration) | [🌐 GitHub Gist Integration](#-github-gist-integration) | [📦 MCPB Packages](#-mcpb-packages) |
-| [📊 Spending (API usage)](#-spending-cursor-api-usage) | [💬 CursorToys Remote Chat](#cursortoys-remote-chat) | [🧪 DeepFlow (experimental)](#-deepflow-experimental) |
+| [📊 Spending (API usage)](#-spending-cursor-api-usage) | [🧪 DeepFlow (experimental)](#-deepflow-experimental) | |
 
 > **🧪 NEW in v1.10.0**: HTTP Request Assertions — Automate API testing with `@assert()` annotations!  
 > **📦 NEW in v1.12.0**: MCPB support — Install and manage MCP server bundles (.mcpb) with a preview and editable env vars.  
-> **💬 CursorToys Remote Chat**: Skill-driven, provider-agnostic bridge to a connected channel. One global connection; start from the CursorToys menu; init session from chat or one command.  
 > **🧪 DeepFlow (experimental, off by default)**: Spec-driven development panel in the activity bar — drafts → active → archive. Enable under **Settings → Cursor Toys › Experimental**.
 
 ### 📦 MCPB Packages
@@ -73,7 +72,7 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 - **Empty stages**: Shows a clear message when a stage has no tasks (e.g. only `.gitkeep` in `active/`).
 - **Initialize**: If `.deepflow/specs` is missing, click **Initialize DeepFlow** or use the toolbar — downloads the [deep-flow skill](https://github.com/godrix/deep-flow/tree/main/deep-flow) when missing, then sends `Initialize DeepFlow` to chat with `@.deepflow`.
 - **New spec form**: **+** in the panel title opens a form (type: bug, feature, refactor, chore, docs, spike; title; description) and **Send to chat** with `Create task <slug>` per the skill.
-- **Send to chat actions** (same injection as Remote Telegram: `cursorInject.send` → paste → submit):
+- **Send to chat actions** (`cursorInject.send` → paste → submit):
   - **Plan** — `@` draft task folder
   - **Approve** — `@` folder + `Approve task`
   - **Execute** — `@` active task folder
@@ -105,36 +104,10 @@ Requires the **deep-flow** skill in `.cursor/skills/deep-flow/` (or download fro
 
 Hide individual CursorToys **Explorer** sections (not DeepFlow) without disabling commands:
 
-- **Setting**: `cursorToys.sidebar.hiddenViews` — array of: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`
+- **Setting**: `cursorToys.sidebar.hiddenViews` — array of: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`
 - **Default**: `[]` (all Explorer sections visible)
+- **Also in Explorer (Files bar)**: `cursorToys.sidebar.explorerViews` duplicates selected sections in the Explorer sidebar (in addition to the CursorToys activity bar). **Default**: `skills`, `plans`
 - Updates when you save settings (no window reload required)
-
-### Cursor Remote (Telegram)
-
-**Bidirectional**: send chat summaries to Telegram and control Cursor from Telegram (like [cursor-autopilot](https://github.com/heyzgj/cursor-autopilot)). Each project has its own bot token and chat; credentials are stored in VS Code Secrets.
-
-- **To Telegram**: Summaries from `.cursor/remote/summary-*.json` are sent automatically when Remote is **Start**. The file is created by a **Cursor rule** (`.cursor/rules/after_each_chat.mdc`), not hooks—rules run at the end of each chat turn, which fits this use case.
-- **From Telegram**: When Remote is **Start**, the extension polls for messages in the configured chat. You can send:
-  - **`/start`** — Shows available commands.
-  - **`/new` _texto da tarefa_** — Opens Cursor chat and sends the text as the prompt (e.g. `/new implementar login`).
-  - **`/end`** — Hides the chat panel and replies "Session ended."
-  - **Plain text** (no command) — Same as `/new`: opens chat with that text.
-- **Status bar**: Icon shows running or paused; click for menu (Start, Pause, Send last summary, Configure, Open remote folder).
-- **Commands** (Command Palette): **CursorToys: Remote – Start**, **CursorToys: Remote – Pause**, **CursorToys: Remote – Send last summary**, **CursorToys: Remote – Configure**, **CursorToys: Remote – Open remote folder**.
-- **Credentials**: Stored per workspace via VS Code Secrets. Use **Configure** to set the Telegram bot token and chat ID.
-
-#### How to configure and test
-
-1. **Create a Telegram bot**: In Telegram, open [@BotFather](https://t.me/BotFather), send `/newbot`, follow the steps, and copy the **bot token** (e.g. `123456789:ABCdef...`).
-2. **Get your chat ID**: Send a message to your bot (or add the bot to a group). Open [@userinfobot](https://t.me/userinfobot) and forward a message from that chat, or use a getUpdates request: `https://api.telegram.org/bot<TOKEN>/getUpdates` and read `message.chat.id` (use a negative number for groups). For a step-by-step guide for private chat, channel, group, or topic, see [How to get Telegram Bot Chat ID](https://gist.github.com/nafiesl/4ad622f344cd1dc3bb1ecbe468ff9f8a).
-3. **Configure in Cursor**: Open the project (workspace), then:
-   - Click the **Remote** icon in the status bar, or run **CursorToys: Remote – Show menu** from the Command Palette (`Cmd+Shift+P`).
-   - Choose **Configure** and paste the bot token and chat ID when prompted. They are saved in VS Code Secrets for this workspace only.
-4. **Start and test**:
-   - In the same menu, choose **Start** so that new summaries are sent automatically.
-   - To test without waiting for a chat turn: create a file manually in `.cursor/remote/`, e.g. `summary-20250311-120000.json` with content `{"summary":"Test summary","current_status":"Testing"}`, or use **Send last summary** to send the latest file in `.cursor/remote` to Telegram.
-5. **Pause**: Choose **Pause** from the menu (or **CursorToys: Remote – Pause**) to stop sending and receiving; **Start** resumes it.
-6. **From Telegram**: With Remote **Start**, send `/new sua tarefa` in the bot chat to open Cursor chat with that prompt; `/end` hides the chat; `/start` lists commands.
 
 ### AI Text Refinement
 
@@ -287,7 +260,7 @@ Click "Send Request" → See assertion results inline!
 - ✂️ **Send Selection** — Right-click → Send to Chat
 - 📝 **Open Chat with Prompt** — Command to open the editor chat with a prompt (uses `workbench.action.chat.open` when available; no URL length limit)
 - 📤 **Send to Chat** — Uses the built-in chat command when available; falls back to deeplink for compatibility
-- 💉 **Inject to chat** — Remote Chat, DeepFlow, **Refine and Send to Chat**, and `cursorInject.send` paste into the composer and auto-submit (`cursorInject.send` when available, else clipboard + `Cmd+Enter` / `Ctrl+Enter`). Shows a warning if the text was pasted but submit failed
+- 💉 **Inject to chat** — DeepFlow, **Refine and Send to Chat**, and `cursorInject.send` paste into the composer and auto-submit (`cursorInject.send` when available, else clipboard + `Cmd+Enter` / `Ctrl+Enter`). Shows a warning if the text was pasted but submit failed
 - 🔗 **Prompt Deeplinks** — Generate shareable prompt links from selected code
 - 📍 **Context Included** — File path, language, and line numbers auto-added
 
@@ -415,7 +388,6 @@ Click the "Send Request" link that appears above → See formatted response!
 
 **Version 1.13.0 (March 2026)**
 
-- **Cursor Remote (Telegram)** — Bidirectional bridge: send chat summaries to Telegram and control Cursor from Telegram (`/new`, `/start`, `/end`). Token and chat ID per project via VS Code Secrets; status bar menu. See [Cursor Remote – How to configure and test](#how-to-configure-and-test). To get your bot token and chat ID (private chat, channel, group, or topic), see [How to get Telegram Bot Chat ID](https://gist.github.com/nafiesl/4ad622f344cd1dc3bb1ecbe468ff9f8a).
 - **Spending (Cursor API usage)** — Status bar indicator showing Auto % and API %; token auto-detected from Cursor state or set manually; refresh and configure commands; click opens dashboard.
 - **Open Chat with Prompt** — Command to open the editor chat with a prompt via `workbench.action.chat.open`.
 - **Send to Chat** — Uses the built-in chat command when available (no URL length limit); falls back to deeplink.
@@ -440,7 +412,7 @@ For a detailed look at the latest changes, visit the [CHANGELOG](CHANGELOG.md).
 
 - **Panel**: Activity bar icon → dedicated DeepFlow sidebar with pipeline stages and A-B-C spec files.
 - **Opt-in**: `cursorToys.experimental.deepflow` (default `false`) under **Cursor Toys › Experimental**.
-- **Chat**: Actions send `@` folder references and DeepFlow skill commands; uses the same inject-and-submit flow as Remote Telegram.
+- **Chat**: Actions send `@` folder references and DeepFlow skill commands; uses paste-and-submit injection (`cursorInject.send`).
 
 ### HTTP Request Assertions System
 - **Test Automation**: Write assertions directly in HTTP request files using `@assert()` annotations

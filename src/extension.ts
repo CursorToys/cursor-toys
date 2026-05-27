@@ -5,12 +5,13 @@ import { importDeeplink } from './deeplinkImporter';
 import { importRemoteSkillFromGitHubFolderUrl, validateGitHubSkillFolderUrl } from './skillRemoteImporter';
 import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist, createSkillFromStructure } from './shareableImporter';
-import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getProjectEnvFilePath, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, isHttpRequestFile, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getProjectEnvFilePath, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { EnvCodeLensProvider } from './envCodeLensProvider';
 import { UserCommandsTreeProvider, CommandFileItem } from './userCommandsTreeProvider';
 import { UserPromptsTreeProvider, PromptFileItem } from './userPromptsTreeProvider';
+import { UserHttpTreeProvider, HttpTreeItem } from './userHttpTreeProvider';
 import { UserNotepadsTreeProvider, NotepadFileItem } from './userNotepadsTreeProvider';
 import { UserPlansTreeProvider, PlanFileItem } from './userPlansTreeProvider';
 import {
@@ -33,12 +34,22 @@ import { openDeepflowSpecFile } from './deepflowFileOps';
 import { openDeepflowMemoryFile, openMemoryEntryTarget } from './deepflowMemory';
 import { sendDeepflowToChat } from './deepflowSendToChat';
 import { ensureDeepflowSkillOrPromptDownload } from './deepflowSkillInstaller';
+import { CursorToysSettingsTreeProvider, toggleDeepflowPanelSetting } from './cursorToysSettingsTreeProvider';
+import { editCursorToysSetting } from './cursorToysSettingsEditor';
+import { openUserSettingsJson } from './openSettingsUri';
+import { isExtensionPausedForSettingsUi } from './settingsUiGuard';
+import { debounce } from './debounce';
 import { UserHooksTreeProvider, HooksFileItem } from './userHooksTreeProvider';
 import { UserSkillsTreeProvider, SkillFileItem } from './userSkillsTreeProvider';
 import { createHooksFile, hooksFileExists, validateHooksFile } from './hooksManager';
 import { sendToChat, sendSelectionToChat, buildPromptDeeplink, MAX_DEEPLINK_LENGTH } from './sendToChat';
 import { AnnotationPanel, AnnotationParams } from './annotationPanel';
 import { executeHttpRequestFromFile, getExecutionTime, copyCurlCommand } from './httpRequestExecutor';
+import {
+  runHttpCliTests,
+  getHttpTestWorkspaceContext,
+  toHttpFolderRelativePath,
+} from './httpCliRunner';
 import { EnvironmentManager } from './environmentManager';
 import { HttpVariableHoverProvider, HttpEnvironmentCompletionProvider, HttpEnvironmentDecorationProvider } from './httpEnvironmentProviders';
 import { minifyFile, formatMinificationStats, detectFileType } from './minifier';
@@ -51,21 +62,10 @@ import { checkAndShowReleaseNotes, ReleaseNotesPanel, loadChangelogSection } fro
 import { installMcpbPackage, uninstallMcpbPackage, getMcpbRoot } from './mcpbInstaller';
 import { UserMcpbTreeProvider, McpbPackageItem } from './userMcpbTreeProvider';
 import { initSpendingStatusBar, refreshSpending, openSpendingTokenSetup } from './spendingStatusBar';
-import {
-  initRemote,
-  injectTextToChat,
-  notifyPasteWithoutSubmit,
-  remoteShowMenu,
-  remoteStart,
-  remotePause,
-  remoteLinkThisChat,
-  remoteInitSession,
-  remoteSendLastSummary,
-  remoteConfigure,
-  remoteOpenFolder
-} from './remoteTelegram';
+import { CursorToysUtilsTreeProvider } from './utilsTreeProvider';
+import { injectTextToChat, notifyPasteWithoutSubmit, removeLegacyRemoteChatSkill } from './chatInjection';
 import * as fs from 'fs';
-import { syncSidebarViewVisibility } from './sidebarVisibility';
+import { syncExplorerViewVisibility, syncSidebarViewVisibility } from './sidebarVisibility';
 
 /**
  * Helper function to generate deeplink with validations
@@ -197,6 +197,7 @@ async function generateShareableWithPathValidation(
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   await syncSidebarViewVisibility();
+  await syncExplorerViewVisibility();
   await syncDeepflowPanelEnabled();
 
   // Register URI Handler early so cursor:// or vscode:// links open the panel as soon as the extension activates
@@ -299,7 +300,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   initSpendingStatusBar(context);
 
-  initRemote(context);
+  removeLegacyRemoteChatSkill();
 
   context.subscriptions.push(
     vscode.commands.registerCommand('cursorInject.send', async (text?: string) => {
@@ -318,27 +319,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
   );
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand('cursor-toys.remote.showMenu', () => remoteShowMenu())
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('cursor-toys.remote.start', () => remoteStart())
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('cursor-toys.remote.pause', () => remotePause()),
-    vscode.commands.registerCommand('cursor-toys.remote.linkThisChat', () => remoteLinkThisChat()),
-    vscode.commands.registerCommand('cursor-toys.remote.initSession', () => remoteInitSession())
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('cursor-toys.remote.sendLastSummary', () => remoteSendLastSummary())
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('cursor-toys.remote.configure', () => remoteConfigure())
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand('cursor-toys.remote.openFolder', () => remoteOpenFolder())
-  );
-  
   // Register CursorToys Menu command
   context.subscriptions.push(
     vscode.commands.registerCommand('cursor-toys.showMenu', async () => {
@@ -347,11 +327,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           label: '$(megaphone) What\'s New',
           description: 'View release notes and changelog',
           detail: 'Release notes'
-        },
-        {
-          label: '$(broadcast) Start Remote Chat',
-          description: 'Enable Telegram send/receive for this workspace',
-          detail: 'Remote'
         },
         {
           label: '$(compass) Open Skills Marketplace',
@@ -418,7 +393,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       // Map selection to command
       const commandMap: { [key: string]: string } = {
         'What\'s New': 'cursor-toys.showReleaseNotes',
-        'Start Remote Chat': 'cursor-toys.remote.start',
         'Open Skills Marketplace': 'cursor-toys.browseRecommendations',
         'Import from URL': 'cursor-toys.import',
         'Install MCPB': 'cursor-toys.installMcpb',
@@ -488,17 +462,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Update on active editor change
   const activeEditorChangeDisposable = vscode.window.onDidChangeActiveTextEditor(() => {
-    decorationProvider.triggerUpdateDecorations();
+    if (!isExtensionPausedForSettingsUi()) {
+      decorationProvider.triggerUpdateDecorations();
+    }
   });
 
   // Update on document change
-  const documentChangeDisposable = vscode.workspace.onDidChangeTextDocument(() => {
-    decorationProvider.triggerUpdateDecorations();
+  const documentChangeDisposable = vscode.workspace.onDidChangeTextDocument((e) => {
+    if (isHttpRequestFile(e.document.uri.fsPath)) {
+      decorationProvider.triggerUpdateDecorations();
+    }
   });
 
   // Update on visible editors change
   const visibleEditorsChangeDisposable = vscode.window.onDidChangeVisibleTextEditors(() => {
-    decorationProvider.triggerUpdateDecorations();
+    if (!isExtensionPausedForSettingsUi()) {
+      decorationProvider.triggerUpdateDecorations();
+    }
   });
   
   // Register HTTP Response Content Provider for custom tab titles
@@ -559,14 +539,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Register CodeLens Provider for all files
   const codeLensProvider = new DeeplinkCodeLensProvider();
   const codeLensDisposable = vscode.languages.registerCodeLensProvider(
-    '*',
+    [
+      { scheme: 'file', pattern: '**/.cursor/**' },
+      { scheme: 'file', pattern: '**/.claude/**' },
+      { scheme: 'file', pattern: '**/.vscode/**' },
+      { scheme: 'file', pattern: '**/.ai/**' },
+    ],
     codeLensProvider
   );
 
   // Register HTTP CodeLens Provider for HTTP request files
   const httpCodeLensProvider = new HttpCodeLensProvider();
   const httpCodeLensDisposable = vscode.languages.registerCodeLensProvider(
-    '*',
+    { language: 'http-request' },
     httpCodeLensProvider
   );
 
@@ -1945,6 +1930,36 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   );
 
+  const userHttpTreeProvider = new UserHttpTreeProvider();
+  const userHttpTreeView = vscode.window.createTreeView('cursor-toys.userHttp', {
+    treeDataProvider: userHttpTreeProvider,
+    showCollapseAll: false,
+  });
+
+  const openHttpRequest = vscode.commands.registerCommand(
+    'cursor-toys.openHttpRequest',
+    async (arg: HttpTreeItem | vscode.Uri | undefined) => {
+      let uri: vscode.Uri | null = null;
+      if (arg instanceof vscode.Uri) {
+        uri = arg;
+      } else if (arg && 'uri' in arg && arg.uri.scheme === 'file') {
+        uri = arg.uri;
+      }
+      if (!uri) {
+        vscode.window.showErrorMessage('No HTTP request file selected');
+        return;
+      }
+      await vscode.window.showTextDocument(uri, { preview: false });
+    }
+  );
+
+  const refreshUserHttp = vscode.commands.registerCommand(
+    'cursor-toys.refreshUserHttp',
+    () => {
+      userHttpTreeProvider.refresh();
+    }
+  );
+
   // Register User Notepads Tree Provider
   const userNotepadsTreeProvider = new UserNotepadsTreeProvider();
   const userNotepadsTreeView = vscode.window.createTreeView('cursor-toys.userNotepads', {
@@ -1964,6 +1979,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const deepflowTreeProvider = new DeepFlowTreeProvider();
   const deepflowTreeView = vscode.window.createTreeView('cursor-toys.deepflow', {
     treeDataProvider: deepflowTreeProvider,
+    showCollapseAll: true,
+  });
+
+  const cursorToysSettingsTreeProvider = new CursorToysSettingsTreeProvider();
+  const cursorToysSettingsTreeView = vscode.window.createTreeView('cursor-toys.settings', {
+    treeDataProvider: cursorToysSettingsTreeProvider,
+    showCollapseAll: true,
+  });
+
+  const cursorToysUtilsTreeProvider = new CursorToysUtilsTreeProvider();
+  const cursorToysUtilsTreeView = vscode.window.createTreeView('cursor-toys.utils', {
+    treeDataProvider: cursorToysUtilsTreeProvider,
     showCollapseAll: true,
   });
 
@@ -1995,6 +2022,45 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const userMcpbTreeView = vscode.window.createTreeView('cursor-toys.userMcpb', {
     treeDataProvider: userMcpbTreeProvider,
     showCollapseAll: false
+  });
+
+  // Explorer mirrors (unique view IDs; same providers as activity bar views)
+  const userCommandsExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userCommands', {
+    treeDataProvider: userCommandsTreeProvider,
+    showCollapseAll: false,
+    dragAndDropController: userCommandsTreeProvider,
+  });
+  const userPromptsExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userPrompts', {
+    treeDataProvider: userPromptsTreeProvider,
+    showCollapseAll: false,
+    dragAndDropController: userPromptsTreeProvider,
+  });
+  const userNotepadsExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userNotepads', {
+    treeDataProvider: userNotepadsTreeProvider,
+    showCollapseAll: false,
+    dragAndDropController: userNotepadsTreeProvider,
+  });
+  const userPlansExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userPlans', {
+    treeDataProvider: userPlansTreeProvider,
+    showCollapseAll: false,
+    dragAndDropController: userPlansTreeProvider,
+  });
+  const userSkillsExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userSkills', {
+    treeDataProvider: userSkillsTreeProvider,
+    showCollapseAll: false,
+    dragAndDropController: userSkillsTreeProvider,
+  });
+  const userHttpExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userHttp', {
+    treeDataProvider: userHttpTreeProvider,
+    showCollapseAll: false,
+  });
+  const userHooksExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userHooks', {
+    treeDataProvider: userHooksTreeProvider,
+    showCollapseAll: false,
+  });
+  const userMcpbExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userMcpb', {
+    treeDataProvider: userMcpbTreeProvider,
+    showCollapseAll: false,
   });
 
   /**
@@ -3297,6 +3363,120 @@ Detailed instructions for the agent.
     }
   );
 
+  const refreshCursorToysSettings = vscode.commands.registerCommand(
+    'cursor-toys.settings.refresh',
+    () => {
+      cursorToysSettingsTreeProvider.refresh();
+    }
+  );
+
+  const editSetting = vscode.commands.registerCommand(
+    'cursor-toys.settings.editSetting',
+    async (settingKey: string) => {
+      await editCursorToysSetting(settingKey);
+      cursorToysSettingsTreeProvider.refresh();
+
+      if (
+        settingKey === 'cursorToys.sidebar.hiddenViews' ||
+        settingKey === 'cursorToys.sidebar.explorerViews'
+      ) {
+        await syncSidebarViewVisibility();
+        await syncExplorerViewVisibility();
+      }
+      if (
+        settingKey === 'cursorToys.experimental.deepflow' ||
+        settingKey === 'cursorToys.deepflow.enabled'
+      ) {
+        await syncDeepflowPanelEnabled();
+        void refreshDeepflowState();
+      }
+    }
+  );
+
+  const toggleDeepflowPanel = vscode.commands.registerCommand(
+    'cursor-toys.settings.toggleDeepflow',
+    async () => {
+      await toggleDeepflowPanelSetting();
+      cursorToysSettingsTreeProvider.refresh();
+    }
+  );
+
+  const openSettingsJson = vscode.commands.registerCommand(
+    'cursor-toys.settings.openSettingsJson',
+    () => {
+      openUserSettingsJson();
+    }
+  );
+
+  const configureKeys = vscode.commands.registerCommand(
+    'cursor-toys.settings.configureKeys',
+    async () => {
+      const picked = await vscode.window.showQuickPick(
+        [
+          {
+            label: 'Configure GitHub Token',
+            description: 'Needed for Gist share/import',
+            command: 'cursor-toys.configureGitHubToken',
+          },
+          {
+            label: 'Configure Gemini API Key',
+            description: 'Used for AI text refinement',
+            command: 'cursor-toys.configureGeminiApiKey',
+          },
+          {
+            label: 'Configure Spending Session Token',
+            description: 'Used for Cursor spending/status bar',
+            command: 'cursor-toys.spending.openTokenSetup',
+          },
+          {
+            label: 'Remove GitHub Token',
+            description: 'Clear stored token',
+            command: 'cursor-toys.removeGitHubToken',
+          },
+          {
+            label: 'Remove Gemini API Key',
+            description: 'Clear stored key',
+            command: 'cursor-toys.removeGeminiApiKey',
+          },
+        ],
+        { placeHolder: 'Choose a key to configure' }
+      );
+
+      if (!picked) {
+        return;
+      }
+
+      await vscode.commands.executeCommand(picked.command);
+    }
+  );
+
+  const focusCursorToysView = vscode.commands.registerCommand(
+    'cursor-toys.focusView',
+    async (viewId: string) => {
+      if (!viewId || typeof viewId !== 'string') {
+        return;
+      }
+      await vscode.commands.executeCommand('workbench.view.extension.cursor-toys');
+      await vscode.commands.executeCommand(`${viewId}.focus`);
+    }
+  );
+
+  const focusDeepflowView = vscode.commands.registerCommand('cursor-toys.focusDeepflow', async () => {
+    await vscode.commands.executeCommand('cursor-toys.focusView', 'cursor-toys.deepflow');
+  });
+
+  const focusHttpView = vscode.commands.registerCommand('cursor-toys.focusHttp', async () => {
+    await vscode.commands.executeCommand('cursor-toys.focusView', 'cursor-toys.userHttp');
+  });
+
+  const focusMcpbView = vscode.commands.registerCommand('cursor-toys.focusMcpb', async () => {
+    await vscode.commands.executeCommand('cursor-toys.focusView', 'cursor-toys.userMcpb');
+  });
+
+  const focusUtilsView = vscode.commands.registerCommand('cursor-toys.focusUtils', async () => {
+    await vscode.commands.executeCommand('cursor-toys.focusView', 'cursor-toys.utils');
+  });
+
   const deepflowInitialize = vscode.commands.registerCommand(
     'cursor-toys.deepflow.initialize',
     async () => {
@@ -3394,7 +3574,17 @@ Detailed instructions for the agent.
         vscode.window.showErrorMessage('No draft task selected');
         return;
       }
-      await sendDeepflowToChat(buildPlanChatMessage(workspaceFolder.uri.fsPath, taskUri));
+      const message = buildPlanChatMessage(workspaceFolder.uri.fsPath, taskUri);
+      const pasted = await sendDeepflowToChat(message, { submit: false });
+      if (pasted) {
+        void vscode.window.showInformationMessage(
+          'DeepFlow: draft task reference pasted in chat. Add your planning notes, then submit.'
+        );
+      } else {
+        vscode.window.showErrorMessage(
+          'DeepFlow: could not paste in chat. Open the chat composer and try again.'
+        );
+      }
     }
   );
 
@@ -3550,12 +3740,29 @@ Detailed instructions for the agent.
     }
   );
 
-  // Command to run assertions using CLI
+  function resolveHttpFilePath(arg: HttpTreeItem | vscode.Uri | undefined): string | null {
+    if (arg instanceof vscode.Uri) {
+      return arg.fsPath;
+    }
+    if (arg && arg.type === 'file' && arg.uri.scheme === 'file') {
+      return arg.filePath;
+    }
+    return null;
+  }
+
+  function resolveHttpFolderRelativePath(arg: HttpTreeItem | undefined): string | null {
+    if (!arg || arg.type !== 'folder') {
+      return null;
+    }
+    return arg.folderPath ?? arg.filePath ?? null;
+  }
+
+  // Command to run assertions using CLI (editor / CodeLens)
   const runAssertionsCommand = vscode.commands.registerCommand(
     'cursor-toys.runAssertions',
     async (uri?: vscode.Uri) => {
       let requestUri: vscode.Uri;
-      
+
       if (uri) {
         requestUri = uri;
       } else {
@@ -3567,16 +3774,90 @@ Detailed instructions for the agent.
         requestUri = editor.document.uri;
       }
 
-      const filePath = requestUri.fsPath;
-      
-      // Create a terminal and run cursortoys command
-      const terminal = vscode.window.createTerminal({
-        name: 'CursorToys - HTTP Tests',
-        cwd: path.dirname(filePath)
+      const ctx = getHttpTestWorkspaceContext();
+      if (!ctx) {
+        return;
+      }
+
+      runHttpCliTests({
+        workspacePath: ctx.workspacePath,
+        scope: 'file',
+        filePath: requestUri.fsPath,
       });
-      
-      terminal.show();
-      terminal.sendText(`npx cursortoys http test -f "${filePath}"`);
+    }
+  );
+
+  const runHttpTestsFile = vscode.commands.registerCommand(
+    'cursor-toys.runHttpTestsFile',
+    async (arg?: HttpTreeItem | vscode.Uri) => {
+      const filePath = resolveHttpFilePath(arg);
+      if (!filePath) {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+          vscode.window.showErrorMessage('No HTTP request file selected');
+          return;
+        }
+        const ctx = getHttpTestWorkspaceContext();
+        if (!ctx) {
+          return;
+        }
+        runHttpCliTests({
+          workspacePath: ctx.workspacePath,
+          scope: 'file',
+          filePath: editor.document.uri.fsPath,
+        });
+        return;
+      }
+
+      const ctx = getHttpTestWorkspaceContext();
+      if (!ctx) {
+        return;
+      }
+      runHttpCliTests({
+        workspacePath: ctx.workspacePath,
+        scope: 'file',
+        filePath,
+      });
+    }
+  );
+
+  const runHttpTestsFolder = vscode.commands.registerCommand(
+    'cursor-toys.runHttpTestsFolder',
+    async (arg?: HttpTreeItem) => {
+      const ctx = getHttpTestWorkspaceContext();
+      if (!ctx) {
+        return;
+      }
+
+      let folderRelative: string | null = resolveHttpFolderRelativePath(arg);
+      if (folderRelative === null && arg?.type === 'file') {
+        folderRelative = toHttpFolderRelativePath(ctx.httpPath, path.dirname(arg.filePath));
+      }
+
+      if (folderRelative === null) {
+        vscode.window.showErrorMessage('No HTTP folder selected');
+        return;
+      }
+
+      runHttpCliTests({
+        workspacePath: ctx.workspacePath,
+        scope: 'folder',
+        folderRelativePath: folderRelative,
+      });
+    }
+  );
+
+  const runHttpTestsAll = vscode.commands.registerCommand(
+    'cursor-toys.runHttpTestsAll',
+    async () => {
+      const ctx = getHttpTestWorkspaceContext();
+      if (!ctx) {
+        return;
+      }
+      runHttpCliTests({
+        workspacePath: ctx.workspacePath,
+        scope: 'all',
+      });
     }
   );
 
@@ -4238,6 +4519,37 @@ Detailed instructions for the agent.
 
   let userPromptsWatchers = createPromptsWatchers();
 
+  const createHttpWatchers = (): vscode.FileSystemWatcher[] => {
+    const watchers: vscode.FileSystemWatcher[] = [];
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      return watchers;
+    }
+
+    const httpPath = getHttpPath(workspaceFolder.uri.fsPath);
+    const folderUri = vscode.Uri.file(httpPath);
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(folderUri, '**/*')
+    );
+
+    watcher.onDidCreate(() => {
+      userHttpTreeProvider.refresh();
+    });
+
+    watcher.onDidDelete(() => {
+      userHttpTreeProvider.refresh();
+    });
+
+    watcher.onDidChange((uri) => {
+      userHttpTreeProvider.invalidateFile(uri.fsPath);
+    });
+
+    watchers.push(watcher);
+    return watchers;
+  };
+
+  let userHttpWatchers = createHttpWatchers();
+
   // File system watchers for hooks.json files
   const createHooksWatchers = (): vscode.FileSystemWatcher[] => {
     const watchers: vscode.FileSystemWatcher[] = [];
@@ -4381,10 +4693,17 @@ Detailed instructions for the agent.
     context.subscriptions.push(deepflowWatcher);
   }
 
-  // Watch for configuration changes
-  const configWatcher = vscode.workspace.onDidChangeConfiguration((e) => {
-    if (e.affectsConfiguration('cursorToys.sidebar.hiddenViews')) {
+  // Watch for configuration changes (debounced; skipped while Settings UI is opening)
+  const handleConfigurationChange = debounce((e: vscode.ConfigurationChangeEvent) => {
+    if (isExtensionPausedForSettingsUi()) {
+      return;
+    }
+    if (
+      e.affectsConfiguration('cursorToys.sidebar.hiddenViews') ||
+      e.affectsConfiguration('cursorToys.sidebar.explorerViews')
+    ) {
       void syncSidebarViewVisibility();
+      void syncExplorerViewVisibility();
     }
     if (
       e.affectsConfiguration('cursorToys.experimental.deepflow') ||
@@ -4393,14 +4712,18 @@ Detailed instructions for the agent.
       void syncDeepflowPanelEnabled();
       void refreshDeepflowState();
     }
-    if (e.affectsConfiguration('cursorToys.commandsFolder') || 
-        e.affectsConfiguration('cursorToys.personalCommandsView')) {
-      // Dispose old watchers
-      userCommandsWatchers.forEach(watcher => watcher.dispose());
-      // Create new watchers based on updated configuration
+    if (
+      e.affectsConfiguration('cursorToys.commandsFolder') ||
+      e.affectsConfiguration('cursorToys.personalCommandsView')
+    ) {
+      userCommandsWatchers.forEach((watcher) => watcher.dispose());
       userCommandsWatchers = createWatchers();
       userCommandsTreeProvider.refresh();
     }
+  }, 400);
+
+  const configWatcher = vscode.workspace.onDidChangeConfiguration((e) => {
+    handleConfigurationChange(e);
   });
 
   // Add all watchers to subscriptions
@@ -4480,6 +4803,9 @@ Detailed instructions for the agent.
     revealUserPrompt,
     renameUserPrompt,
     refreshUserPrompts,
+    userHttpTreeView,
+    openHttpRequest,
+    refreshUserHttp,
     userNotepadsTreeView,
     createNotepad,
     openNotepad,
@@ -4496,7 +4822,19 @@ Detailed instructions for the agent.
     renamePlan,
     refreshPlans,
     deepflowTreeView,
+    cursorToysSettingsTreeView,
+    cursorToysUtilsTreeView,
     refreshDeepflow,
+    refreshCursorToysSettings,
+    editSetting,
+    toggleDeepflowPanel,
+    openSettingsJson,
+    configureKeys,
+    focusCursorToysView,
+    focusDeepflowView,
+    focusHttpView,
+    focusMcpbView,
+    focusUtilsView,
     deepflowInitialize,
     deepflowCreateTask,
     openDeepflowAbcFile,
@@ -4537,6 +4875,9 @@ Detailed instructions for the agent.
     sendHttpRequestCommand,
     copyCurlCommandCommand,
     runAssertionsCommand,
+    runHttpTestsFile,
+    runHttpTestsFolder,
+    runHttpTestsAll,
     selectEnvironmentCommand,
     createEnvironmentCommand,
     generateHttpLlmsCommand,
@@ -4558,6 +4899,14 @@ Detailed instructions for the agent.
     showReleaseNotesCommand,
     installMcpbCommand,
     userMcpbTreeView,
+    userCommandsExplorerTreeView,
+    userPromptsExplorerTreeView,
+    userNotepadsExplorerTreeView,
+    userPlansExplorerTreeView,
+    userSkillsExplorerTreeView,
+    userHttpExplorerTreeView,
+    userHooksExplorerTreeView,
+    userMcpbExplorerTreeView,
     refreshMcpbCommand,
     revealMcpbCommand,
     deleteMcpbCommand

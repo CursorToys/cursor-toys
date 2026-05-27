@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { isExtensionPausedForSettingsUi } from './settingsUiGuard';
 import { isEnvironmentFile } from './utils';
 
 export class EnvCodeLensProvider implements vscode.CodeLensProvider {
@@ -7,16 +8,17 @@ export class EnvCodeLensProvider implements vscode.CodeLensProvider {
   public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
 
   constructor() {
-    // Update CodeLens when files change
-    vscode.workspace.onDidChangeConfiguration(() => {
-      this._onDidChangeCodeLenses.fire();
-    });
+    // No configuration listener — env CodeLens only depends on file content.
   }
 
   public provideCodeLenses(
     document: vscode.TextDocument,
     token: vscode.CancellationToken
   ): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
+    if (isExtensionPausedForSettingsUi()) {
+      return [];
+    }
+
     this.codeLenses = [];
 
     const filePath = document.uri.fsPath;

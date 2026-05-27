@@ -39,14 +39,19 @@ export function buildInitializeChatMessage(): string {
   return `@${DEEPFLOW_ROOT_RELATIVE}\n\n${DEEPFLOW_CMD_INITIALIZE}`;
 }
 
+/** Label pasted with the draft task @ ref; user adds planning notes on the following lines. */
+export const DEEPFLOW_PLAN_LABEL = 'Plan';
+
 /**
- * Draft task folder ref (planning stage — no separate skill command; agent uses draft A-B-C rules).
+ * Draft task folder ref + Plan label (planning stage — paste only, no auto-submit).
+ * The user completes the message with their review or planning notes.
  */
 export function buildPlanChatMessage(
   workspaceFsPath: string,
   taskFolderUri: vscode.Uri
 ): string {
-  return buildTaskFolderRef(workspaceFsPath, taskFolderUri);
+  const ref = buildTaskFolderRef(workspaceFsPath, taskFolderUri);
+  return `${ref}\n\n${DEEPFLOW_PLAN_LABEL}:\n`;
 }
 
 /**

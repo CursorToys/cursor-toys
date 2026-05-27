@@ -3,10 +3,18 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { getMcpbRoot } from './mcpbInstaller';
 import type { McpbManifest } from './mcpbInstaller';
+import {
+  isTreeLoadingPlaceholder,
+  renderLoadingTreeItem,
+  TreeLoadCoordinator,
+  TreeLoadingPlaceholder,
+} from './treeLoading';
 
 /**
  * Represents an installed MCPB package in the tree view.
  */
+export type McpbTreeElement = McpbPackageItem | TreeLoadingPlaceholder;
+
 export interface McpbPackageItem {
   serverId: string;
   label: string;
@@ -17,17 +25,26 @@ export interface McpbPackageItem {
 /**
  * Tree data provider for installed MCPB packages (~/.mcpb).
  */
-export class UserMcpbTreeProvider implements vscode.TreeDataProvider<McpbPackageItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<McpbPackageItem | undefined | null | void> =
-    new vscode.EventEmitter<McpbPackageItem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<McpbPackageItem | undefined | null | void> =
+export class UserMcpbTreeProvider implements vscode.TreeDataProvider<McpbTreeElement> {
+  private _onDidChangeTreeData: vscode.EventEmitter<McpbTreeElement | undefined | null | void> =
+    new vscode.EventEmitter<McpbTreeElement | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<McpbTreeElement | undefined | null | void> =
     this._onDidChangeTreeData.event;
 
+  private readonly rootLoader = new TreeLoadCoordinator<undefined, McpbPackageItem>(
+    () => this._onDidChangeTreeData.fire(),
+    () => '__mcpb_root__'
+  );
+
   refresh(): void {
+    this.rootLoader.clear();
     this._onDidChangeTreeData.fire();
   }
 
-  getTreeItem(element: McpbPackageItem): vscode.TreeItem {
+  getTreeItem(element: McpbTreeElement): vscode.TreeItem {
+    if (isTreeLoadingPlaceholder(element)) {
+      return renderLoadingTreeItem(element);
+    }
     const treeItem = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
     treeItem.description = element.serverId;
     treeItem.tooltip = element.packagePath;
@@ -41,7 +58,14 @@ export class UserMcpbTreeProvider implements vscode.TreeDataProvider<McpbPackage
     return treeItem;
   }
 
-  async getChildren(): Promise<McpbPackageItem[]> {
+  async getChildren(element?: McpbTreeElement): Promise<McpbTreeElement[]> {
+    if (isTreeLoadingPlaceholder(element)) {
+      return [];
+    }
+    return this.rootLoader.resolveChildren(undefined, () => this.loadPackages());
+  }
+
+  private async loadPackages(): Promise<McpbPackageItem[]> {
     const mcpbRoot = getMcpbRoot();
     const rootUri = vscode.Uri.file(mcpbRoot);
 

@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.5.27",
+  "version": "2026.5.28",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -66,7 +66,10 @@
     "onView:cursor-toys.userPrompts",
     "onView:cursor-toys.userNotepads",
     "onView:cursor-toys.userSkills",
+    "onView:cursor-toys.userHttp",
+    "onView:cursor-toys.settings",
     "onView:cursor-toys.deepflow",
+    "onView:cursor-toys.utils",
     "onCommand:cursor-toys.sendToChat",
     "onCommand:cursor-toys.sendSelectionToChat",
     "onCommand:cursor-toys.openChatWithPrompt",
@@ -83,14 +86,14 @@
     "onCommand:cursor-toys.removeGeminiApiKey",
     "onCommand:cursor-toys.installMcpb",
     "onView:cursor-toys.userMcpb",
-    "onCommand:cursor-toys.remote.showMenu",
-    "onCommand:cursor-toys.remote.start",
-    "onCommand:cursor-toys.remote.pause",
-    "onCommand:cursor-toys.remote.linkThisChat",
-    "onCommand:cursor-toys.remote.initSession",
-    "onCommand:cursor-toys.remote.sendLastSummary",
-    "onCommand:cursor-toys.remote.configure",
-    "onCommand:cursor-toys.remote.openFolder",
+    "onView:cursor-toys.explorer.userCommands",
+    "onView:cursor-toys.explorer.userPrompts",
+    "onView:cursor-toys.explorer.userNotepads",
+    "onView:cursor-toys.explorer.userPlans",
+    "onView:cursor-toys.explorer.userSkills",
+    "onView:cursor-toys.explorer.userHttp",
+    "onView:cursor-toys.explorer.userHooks",
+    "onView:cursor-toys.explorer.userMcpb",
     "onCommand:cursorToys.command",
     "onCommand:cursorInject.send"
   ],
@@ -257,6 +260,16 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "cursor-toys.openHttpRequest",
+        "title": "CursorToys: Open HTTP Request File",
+        "icon": "$(file)"
+      },
+      {
+        "command": "cursor-toys.refreshUserHttp",
+        "title": "CursorToys: Refresh HTTP",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "cursor-toys.openSkill",
         "title": "CursorToys: Open Skill",
         "icon": "$(file)"
@@ -346,10 +359,54 @@
         "icon": "$(refresh)"
       },
       {
-        "command": "cursor-toys.deepflow.refresh",
-        "title": "CursorToys: Refresh DeepFlow",
-        "icon": "$(refresh)"
+        "command": "cursor-toys.settings.editSetting",
+        "title": "CursorToys: Edit Setting",
+        "icon": "$(edit)"
       },
+      {
+        "command": "cursor-toys.settings.openSettingsJson",
+        "title": "CursorToys: Open Settings (JSON)",
+        "icon": "$(json)"
+      },
+      {
+        "command": "cursor-toys.settings.configureKeys",
+        "title": "CursorToys: Configure Keys",
+        "icon": "$(key)"
+      },
+      {
+        "command": "cursor-toys.focusView",
+        "title": "CursorToys: Focus View"
+      },
+      {
+        "command": "cursor-toys.focusDeepflow",
+        "title": "CursorToys: Focus DeepFlow",
+        "icon": "$(layers-active)"
+      },
+      {
+        "command": "cursor-toys.focusHttp",
+        "title": "CursorToys: Focus HTTP Requests",
+        "icon": "$(globe)"
+      },
+      {
+        "command": "cursor-toys.focusMcpb",
+        "title": "CursorToys: Focus MCPB Packages",
+        "icon": "$(package)"
+      },
+      {
+        "command": "cursor-toys.focusUtils",
+        "title": "CursorToys: Focus Utils",
+        "icon": "$(tools)"
+      },
+        {
+          "command": "cursor-toys.settings.refresh",
+          "title": "CursorToys: Refresh Settings",
+          "icon": "$(refresh)"
+        },
+        {
+          "command": "cursor-toys.deepflow.refresh",
+          "title": "CursorToys: Refresh DeepFlow",
+          "icon": "$(refresh)"
+        },
       {
         "command": "cursor-toys.deepflow.initialize",
         "title": "CursorToys: Initialize DeepFlow",
@@ -499,6 +556,21 @@
         "icon": "$(play)"
       },
       {
+        "command": "cursor-toys.runHttpTestsFile",
+        "title": "CursorToys: Run HTTP Tests (This File)",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "cursor-toys.runHttpTestsFolder",
+        "title": "CursorToys: Run HTTP Tests (This Folder)",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "cursor-toys.runHttpTestsAll",
+        "title": "CursorToys: Run HTTP Tests (All)",
+        "icon": "$(beaker)"
+      },
+      {
         "command": "cursor-toys.selectEnvironment",
         "title": "CursorToys: Select HTTP Environment"
       },
@@ -616,38 +688,6 @@
         "title": "CursorToys: Show spending (enable status bar)"
       },
       {
-        "command": "cursor-toys.remote.showMenu",
-        "title": "CursorToys Remote Chat: Show menu"
-      },
-      {
-        "command": "cursor-toys.remote.start",
-        "title": "CursorToys: Start Remote Chat"
-      },
-      {
-        "command": "cursor-toys.remote.pause",
-        "title": "CursorToys: Remote – Pause"
-      },
-      {
-        "command": "cursor-toys.remote.linkThisChat",
-        "title": "CursorToys: Remote – Link this chat"
-      },
-      {
-        "command": "cursor-toys.remote.initSession",
-        "title": "CursorToys: Remote – Init session in this chat"
-      },
-      {
-        "command": "cursor-toys.remote.sendLastSummary",
-        "title": "CursorToys: Remote – Send last summary"
-      },
-      {
-        "command": "cursor-toys.remote.configure",
-        "title": "CursorToys: Remote – Configure"
-      },
-      {
-        "command": "cursor-toys.remote.openFolder",
-        "title": "CursorToys: Remote – Open remote folder"
-      },
-      {
         "command": "cursorInject.send",
         "title": "Inject text into Cursor Chat"
       },
@@ -669,26 +709,26 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "cursor-toys-deepflow",
-          "title": "DeepFlow",
-          "icon": "resources/deepflow.svg",
-          "when": "cursorToys.deepflow.panelEnabled"
+          "id": "cursor-toys",
+          "title": "CursorToys",
+          "icon": "resources/cursor-toys.svg"
         }
       ]
     },
     "views": {
-      "cursor-toys-deepflow": [
+      "cursor-toys": [
+        {
+          "id": "cursor-toys.settings",
+          "name": "Settings"
+        },
+        {
+          "id": "cursor-toys.utils",
+          "name": "Utils"
+        },
         {
           "id": "cursor-toys.deepflow",
-          "name": "Specs",
+          "name": "DeepFlow",
           "when": "cursorToys.deepflow.panelEnabled"
-        }
-      ],
-      "explorer": [
-        {
-          "id": "cursor-toys.userNotepads",
-          "name": "Notepads",
-          "when": "cursorToys.sidebar.notepadsVisible"
         },
         {
           "id": "cursor-toys.userCommands",
@@ -699,6 +739,11 @@
           "id": "cursor-toys.userPrompts",
           "name": "Prompts",
           "when": "cursorToys.sidebar.promptsVisible"
+        },
+        {
+          "id": "cursor-toys.userNotepads",
+          "name": "Notepads",
+          "when": "cursorToys.sidebar.notepadsVisible"
         },
         {
           "id": "cursor-toys.userPlans",
@@ -719,6 +764,53 @@
           "id": "cursor-toys.userMcpb",
           "name": "MCPB Packages",
           "when": "cursorToys.sidebar.mcpbVisible"
+        },
+        {
+          "id": "cursor-toys.userHttp",
+          "name": "HTTP Requests",
+          "when": "cursorToys.sidebar.httpVisible"
+        }
+      ],
+      "explorer": [
+        {
+          "id": "cursor-toys.explorer.userNotepads",
+          "name": "Notepads",
+          "when": "cursorToys.explorer.notepadsVisible"
+        },
+        {
+          "id": "cursor-toys.explorer.userCommands",
+          "name": "Commands",
+          "when": "cursorToys.explorer.commandsVisible"
+        },
+        {
+          "id": "cursor-toys.explorer.userPrompts",
+          "name": "Prompts",
+          "when": "cursorToys.explorer.promptsVisible"
+        },
+        {
+          "id": "cursor-toys.explorer.userPlans",
+          "name": "Cursor Plans",
+          "when": "cursorToys.explorer.plansVisible"
+        },
+        {
+          "id": "cursor-toys.explorer.userSkills",
+          "name": "Skills",
+          "when": "cursorToys.explorer.skillsVisible"
+        },
+        {
+          "id": "cursor-toys.explorer.userHttp",
+          "name": "HTTP Requests",
+          "when": "cursorToys.explorer.httpVisible"
+        },
+        {
+          "id": "cursor-toys.explorer.userHooks",
+          "name": "Cursor Hooks",
+          "when": "cursorToys.explorer.hooksVisible"
+        },
+        {
+          "id": "cursor-toys.explorer.userMcpb",
+          "name": "MCPB Packages",
+          "when": "cursorToys.explorer.mcpbVisible"
         }
       ]
     },
@@ -732,28 +824,73 @@
       ],
       "view/title": [
         {
+          "command": "cursor-toys.settings.openSettingsJson",
+          "when": "view == cursor-toys.settings",
+          "group": "navigation@0"
+        },
+        {
+          "command": "cursor-toys.settings.configureKeys",
+          "when": "view == cursor-toys.settings",
+          "group": "navigation@1"
+        },
+        {
+          "command": "cursor-toys.focusDeepflow",
+          "when": "view == cursor-toys.settings",
+          "group": "navigation@2"
+        },
+        {
+          "command": "cursor-toys.focusHttp",
+          "when": "view == cursor-toys.settings",
+          "group": "navigation@3"
+        },
+        {
+          "command": "cursor-toys.focusMcpb",
+          "when": "view == cursor-toys.settings",
+          "group": "navigation@4"
+        },
+        {
+          "command": "cursor-toys.focusUtils",
+          "when": "view == cursor-toys.settings",
+          "group": "navigation@5"
+        },
+        {
+          "command": "cursor-toys.settings.refresh",
+          "when": "view == cursor-toys.settings",
+          "group": "navigation@9"
+        },
+        {
           "command": "cursor-toys.refreshUserCommands",
-          "when": "view == cursor-toys.userCommands",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userCommands/",
           "group": "navigation"
         },
         {
           "command": "cursor-toys.refreshUserPrompts",
-          "when": "view == cursor-toys.userPrompts",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPrompts/",
           "group": "navigation"
         },
         {
+          "command": "cursor-toys.refreshUserHttp",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHttp/",
+          "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.runHttpTestsAll",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHttp/",
+          "group": "navigation@1"
+        },
+        {
           "command": "cursor-toys.createNotepad",
-          "when": "view == cursor-toys.userNotepads",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userNotepads/",
           "group": "navigation"
         },
         {
           "command": "cursor-toys.refreshNotepads",
-          "when": "view == cursor-toys.userNotepads",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userNotepads/",
           "group": "navigation"
         },
         {
           "command": "cursor-toys.refreshPlans",
-          "when": "view == cursor-toys.userPlans",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPlans/",
           "group": "navigation"
         },
         {
@@ -773,164 +910,189 @@
         },
         {
           "command": "cursor-toys.createHooksFile",
-          "when": "view == cursor-toys.userHooks",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHooks/",
           "group": "navigation"
         },
         {
           "command": "cursor-toys.refreshHooks",
-          "when": "view == cursor-toys.userHooks",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHooks/",
           "group": "navigation"
         },
         {
           "command": "cursor-toys.createSkill",
-          "when": "view == cursor-toys.userSkills",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/",
           "group": "navigation"
         },
         {
           "command": "cursor-toys.addSkillRemote",
-          "when": "view == cursor-toys.userSkills",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/",
           "group": "navigation"
         },
         {
           "command": "cursor-toys.refreshSkills",
-          "when": "view == cursor-toys.userSkills",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/",
           "group": "navigation"
         },
         {
           "command": "cursor-toys.installMcpb",
-          "when": "view == cursor-toys.userMcpb",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userMcpb/",
           "group": "navigation"
         },
         {
           "command": "cursor-toys.refreshMcpb",
-          "when": "view == cursor-toys.userMcpb",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userMcpb/",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
           "command": "cursor-toys.openUserCommand",
-          "when": "view == cursor-toys.userCommands && viewItem == userCommandFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userCommands/ && viewItem == userCommandFile",
           "group": "inline"
         },
         {
           "command": "cursor-toys.generateUserCommandDeeplink",
-          "when": "view == cursor-toys.userCommands && viewItem == userCommandFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userCommands/ && viewItem == userCommandFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareUserCommandAsCursorToys",
-          "when": "view == cursor-toys.userCommands && viewItem == userCommandFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userCommands/ && viewItem == userCommandFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareViaGist",
-          "when": "view == cursor-toys.userCommands && viewItem == userCommandFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userCommands/ && viewItem == userCommandFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.renameUserCommand",
-          "when": "view == cursor-toys.userCommands && viewItem == userCommandFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userCommands/ && viewItem == userCommandFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.revealUserCommand",
-          "when": "view == cursor-toys.userCommands && viewItem == userCommandFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userCommands/ && viewItem == userCommandFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.deleteUserCommand",
-          "when": "view == cursor-toys.userCommands && viewItem == userCommandFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userCommands/ && viewItem == userCommandFile",
           "group": "2_actions"
         },
         {
           "command": "cursor-toys.openUserPrompt",
-          "when": "view == cursor-toys.userPrompts && viewItem == userPromptFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPrompts/ && viewItem == userPromptFile",
           "group": "inline"
         },
         {
           "command": "cursor-toys.generateUserPromptDeeplink",
-          "when": "view == cursor-toys.userPrompts && viewItem == userPromptFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPrompts/ && viewItem == userPromptFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareUserPromptAsCursorToys",
-          "when": "view == cursor-toys.userPrompts && viewItem == userPromptFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPrompts/ && viewItem == userPromptFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareViaGist",
-          "when": "view == cursor-toys.userPrompts && viewItem == userPromptFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPrompts/ && viewItem == userPromptFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.renameUserPrompt",
-          "when": "view == cursor-toys.userPrompts && viewItem == userPromptFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPrompts/ && viewItem == userPromptFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.revealUserPrompt",
-          "when": "view == cursor-toys.userPrompts && viewItem == userPromptFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPrompts/ && viewItem == userPromptFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.deleteUserPrompt",
-          "when": "view == cursor-toys.userPrompts && viewItem == userPromptFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPrompts/ && viewItem == userPromptFile",
           "group": "2_actions"
         },
         {
+          "command": "cursor-toys.runHttpTestsFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHttp/ && viewItem == httpFile",
+          "group": "1_http@1"
+        },
+        {
+          "command": "cursor-toys.runHttpTestsFolder",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHttp/ && viewItem == httpFolder",
+          "group": "1_http@1"
+        },
+        {
+          "command": "cursor-toys.runHttpTestsAll",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHttp/ && viewItem == httpCategory",
+          "group": "1_http@1"
+        },
+        {
+          "command": "cursor-toys.openHttpRequest",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHttp/ && viewItem == httpFile",
+          "group": "inline"
+        },
+        {
+          "command": "cursor-toys.runHttpTestsFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHttp/ && viewItem == httpFile",
+          "group": "inline@1"
+        },
+        {
           "command": "cursor-toys.openNotepad",
-          "when": "view == cursor-toys.userNotepads && viewItem == userNotepadFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userNotepads/ && viewItem == userNotepadFile",
           "group": "inline"
         },
         {
           "command": "cursor-toys.generateNotepadShareable",
-          "when": "view == cursor-toys.userNotepads && viewItem == userNotepadFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userNotepads/ && viewItem == userNotepadFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.renameNotepad",
-          "when": "view == cursor-toys.userNotepads && viewItem == userNotepadFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userNotepads/ && viewItem == userNotepadFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.revealNotepad",
-          "when": "view == cursor-toys.userNotepads && viewItem == userNotepadFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userNotepads/ && viewItem == userNotepadFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.deleteNotepad",
-          "when": "view == cursor-toys.userNotepads && viewItem == userNotepadFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userNotepads/ && viewItem == userNotepadFile",
           "group": "2_actions"
         },
         {
           "command": "cursor-toys.openPlan",
-          "when": "view == cursor-toys.userPlans && viewItem == userPlanFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPlans/ && viewItem == userPlanFile",
           "group": "inline"
         },
         {
           "command": "cursor-toys.generatePlanShareable",
-          "when": "view == cursor-toys.userPlans && viewItem == userPlanFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPlans/ && viewItem == userPlanFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareViaGist",
-          "when": "view == cursor-toys.userPlans && viewItem == userPlanFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPlans/ && viewItem == userPlanFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.renamePlan",
-          "when": "view == cursor-toys.userPlans && viewItem == userPlanFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPlans/ && viewItem == userPlanFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.revealPlan",
-          "when": "view == cursor-toys.userPlans && viewItem == userPlanFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPlans/ && viewItem == userPlanFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.deletePlan",
-          "when": "view == cursor-toys.userPlans && viewItem == userPlanFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userPlans/ && viewItem == userPlanFile",
           "group": "2_actions"
         },
         {
@@ -975,142 +1137,142 @@
         },
         {
           "command": "cursor-toys.openSkill",
-          "when": "view == cursor-toys.userSkills && viewItem == userSkillFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == userSkillFile",
           "group": "inline"
         },
         {
           "command": "cursor-toys.shareAsCursorToysSkill",
-          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolder",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == userSkillFolder",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareAsCursorToysSkill",
-          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolderPersonal",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == userSkillFolderPersonal",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareAsCursorToysSkill",
-          "when": "view == cursor-toys.userSkills && viewItem == userSkillFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == userSkillFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareViaGist",
-          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolder",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == userSkillFolder",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareViaGist",
-          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolderPersonal",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == userSkillFolderPersonal",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareViaGist",
-          "when": "view == cursor-toys.userSkills && viewItem == userSkillFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == userSkillFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareFolderViaGist",
-          "when": "view == cursor-toys.userSkills && viewItem == skillCategoryWorkspace",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == skillCategoryWorkspace",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareFolderViaGist",
-          "when": "view == cursor-toys.userSkills && viewItem == skillCategoryPersonal",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == skillCategoryPersonal",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareFolderViaGist",
-          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolder",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == userSkillFolder",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareFolderViaGist",
-          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolderPersonal",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == userSkillFolderPersonal",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.save-as-user-skill",
-          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolder && viewItem != userSkillFolderPersonal",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == userSkillFolder && viewItem != userSkillFolderPersonal",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.renameSkill",
-          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolder",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == userSkillFolder",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.revealSkill",
-          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolder",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == userSkillFolder",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.deleteSkill",
-          "when": "view == cursor-toys.userSkills && viewItem == userSkillFolderPersonal",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/ && viewItem == userSkillFolderPersonal",
           "group": "2_actions"
         },
         {
           "command": "cursor-toys.createSkill",
-          "when": "view == cursor-toys.userSkills",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userSkills/",
           "group": "inline"
         },
         {
           "command": "cursor-toys.openHooks",
-          "when": "view == cursor-toys.userHooks && viewItem == hooksFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHooks/ && viewItem == hooksFile",
           "group": "inline"
         },
         {
           "command": "cursor-toys.shareHooks",
-          "when": "view == cursor-toys.userHooks && viewItem == hooksFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHooks/ && viewItem == hooksFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareHooksViaGist",
-          "when": "view == cursor-toys.userHooks && viewItem == hooksFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHooks/ && viewItem == hooksFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.revealHooks",
-          "when": "view == cursor-toys.userHooks && viewItem == hooksFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHooks/ && viewItem == hooksFile",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.deleteHooks",
-          "when": "view == cursor-toys.userHooks && viewItem == hooksFile",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHooks/ && viewItem == hooksFile",
           "group": "2_actions"
         },
         {
           "command": "cursor-toys.openHookScript",
-          "when": "view == cursor-toys.userHooks && viewItem == hooksScript",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHooks/ && viewItem == hooksScript",
           "group": "inline"
         },
         {
           "command": "cursor-toys.shareHookScript",
-          "when": "view == cursor-toys.userHooks && viewItem == hooksScript",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHooks/ && viewItem == hooksScript",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.shareHookScriptViaGist",
-          "when": "view == cursor-toys.userHooks && viewItem == hooksScript",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHooks/ && viewItem == hooksScript",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.revealHookScript",
-          "when": "view == cursor-toys.userHooks && viewItem == hooksScript",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHooks/ && viewItem == hooksScript",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.deleteHookScript",
-          "when": "view == cursor-toys.userHooks && viewItem == hooksScript",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHooks/ && viewItem == hooksScript",
           "group": "2_actions"
         },
         {
           "command": "cursor-toys.revealMcpb",
-          "when": "view == cursor-toys.userMcpb && viewItem == userMcpbPackage",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userMcpb/ && viewItem == userMcpbPackage",
           "group": "1_actions"
         },
         {
           "command": "cursor-toys.deleteMcpb",
-          "when": "view == cursor-toys.userMcpb && viewItem == userMcpbPackage",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userMcpb/ && viewItem == userMcpbPackage",
           "group": "2_actions"
         }
       ],
@@ -1397,11 +1559,33 @@
               "plans",
               "skills",
               "hooks",
-              "mcpb"
+              "mcpb",
+              "http"
             ]
           },
           "default": [],
-          "markdownDescription": "Explorer sidebar sections to hide under CursorToys. Keys: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`. Empty list shows all sections. Command Palette and file actions still work for hidden resources."
+          "markdownDescription": "Explorer sidebar sections to hide under CursorToys. Keys: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`. Empty list shows all sections. Command Palette and file actions still work for hidden resources."
+        },
+        "cursorToys.sidebar.explorerViews": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "notepads",
+              "commands",
+              "prompts",
+              "plans",
+              "skills",
+              "hooks",
+              "mcpb",
+              "http"
+            ]
+          },
+          "default": [
+            "skills",
+            "plans"
+          ],
+          "markdownDescription": "Explorer sidebar sections to also show in the Explorer (in addition to the CursorToys activity bar). Keys: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`. Default: `skills`, `plans`."
         },
         "cursorToys.httpRequestTimeout": {
           "type": "number",
@@ -1548,7 +1732,7 @@
             "type": "boolean",
             "default": false,
             "order": 1,
-            "markdownDescription": "Enable the **DeepFlow** activity bar panel: spec-driven tasks (drafts → in development → archive) in a dedicated sidebar. Off by default; reload the window after changing."
+            "markdownDescription": "Show the **DeepFlow** section in the CursorToys activity bar sidebar: spec-driven tasks (drafts → in development → archive). Off by default; reload the window after changing."
           }
         }
       }

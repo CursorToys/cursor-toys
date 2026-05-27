@@ -8,7 +8,11 @@ export type SidebarResourceKey =
   | 'plans'
   | 'skills'
   | 'hooks'
-  | 'mcpb';
+  | 'mcpb'
+  | 'http';
+
+/** Default sections duplicated in the Explorer sidebar (Files) on first install. */
+export const DEFAULT_EXPLORER_SIDEBAR_VIEWS: readonly SidebarResourceKey[] = ['skills', 'plans'] as const;
 
 export const ALL_SIDEBAR_RESOURCE_KEYS: readonly SidebarResourceKey[] = [
   'notepads',
@@ -18,6 +22,7 @@ export const ALL_SIDEBAR_RESOURCE_KEYS: readonly SidebarResourceKey[] = [
   'skills',
   'hooks',
   'mcpb',
+  'http',
 ] as const;
 
 const SIDEBAR_RESOURCE_KEY_SET = new Set<string>(ALL_SIDEBAR_RESOURCE_KEYS);
@@ -31,6 +36,19 @@ const VISIBILITY_CONTEXT_KEYS: Record<SidebarResourceKey, string> = {
   skills: 'cursorToys.sidebar.skillsVisible',
   hooks: 'cursorToys.sidebar.hooksVisible',
   mcpb: 'cursorToys.sidebar.mcpbVisible',
+  http: 'cursorToys.sidebar.httpVisible',
+};
+
+/** VS Code context keys to optionally show views in Explorer. */
+const EXPLORER_CONTEXT_KEYS: Record<SidebarResourceKey, string> = {
+  notepads: 'cursorToys.explorer.notepadsVisible',
+  commands: 'cursorToys.explorer.commandsVisible',
+  prompts: 'cursorToys.explorer.promptsVisible',
+  plans: 'cursorToys.explorer.plansVisible',
+  skills: 'cursorToys.explorer.skillsVisible',
+  hooks: 'cursorToys.explorer.hooksVisible',
+  mcpb: 'cursorToys.explorer.mcpbVisible',
+  http: 'cursorToys.explorer.httpVisible',
 };
 
 /**
@@ -70,5 +88,42 @@ export async function syncSidebarViewVisibility(): Promise<void> {
   for (const key of ALL_SIDEBAR_RESOURCE_KEYS) {
     const visible = !hidden.has(key);
     await vscode.commands.executeCommand('setContext', VISIBILITY_CONTEXT_KEYS[key], visible);
+  }
+}
+
+/**
+ * Reads and normalizes `cursorToys.sidebar.explorerViews` (lowercase, known keys only).
+ */
+export function getExplorerSidebarViews(): SidebarResourceKey[] {
+  const config = vscode.workspace.getConfiguration('cursorToys');
+  const raw = config.get<unknown>('sidebar.explorerViews', [...DEFAULT_EXPLORER_SIDEBAR_VIEWS]);
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const enabled: SidebarResourceKey[] = [];
+  for (const item of raw) {
+    if (typeof item !== 'string') {
+      continue;
+    }
+    const key = item.trim().toLowerCase();
+    if (SIDEBAR_RESOURCE_KEY_SET.has(key) && !enabled.includes(key as SidebarResourceKey)) {
+      enabled.push(key as SidebarResourceKey);
+    }
+  }
+  return enabled;
+}
+
+/**
+ * Updates VS Code context keys so resource views can also be shown in Explorer.
+ * A view must be visible AND enabled in explorerViews.
+ */
+export async function syncExplorerViewVisibility(): Promise<void> {
+  const enabled = new Set(getExplorerSidebarViews());
+  const hidden = new Set(getHiddenSidebarViews());
+
+  for (const key of ALL_SIDEBAR_RESOURCE_KEYS) {
+    const visible = !hidden.has(key);
+    const showInExplorer = visible && enabled.has(key);
+    await vscode.commands.executeCommand('setContext', EXPLORER_CONTEXT_KEYS[key], showInExplorer);
   }
 }

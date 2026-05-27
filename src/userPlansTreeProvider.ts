@@ -1,6 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { getPlansPath, getPersonalPlansPaths, isPlanFile, getBaseFolderName } from './utils';
+import {
+  isTreeLoadingPlaceholder,
+  renderLoadingTreeItem,
+  TreeLoadCoordinator,
+  TreeLoadingPlaceholder,
+} from './treeLoading';
 
 /**
  * Represents a tree item (can be a category, folder or a file)
@@ -10,6 +16,8 @@ export type TreeItemType = 'category' | 'folder' | 'file';
 /**
  * Represents a plan file or folder in the tree view
  */
+export type PlanTreeElement = PlanFileItem | TreeLoadingPlaceholder;
+
 export interface PlanFileItem {
   uri: vscode.Uri;
   fileName: string;
@@ -23,9 +31,14 @@ export interface PlanFileItem {
 /**
  * Tree data provider for user plans folder with drag and drop support
  */
-export class UserPlansTreeProvider implements vscode.TreeDataProvider<PlanFileItem>, vscode.TreeDragAndDropController<PlanFileItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<PlanFileItem | undefined | null | void> = new vscode.EventEmitter<PlanFileItem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<PlanFileItem | undefined | null | void> = this._onDidChangeTreeData.event;
+export class UserPlansTreeProvider implements vscode.TreeDataProvider<PlanTreeElement>, vscode.TreeDragAndDropController<PlanFileItem> {
+  private _onDidChangeTreeData: vscode.EventEmitter<PlanTreeElement | undefined | null | void> = new vscode.EventEmitter<PlanTreeElement | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<PlanTreeElement | undefined | null | void> = this._onDidChangeTreeData.event;
+
+  private readonly rootLoader = new TreeLoadCoordinator<PlanFileItem | undefined, PlanFileItem>(
+    () => this._onDidChangeTreeData.fire(),
+    () => '__plans_root__'
+  );
 
   // Drag and drop support
   dropMimeTypes = ['application/vnd.code.tree.cursor-deeplink.userPlans'];
@@ -35,13 +48,17 @@ export class UserPlansTreeProvider implements vscode.TreeDataProvider<PlanFileIt
    * Refreshes the tree view
    */
   refresh(): void {
+    this.rootLoader.clear();
     this._onDidChangeTreeData.fire();
   }
 
   /**
    * Gets the tree item for a given element
    */
-  getTreeItem(element: PlanFileItem): vscode.TreeItem {
+  getTreeItem(element: PlanTreeElement): vscode.TreeItem {
+    if (isTreeLoadingPlaceholder(element)) {
+      return renderLoadingTreeItem(element);
+    }
     if (element.type === 'category') {
       // Category item (Personal or Workspace)
       const treeItem = new vscode.TreeItem(
@@ -185,7 +202,11 @@ export class UserPlansTreeProvider implements vscode.TreeDataProvider<PlanFileIt
   /**
    * Gets the children of the tree (categories, folders and files)
    */
-  async getChildren(element?: PlanFileItem): Promise<PlanFileItem[]> {
+  async getChildren(element?: PlanTreeElement): Promise<PlanTreeElement[]> {
+    if (isTreeLoadingPlaceholder(element)) {
+      return [];
+    }
+
     // If element is a category or folder, return its children
     if (element && (element.type === 'category' || element.type === 'folder')) {
       return element.children || [];
@@ -195,8 +216,11 @@ export class UserPlansTreeProvider implements vscode.TreeDataProvider<PlanFileIt
     if (element && element.type === 'file') {
       return [];
     }
-    
-    // Root level - get categories (Personal and Workspace)
+
+    return this.rootLoader.resolveChildren(undefined, () => this.loadRootChildren());
+  }
+
+  private async loadRootChildren(): Promise<PlanFileItem[]> {
     const items: PlanFileItem[] = [];
 
     // Personal plans

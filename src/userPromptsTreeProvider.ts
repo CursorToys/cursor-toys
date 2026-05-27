@@ -1,6 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { getPromptsPath, isAllowedExtension, getPersonalPromptsPaths } from './utils';
+import {
+  isTreeLoadingPlaceholder,
+  renderLoadingTreeItem,
+  TreeLoadCoordinator,
+  TreeLoadingPlaceholder,
+} from './treeLoading';
 
 /**
  * Represents a tree item (can be a category, folder or a file)
@@ -10,6 +16,8 @@ export type TreeItemType = 'category' | 'folder' | 'file';
 /**
  * Represents a prompt file or folder in the tree view
  */
+export type PromptTreeElement = PromptFileItem | TreeLoadingPlaceholder;
+
 export interface PromptFileItem {
   uri: vscode.Uri;
   fileName: string;
@@ -23,9 +31,14 @@ export interface PromptFileItem {
 /**
  * Tree data provider for user prompts folder with drag and drop support
  */
-export class UserPromptsTreeProvider implements vscode.TreeDataProvider<PromptFileItem>, vscode.TreeDragAndDropController<PromptFileItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<PromptFileItem | undefined | null | void> = new vscode.EventEmitter<PromptFileItem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<PromptFileItem | undefined | null | void> = this._onDidChangeTreeData.event;
+export class UserPromptsTreeProvider implements vscode.TreeDataProvider<PromptTreeElement>, vscode.TreeDragAndDropController<PromptFileItem> {
+  private _onDidChangeTreeData: vscode.EventEmitter<PromptTreeElement | undefined | null | void> = new vscode.EventEmitter<PromptTreeElement | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<PromptTreeElement | undefined | null | void> = this._onDidChangeTreeData.event;
+
+  private readonly rootLoader = new TreeLoadCoordinator<PromptFileItem | undefined, PromptFileItem>(
+    () => this._onDidChangeTreeData.fire(),
+    () => '__prompts_root__'
+  );
 
   // Drag and drop support
   dropMimeTypes = ['application/vnd.code.tree.cursor-deeplink.userPrompts'];
@@ -35,13 +48,17 @@ export class UserPromptsTreeProvider implements vscode.TreeDataProvider<PromptFi
    * Refreshes the tree view
    */
   refresh(): void {
+    this.rootLoader.clear();
     this._onDidChangeTreeData.fire();
   }
 
   /**
    * Gets the tree item for a given element
    */
-  getTreeItem(element: PromptFileItem): vscode.TreeItem {
+  getTreeItem(element: PromptTreeElement): vscode.TreeItem {
+    if (isTreeLoadingPlaceholder(element)) {
+      return renderLoadingTreeItem(element);
+    }
     if (element.type === 'category') {
       // Category item (Personal or Workspace)
       const treeItem = new vscode.TreeItem(
@@ -188,7 +205,11 @@ export class UserPromptsTreeProvider implements vscode.TreeDataProvider<PromptFi
   /**
    * Gets the children of the tree (categories, folders and files)
    */
-  async getChildren(element?: PromptFileItem): Promise<PromptFileItem[]> {
+  async getChildren(element?: PromptTreeElement): Promise<PromptTreeElement[]> {
+    if (isTreeLoadingPlaceholder(element)) {
+      return [];
+    }
+
     // If element is a category or folder, return its children
     if (element && (element.type === 'category' || element.type === 'folder')) {
       return element.children || [];
@@ -198,8 +219,11 @@ export class UserPromptsTreeProvider implements vscode.TreeDataProvider<PromptFi
     if (element && element.type === 'file') {
       return [];
     }
-    
-    // Root level - get categories (Personal and Workspace)
+
+    return this.rootLoader.resolveChildren(undefined, () => this.loadRootChildren());
+  }
+
+  private async loadRootChildren(): Promise<PromptFileItem[]> {
     const items: PromptFileItem[] = [];
 
     // Get allowed extensions from configuration

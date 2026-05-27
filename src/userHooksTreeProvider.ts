@@ -1,6 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { getPersonalHooksPath, getProjectHooksPath, hooksFileExists, parseHooksFile, HooksConfig } from './hooksManager';
+import {
+  isTreeLoadingPlaceholder,
+  renderLoadingTreeItem,
+  TreeLoadCoordinator,
+  TreeLoadingPlaceholder,
+} from './treeLoading';
 
 /**
  * Represents a tree item type
@@ -10,6 +16,8 @@ export type HooksTreeItemType = 'category' | 'hook' | 'script';
 /**
  * Represents a hooks file or category in the tree view
  */
+export type HooksTreeElement = HooksFileItem | TreeLoadingPlaceholder;
+
 export interface HooksFileItem {
   uri: vscode.Uri;
   label: string;
@@ -24,23 +32,32 @@ export interface HooksFileItem {
 /**
  * Tree data provider for Cursor hooks with personal and project hooks
  */
-export class UserHooksTreeProvider implements vscode.TreeDataProvider<HooksFileItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<HooksFileItem | undefined | null | void> = 
-    new vscode.EventEmitter<HooksFileItem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<HooksFileItem | undefined | null | void> = 
+export class UserHooksTreeProvider implements vscode.TreeDataProvider<HooksTreeElement> {
+  private _onDidChangeTreeData: vscode.EventEmitter<HooksTreeElement | undefined | null | void> = 
+    new vscode.EventEmitter<HooksTreeElement | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<HooksTreeElement | undefined | null | void> = 
     this._onDidChangeTreeData.event;
+
+  private readonly rootLoader = new TreeLoadCoordinator<HooksFileItem | undefined, HooksFileItem>(
+    (parent) => this._onDidChangeTreeData.fire(parent),
+    () => '__hooks_root__'
+  );
 
   /**
    * Refreshes the tree view
    */
   refresh(): void {
+    this.rootLoader.clear();
     this._onDidChangeTreeData.fire();
   }
 
   /**
    * Gets the tree item for a given element
    */
-  getTreeItem(element: HooksFileItem): vscode.TreeItem {
+  getTreeItem(element: HooksTreeElement): vscode.TreeItem {
+    if (isTreeLoadingPlaceholder(element)) {
+      return renderLoadingTreeItem(element);
+    }
     if (element.type === 'category') {
       // Category item (Personal or Project)
       const treeItem = new vscode.TreeItem(
@@ -83,7 +100,11 @@ export class UserHooksTreeProvider implements vscode.TreeDataProvider<HooksFileI
   /**
    * Gets the children of the tree (categories and files)
    */
-  async getChildren(element?: HooksFileItem): Promise<HooksFileItem[]> {
+  async getChildren(element?: HooksTreeElement): Promise<HooksTreeElement[]> {
+    if (isTreeLoadingPlaceholder(element)) {
+      return [];
+    }
+
     // If element is a category, return its children (hooks)
     if (element && element.type === 'category') {
       return element.children || [];
@@ -99,7 +120,10 @@ export class UserHooksTreeProvider implements vscode.TreeDataProvider<HooksFileI
       return [];
     }
 
-    // Root level - get all categories
+    return this.rootLoader.resolveChildren(undefined, () => this.loadRootChildren());
+  }
+
+  private async loadRootChildren(): Promise<HooksFileItem[]> {
     const items: HooksFileItem[] = [];
 
     // Personal hooks

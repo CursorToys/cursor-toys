@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { isExtensionPausedForSettingsUi } from './settingsUiGuard';
 import { isHttpRequestFile } from './utils';
 import { EnvironmentManager } from './environmentManager';
 import { extractFileVariables } from './httpRequestExecutor';
@@ -367,6 +368,9 @@ export class HttpEnvironmentDecorationProvider {
    * Trigger update with debounce
    */
   public triggerUpdateDecorations() {
+    if (isExtensionPausedForSettingsUi()) {
+      return;
+    }
     if (this.timeout) {
       clearTimeout(this.timeout);
     }

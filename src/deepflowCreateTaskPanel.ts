@@ -14,7 +14,7 @@ interface CreateTaskFormPayload {
 }
 
 /**
- * Webview form to compose a new DeepFlow spec and send it to chat (Telegram-style inject).
+ * Webview form to compose a new DeepFlow spec and send it to chat (paste-and-submit inject).
  */
 export class DeepflowCreateTaskPanel {
   private static currentPanel: DeepflowCreateTaskPanel | undefined;
@@ -141,7 +141,7 @@ export class DeepflowCreateTaskPanel {
 </head>
 <body>
   <h2>New spec</h2>
-  <p class="hint">Creates a draft via the DeepFlow skill. Send injects into Cursor chat (same flow as Remote Telegram).</p>
+  <p class="hint">Creates a draft via the DeepFlow skill. Send injects into Cursor chat (paste and submit).</p>
   <label for="specType">Type</label>
   <select id="specType">${typeOptions}</select>
   <label for="taskTitle">Task title</label>

@@ -1,5 +1,17 @@
 import * as vscode from 'vscode';
+import { isExtensionPausedForSettingsUi } from './settingsUiGuard';
 import { getFileTypeFromPath, isAllowedExtension } from './utils';
+
+let cachedAllowedExtensions: string[] | undefined;
+
+function getAllowedExtensions(): string[] {
+  if (cachedAllowedExtensions) {
+    return cachedAllowedExtensions;
+  }
+  const config = vscode.workspace.getConfiguration('cursorToys');
+  cachedAllowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+  return cachedAllowedExtensions;
+}
 
 export class DeeplinkCodeLensProvider implements vscode.CodeLensProvider {
   private codeLenses: vscode.CodeLens[] = [];
@@ -7,16 +19,19 @@ export class DeeplinkCodeLensProvider implements vscode.CodeLensProvider {
   public readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
 
   constructor() {
-    // Update CodeLens when files change
-    vscode.workspace.onDidChangeConfiguration(() => {
-      this._onDidChangeCodeLenses.fire();
-    });
+    // Intentionally no onDidChangeConfiguration listener: refreshing CodeLens on
+    // `cursorToys.*` while the Settings UI is open can peg CPU (provider is registered
+    // for all files). Reload the window after changing allowedExtensions / baseFolder.
   }
 
   public provideCodeLenses(
     document: vscode.TextDocument,
     token: vscode.CancellationToken
   ): vscode.CodeLens[] | Thenable<vscode.CodeLens[]> {
+    if (isExtensionPausedForSettingsUi()) {
+      return [];
+    }
+
     this.codeLenses = [];
 
     const filePath = document.uri.fsPath;
@@ -40,10 +55,7 @@ export class DeeplinkCodeLensProvider implements vscode.CodeLensProvider {
       }
     } else {
       // Validate extension for other types
-      const config = vscode.workspace.getConfiguration('cursorToys');
-      const allowedExtensions = config.get<string[]>('allowedExtensions', ['md']);
-      
-      if (!isAllowedExtension(filePath, allowedExtensions)) {
+      if (!isAllowedExtension(filePath, getAllowedExtensions())) {
         return [];
       }
     }

@@ -22,6 +22,12 @@ import {
   formatMemoryEntryLabel,
 } from './deepflowMemoryParser';
 import { readDeepflowMemoryDoc } from './deepflowMemory';
+import {
+  isTreeLoadingPlaceholder,
+  renderLoadingTreeItem,
+  TreeLoadCoordinator,
+  TreeLoadingPlaceholder,
+} from './treeLoading';
 
 export type DeepFlowEmptyReason = 'noWorkspace' | 'needsInit';
 
@@ -37,6 +43,8 @@ export type DeepFlowItemType =
   | 'task'
   | 'abcFile';
 
+export type DeepFlowTreeElement = DeepFlowTreeItem | TreeLoadingPlaceholder;
+
 export interface DeepFlowTreeItem {
   type: DeepFlowItemType;
   label: string;
@@ -46,6 +54,8 @@ export interface DeepFlowTreeItem {
   memoryEntry?: DeepflowMemoryEntry;
   memoryTopic?: DeepflowMemoryTopic;
   stage?: DeepFlowStage;
+  /** Number of tasks in this stage (set on stage nodes). */
+  taskCount?: number;
   taskId?: string;
   taskFolderUri?: vscode.Uri;
   abcKind?: AbcFileKind;
@@ -55,15 +65,38 @@ export interface DeepFlowTreeItem {
 /**
  * Tree data provider for DeepFlow specs under `.deepflow/specs`.
  */
-export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTreeItem> {
-  private _onDidChangeTreeData = new vscode.EventEmitter<DeepFlowTreeItem | undefined | void>();
+export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTreeElement> {
+  private _onDidChangeTreeData = new vscode.EventEmitter<DeepFlowTreeElement | undefined | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
+  private readonly nodeLoader = new TreeLoadCoordinator<DeepFlowTreeItem, DeepFlowTreeItem>(
+    (parent) => this._onDidChangeTreeData.fire(parent),
+    (parent) => {
+      if (!parent) {
+        return '__deepflow_root__';
+      }
+      if (parent.type === 'memoryRoot' && parent.deepflowRootUri) {
+        return `memory:${parent.deepflowRootUri.fsPath}`;
+      }
+      if (parent.type === 'stage' && parent.stage) {
+        return `stage:${parent.stage}`;
+      }
+      if (parent.type === 'task' && parent.taskFolderUri) {
+        return `task:${parent.taskFolderUri.fsPath}`;
+      }
+      return `deepflow:${parent.type}:${parent.label}`;
+    }
+  );
+
   refresh(): void {
+    this.nodeLoader.clear();
     this._onDidChangeTreeData.fire();
   }
 
-  getTreeItem(element: DeepFlowTreeItem): vscode.TreeItem {
+  getTreeItem(element: DeepFlowTreeElement): vscode.TreeItem {
+    if (isTreeLoadingPlaceholder(element)) {
+      return renderLoadingTreeItem(element);
+    }
     if (element.type === 'empty') {
       const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
       if (element.emptyReason === 'needsInit') {
@@ -143,7 +176,13 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
     if (element.type === 'stage') {
       const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
       item.contextValue = `deepflowStage${capitalizeStage(element.stage!)}`;
-      item.iconPath = stageIcon(element.stage!);
+      const count = element.taskCount ?? 0;
+      item.iconPath = stageIcon(element.stage!, count);
+      if (count > 0) {
+        item.description = `${count}`;
+      } else if (element.stage === 'active') {
+        item.description = 'idle';
+      }
       return item;
     }
 
@@ -179,7 +218,11 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
     return item;
   }
 
-  async getChildren(element?: DeepFlowTreeItem): Promise<DeepFlowTreeItem[]> {
+  async getChildren(element?: DeepFlowTreeElement): Promise<DeepFlowTreeElement[]> {
+    if (isTreeLoadingPlaceholder(element)) {
+      return [];
+    }
+
     const root = getDeepflowRootUri();
     if (!root) {
       return [
@@ -191,37 +234,46 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
       ];
     }
 
-    const hasSpecs = await deepflowSpecsExist(root);
-    if (!hasSpecs) {
-      return [
-        {
-          type: 'empty',
-          label: 'Initialize DeepFlow',
-          emptyReason: 'needsInit',
-        },
-      ];
-    }
-
     const specsUri = getDeepflowSpecsUri(root);
 
     if (!element) {
-      const stages = DEEPFLOW_STAGES.map((stage) => ({
-        type: 'stage' as const,
-        label: getStageLabel(stage),
-        stage,
-      }));
-      return [
-        {
-          type: 'memoryRoot' as const,
-          label: 'Memory',
-          deepflowRootUri: root,
-        },
-        ...stages,
-      ];
+      return this.nodeLoader.resolveChildren(undefined, async () => {
+        const hasSpecs = await deepflowSpecsExist(root);
+        if (!hasSpecs) {
+          return [
+            {
+              type: 'empty' as const,
+              label: 'Initialize DeepFlow',
+              emptyReason: 'needsInit' as const,
+            },
+          ];
+        }
+
+        const stages: DeepFlowTreeItem[] = [];
+        for (const stage of DEEPFLOW_STAGES) {
+          const tasks = await listTasksInStage(specsUri, stage);
+          stages.push({
+            type: 'stage',
+            label: getStageLabel(stage),
+            stage,
+            taskCount: tasks.length,
+          });
+        }
+        return [
+          {
+            type: 'memoryRoot' as const,
+            label: 'Memory',
+            deepflowRootUri: root,
+          },
+          ...stages,
+        ];
+      });
     }
 
     if (element.type === 'memoryRoot' && element.deepflowRootUri) {
-      return buildMemoryChildren(element.deepflowRootUri);
+      return this.nodeLoader.resolveChildren(element, () =>
+        buildMemoryChildren(element.deepflowRootUri!)
+      );
     }
 
     if (element.type === 'memoryTopic' && element.memoryTopic) {
@@ -253,23 +305,25 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
     }
 
     if (element.type === 'stage' && element.stage) {
-      const tasks = await listTasksInStage(specsUri, element.stage);
-      if (tasks.length === 0) {
-        return [
-          {
-            type: 'stageEmpty',
-            label: getStageEmptyLabel(element.stage),
-            stage: element.stage,
-          },
-        ];
-      }
-      return tasks.map((t) => ({
-        type: 'task' as const,
-        label: t.taskId,
-        stage: element.stage,
-        taskId: t.taskId,
-        taskFolderUri: t.folderUri,
-      }));
+      return this.nodeLoader.resolveChildren(element, async () => {
+        const tasks = await listTasksInStage(specsUri, element.stage!);
+        if (tasks.length === 0) {
+          return [
+            {
+              type: 'stageEmpty' as const,
+              label: getStageEmptyLabel(element.stage!),
+              stage: element.stage,
+            },
+          ];
+        }
+        return tasks.map((t) => ({
+          type: 'task' as const,
+          label: t.taskId,
+          stage: element.stage,
+          taskId: t.taskId,
+          taskFolderUri: t.folderUri,
+        }));
+      });
     }
 
     if (element.type === 'stageEmpty') {
@@ -277,27 +331,29 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
     }
 
     if (element.type === 'task' && element.taskFolderUri) {
-      const files = await listExistingAbcFiles(element.taskFolderUri);
-      if (files.length === 0) {
-        return [
-          {
-            type: 'stageEmpty',
-            label: 'No A-B-C spec files',
-            stage: element.stage,
-            taskId: element.taskId,
-            taskFolderUri: element.taskFolderUri,
-          },
-        ];
-      }
-      return files.map((f) => ({
-        type: 'abcFile' as const,
-        label: ABC_FILE_NAMES[f.kind],
-        stage: element.stage,
-        taskId: element.taskId,
-        taskFolderUri: element.taskFolderUri,
-        abcKind: f.kind,
-        fileUri: f.uri,
-      }));
+      return this.nodeLoader.resolveChildren(element, async () => {
+        const files = await listExistingAbcFiles(element.taskFolderUri!);
+        if (files.length === 0) {
+          return [
+            {
+              type: 'stageEmpty' as const,
+              label: 'No A-B-C spec files',
+              stage: element.stage,
+              taskId: element.taskId,
+              taskFolderUri: element.taskFolderUri,
+            },
+          ];
+        }
+        return files.map((f) => ({
+          type: 'abcFile' as const,
+          label: ABC_FILE_NAMES[f.kind],
+          stage: element.stage,
+          taskId: element.taskId,
+          taskFolderUri: element.taskFolderUri,
+          abcKind: f.kind,
+          fileUri: f.uri,
+        }));
+      });
     }
 
     return [];
@@ -333,12 +389,14 @@ function taskContextValue(stage: DeepFlowStage): string {
   }
 }
 
-function stageIcon(stage: DeepFlowStage): vscode.ThemeIcon {
+function stageIcon(stage: DeepFlowStage, taskCount: number): vscode.ThemeIcon {
   switch (stage) {
     case 'drafts':
       return new vscode.ThemeIcon('layers');
     case 'active':
-      return new vscode.ThemeIcon('debug-start');
+      return taskCount > 0
+        ? new vscode.ThemeIcon('debug-start')
+        : new vscode.ThemeIcon('circle-outline');
     case 'archive':
       return new vscode.ThemeIcon('archive');
   }

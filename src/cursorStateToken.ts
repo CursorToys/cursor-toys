@@ -12,6 +12,11 @@ const MAX_STATE_VSCDB_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
 /** ItemTable keys to try for session/access token (Cursor may change these). */
 const TOKEN_KEYS = ['cursorAuth/accessToken', 'cursorAuth/refreshToken'];
 
+let cachedToken: string | null | undefined;
+let cachedTokenAt = 0;
+const TOKEN_CACHE_MS = 5 * 60 * 1000;
+let tokenReadInProgress = false;
+
 /**
  * Returns the Cursor User globalStorage directory path for the current platform.
  * This is where state.vscdb lives for the Cursor application.
@@ -63,6 +68,15 @@ function extractTokenFromValue(value: string): string | null {
  * Uses sql.js to query ItemTable for known auth keys.
  */
 export async function readTokenFromStateVscdb(): Promise<string | null> {
+  const now = Date.now();
+  if (cachedToken !== undefined && now - cachedTokenAt < TOKEN_CACHE_MS) {
+    return cachedToken;
+  }
+  if (tokenReadInProgress) {
+    return cachedToken ?? null;
+  }
+  tokenReadInProgress = true;
+
   const basePath = getCursorGlobalStoragePath();
   const dbPath = path.join(basePath, 'state.vscdb');
 
@@ -91,17 +105,25 @@ export async function readTokenFromStateVscdb(): Promise<string | null> {
           const str = typeof value === 'string' ? value : value != null ? String(value) : '';
           const token = extractTokenFromValue(str);
           if (token) {
+            cachedToken = token;
+            cachedTokenAt = Date.now();
             return token;
           }
         } else {
           stmt.free();
         }
       }
+      cachedToken = null;
+      cachedTokenAt = Date.now();
       return null;
     } finally {
       db.close();
     }
   } catch {
+    cachedToken = null;
+    cachedTokenAt = Date.now();
     return null;
+  } finally {
+    tokenReadInProgress = false;
   }
 }

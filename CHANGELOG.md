@@ -10,16 +10,30 @@ The Guide’s entry for version **2025.5.26** notes that the average developer, 
 
 ### Breaking Changes
 
+- **Removed Telegram / Remote Chat integration**: No more Remote Chat status bar, Telegram polling, session summaries to Telegram, or `cursor-toys.remote.*` commands. Chat paste-and-submit for DeepFlow and `cursorInject.send` is unchanged. On activation, the extension removes the legacy `cursor-toys-remote-chat` skill from your personal skills folder if present.
+
 - **HTTP environment files moved to the project root**: `.env`, `.env.local`, `.env.dev`, etc. must live at the workspace root. The extension no longer reads or creates `.{baseFolder}/http/environments/`, `.environments/`, or related folders.
 - **Removed setting `cursorToys.environmentsFolder`**: Use standard project-root dotenv files instead.
 
 ### Added
 
+- **HTTP file CodeLens — Run All**: When a `.req` / `.request` file has more than one runnable block (sections, curl, or REST lines), a **Run All Requests** CodeLens appears at the top and runs `npx cursortoys http test -f` for the whole file in the terminal (same as the HTTP tree **Run tests** action).
+- **HTTP sidebar tree**: Explorer **HTTP** view lists `.req` / `.request` files under `.{baseFolder}/http/` (recursive folders). Expanding a file shows each runnable block (`##` sections, standalone `curl`, REST method lines). Click a request to run **Send Request** (same as CodeLens). Hide via `cursorToys.sidebar.hiddenViews` → `http`.
+- **HTTP tree — run tests via CLI**: Context menu and view title actions run `npx cursortoys http test` for the selected file, folder (`--folder`), or entire `http/` tree (workspace category or view toolbar).
 - **Project-root env discovery**: Autocomplete, hover, watchers, and `# @env` resolution use `.env*` files at the workspace root (`.env.example` is documentation-only and not listed as a runnable environment).
 - **HTTP response panel (default)**: HTTP responses are shown in a reusable webview panel that updates in place when you re-run the request (instead of opening many editor tabs). Configure via `cursorToys.httpRequestResponseView` (`panel`/`editor`).
 
+### Added
+
+- **Settings panel — more Quick Pick options**: Edit from the CursorToys Settings tree without the Settings UI: allowed extensions (md, mdc, …), custom deeplink URL, personal commands folder, HTTP assertions and save-to-file, Gemini model/prompt/timeout, GitHub gist visibility, recommendations, skills registry URL, MCPB CLI, minify options, spending auto-detect and refresh interval; **API Keys** category for Gemini and GitHub tokens.
+
+### Fixed
+
+- **Settings panel**: Removed **Open Extension Settings** (filtered Settings UI) because it froze the editor on Cursor; edit options from the CursorToys Settings tree (Quick Pick) or use **Open Settings (JSON)** in the view toolbar.
+
 ### Changed
 
+- **Explorer sidebar default**: `cursorToys.sidebar.explorerViews` now defaults to `skills` and `plans` so those sections appear in the Files (Explorer) sidebar on first install.
 - **HTTP skill (Explorer)**: Right-click the HTTP folder → **Install HTTP Requests Skill** installs `cursor-toys-http` (project by default) with folder layout, `.env*` at project root, CodeLens workflow, and `npx cursortoys` CLI commands for agents.
 - **Run assertions (CodeLens)**: Terminal command now uses `npx cursortoys http test` so the CLI runs without a global install.
 - **Open environments command**: Reveals `.env` at the project root (or the workspace root folder if `.env` is missing).
@@ -32,13 +46,12 @@ The Guide’s entry for version **2025.5.26** notes that the average developer, 
   - `cursor-toys.shareAsCursorToysEnvFolder`
   - `cursor-toys.shareAsCursorToysHttpFolderWithEnv`
 
-### DeepFlow Sidebar
+### Changed
 
-### Added
-
-- **DeepFlow activity bar panel** (experimental): Dedicated activity bar icon (`resources/deepflow.svg`) opens an exclusive DeepFlow side panel. Enable under **Settings → Cursor Toys › Experimental → DeepFlow** (`cursorToys.experimental.deepflow`, default **off**).
+- **CursorToys activity bar panel**: Replaces the separate DeepFlow icon with the CursorToys icon (`resources/cursor-toys.svg`). Clicking it opens a dedicated sidebar with **Settings** (shortcuts to extension options) and **DeepFlow** (when enabled). DeepFlow is still opt-in via `cursorToys.experimental.deepflow`.
 - **DeepFlow specs view**: Panel lists `.deepflow/specs` with **Drafts**, **In development** (active), and **Archive** stages; per-task A-B-C files (`APPROACH.md`, `BUSINESS_CONTEXT.md`, `COMPLETION_REPORT.md`).
 - **DeepFlow actions**: Send to chat uses `@` task folder refs and skill activation commands (`Initialize DeepFlow`, `Approve task`, `Complete task`). Plan/execute on a task send the draft or active folder only.
+- **DeepFlow Plan (drafts)**: Pastes `@` task folder ref plus a `Plan:` line in the chat composer **without auto-submit**, so you can add review or planning notes before sending.
 - **Initialize DeepFlow**: When `.deepflow/specs` is missing, the tree shows **Initialize DeepFlow** (click or toolbar). If `.cursor/skills/deep-flow/SKILL.md` is missing, prompts to download the skill from [godrix/deep-flow](https://github.com/godrix/deep-flow/tree/main/deep-flow); then opens chat with `Initialize DeepFlow` (skill activation command).
 - **DeepFlow empty stages**: Stages with no task folders (e.g. `active/` only containing `.gitkeep`) show an explicit empty message instead of a blank/spinning row; removed spinning icon on **In development**.
 - **New DeepFlow Spec** panel: choose type (bug, feature, refactor, chore, docs, spike), title, and description; **Send to chat** uses Remote Telegram-style injection (`cursorInject.send` / paste flow).
@@ -50,7 +63,7 @@ The Guide’s entry for version **2025.5.26** notes that the average developer, 
 
 ### Added
 
-- **Hide sidebar resource views**: New setting `cursorToys.sidebar.hiddenViews` lets you hide individual CursorToys explorer sections (Notepads, Commands, Prompts, Cursor Plans, Skills, Cursor Hooks, MCPB Packages). Default is empty (all visible). Changes apply when you save settings without reloading the window. DeepFlow is not in this list; it uses the experimental activity bar panel instead.
+- **Hide sidebar resource views**: New setting `cursorToys.sidebar.hiddenViews` lets you hide individual CursorToys explorer sections (Notepads, Commands, Prompts, Cursor Plans, Skills, Cursor Hooks, MCPB Packages). Default is empty (all visible). Changes apply when you save settings without reloading the window. DeepFlow is configured separately in the CursorToys activity bar panel.
 
 ### Changed
 

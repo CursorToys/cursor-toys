@@ -1,6 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { getNotepadsPath, isAllowedExtension } from './utils';
+import {
+  isTreeLoadingPlaceholder,
+  renderLoadingTreeItem,
+  TreeLoadCoordinator,
+  TreeLoadingPlaceholder,
+} from './treeLoading';
 
 /**
  * Represents a tree item (can be a folder or a file)
@@ -10,6 +16,8 @@ export type TreeItemType = 'folder' | 'file';
 /**
  * Represents a notepad file or folder in the tree view
  */
+export type NotepadTreeElement = NotepadFileItem | TreeLoadingPlaceholder;
+
 export interface NotepadFileItem {
   uri: vscode.Uri;
   fileName: string;
@@ -22,9 +30,14 @@ export interface NotepadFileItem {
 /**
  * Tree data provider for user notepads folder with drag and drop support
  */
-export class UserNotepadsTreeProvider implements vscode.TreeDataProvider<NotepadFileItem>, vscode.TreeDragAndDropController<NotepadFileItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<NotepadFileItem | undefined | null | void> = new vscode.EventEmitter<NotepadFileItem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<NotepadFileItem | undefined | null | void> = this._onDidChangeTreeData.event;
+export class UserNotepadsTreeProvider implements vscode.TreeDataProvider<NotepadTreeElement>, vscode.TreeDragAndDropController<NotepadFileItem> {
+  private _onDidChangeTreeData: vscode.EventEmitter<NotepadTreeElement | undefined | null | void> = new vscode.EventEmitter<NotepadTreeElement | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<NotepadTreeElement | undefined | null | void> = this._onDidChangeTreeData.event;
+
+  private readonly rootLoader = new TreeLoadCoordinator<NotepadFileItem | undefined, NotepadFileItem>(
+    () => this._onDidChangeTreeData.fire(),
+    () => '__notepads_root__'
+  );
 
   // Drag and drop support
   dropMimeTypes = ['application/vnd.code.tree.cursor-deeplink.userNotepads'];
@@ -34,13 +47,17 @@ export class UserNotepadsTreeProvider implements vscode.TreeDataProvider<Notepad
    * Refreshes the tree view
    */
   refresh(): void {
+    this.rootLoader.clear();
     this._onDidChangeTreeData.fire();
   }
 
   /**
    * Gets the tree item for a given element
    */
-  getTreeItem(element: NotepadFileItem): vscode.TreeItem {
+  getTreeItem(element: NotepadTreeElement): vscode.TreeItem {
+    if (isTreeLoadingPlaceholder(element)) {
+      return renderLoadingTreeItem(element);
+    }
     if (element.type === 'folder') {
       // Folder item
       const treeItem = new vscode.TreeItem(
@@ -178,7 +195,11 @@ export class UserNotepadsTreeProvider implements vscode.TreeDataProvider<Notepad
   /**
    * Gets the children of the tree (folders and files)
    */
-  async getChildren(element?: NotepadFileItem): Promise<NotepadFileItem[]> {
+  async getChildren(element?: NotepadTreeElement): Promise<NotepadTreeElement[]> {
+    if (isTreeLoadingPlaceholder(element)) {
+      return [];
+    }
+
     // If element is a folder, return its children
     if (element && element.type === 'folder') {
       return element.children || [];
@@ -188,8 +209,11 @@ export class UserNotepadsTreeProvider implements vscode.TreeDataProvider<Notepad
     if (element && element.type === 'file') {
       return [];
     }
-    
-    // Root level - get notepads from current workspace only
+
+    return this.rootLoader.resolveChildren(undefined, () => this.loadRootChildren());
+  }
+
+  private async loadRootChildren(): Promise<NotepadFileItem[]> {
     try {
       // Check if workspace is open
       const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -229,7 +253,6 @@ export class UserNotepadsTreeProvider implements vscode.TreeDataProvider<Notepad
 
       return groupedItems;
     } catch (error) {
-      // Handle errors (folder doesn't exist, permission denied, etc.)
       console.error('Error reading notepads folder:', error);
       return [];
     }

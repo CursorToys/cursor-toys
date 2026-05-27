@@ -1,6 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { getCommandsPath, isAllowedExtension, getPersonalCommandsPaths } from './utils';
+import {
+  isTreeLoadingPlaceholder,
+  renderLoadingTreeItem,
+  TreeLoadCoordinator,
+  TreeLoadingPlaceholder,
+} from './treeLoading';
 
 /**
  * Represents a tree item (can be a category, folder or a file)
@@ -10,6 +16,8 @@ export type TreeItemType = 'category' | 'folder' | 'file';
 /**
  * Represents a command file or folder in the tree view
  */
+export type CommandTreeElement = CommandFileItem | TreeLoadingPlaceholder;
+
 export interface CommandFileItem {
   uri: vscode.Uri;
   fileName: string;
@@ -23,9 +31,14 @@ export interface CommandFileItem {
 /**
  * Tree data provider for user commands folder with drag and drop support
  */
-export class UserCommandsTreeProvider implements vscode.TreeDataProvider<CommandFileItem>, vscode.TreeDragAndDropController<CommandFileItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<CommandFileItem | undefined | null | void> = new vscode.EventEmitter<CommandFileItem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<CommandFileItem | undefined | null | void> = this._onDidChangeTreeData.event;
+export class UserCommandsTreeProvider implements vscode.TreeDataProvider<CommandTreeElement>, vscode.TreeDragAndDropController<CommandFileItem> {
+  private _onDidChangeTreeData: vscode.EventEmitter<CommandTreeElement | undefined | null | void> = new vscode.EventEmitter<CommandTreeElement | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<CommandTreeElement | undefined | null | void> = this._onDidChangeTreeData.event;
+
+  private readonly rootLoader = new TreeLoadCoordinator<CommandFileItem | undefined, CommandFileItem>(
+    () => this._onDidChangeTreeData.fire(),
+    () => '__commands_root__'
+  );
 
   // Drag and drop support
   dropMimeTypes = ['application/vnd.code.tree.cursor-deeplink.userCommands'];
@@ -35,13 +48,17 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
    * Refreshes the tree view
    */
   refresh(): void {
+    this.rootLoader.clear();
     this._onDidChangeTreeData.fire();
   }
 
   /**
    * Gets the tree item for a given element
    */
-  getTreeItem(element: CommandFileItem): vscode.TreeItem {
+  getTreeItem(element: CommandTreeElement): vscode.TreeItem {
+    if (isTreeLoadingPlaceholder(element)) {
+      return renderLoadingTreeItem(element);
+    }
     if (element.type === 'category') {
       // Category item (Personal or Workspace)
       const treeItem = new vscode.TreeItem(
@@ -205,7 +222,11 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
   /**
    * Gets the children of the tree (categories, folders and files)
    */
-  async getChildren(element?: CommandFileItem): Promise<CommandFileItem[]> {
+  async getChildren(element?: CommandTreeElement): Promise<CommandTreeElement[]> {
+    if (isTreeLoadingPlaceholder(element)) {
+      return [];
+    }
+
     // If element is a category or folder, return its children
     if (element && (element.type === 'category' || element.type === 'folder')) {
       return element.children || [];
@@ -215,8 +236,11 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
     if (element && element.type === 'file') {
       return [];
     }
-    
-    // Root level - get categories (Personal and Workspace)
+
+    return this.rootLoader.resolveChildren(undefined, () => this.loadRootChildren());
+  }
+
+  private async loadRootChildren(): Promise<CommandFileItem[]> {
     const items: CommandFileItem[] = [];
 
     // Get allowed extensions from configuration

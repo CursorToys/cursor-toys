@@ -8,7 +8,7 @@ const EXPERIMENTAL_DEEPFLOW_KEY = 'experimental.deepflow';
 const LEGACY_DEEPFLOW_ENABLED_KEY = 'deepflow.enabled';
 
 /**
- * Reads whether the DeepFlow activity bar panel is enabled (default: false, experimental).
+ * Reads whether the DeepFlow sidebar section is enabled (default: false, experimental).
  */
 export function isDeepflowPanelEnabled(): boolean {
   const config = vscode.workspace.getConfiguration('cursorToys');
@@ -24,7 +24,7 @@ export function isDeepflowPanelEnabled(): boolean {
 }
 
 /**
- * Updates context so the DeepFlow activity bar icon and views show or hide.
+ * Updates context so the DeepFlow view shows or hides in the CursorToys sidebar.
  */
 export async function syncDeepflowPanelEnabled(): Promise<void> {
   await vscode.commands.executeCommand(

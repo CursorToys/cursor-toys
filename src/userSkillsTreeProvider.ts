@@ -1,6 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { getSkillsPath, getPersonalSkillsPaths, isSkillFolder, getBaseFolderName } from './utils';
+import {
+  isTreeLoadingPlaceholder,
+  renderLoadingTreeItem,
+  TreeLoadCoordinator,
+  TreeLoadingPlaceholder,
+} from './treeLoading';
 
 /**
  * Represents a tree item (can be a category, folder or a file)
@@ -10,6 +16,8 @@ export type SkillTreeItemType = 'category' | 'folder' | 'file';
 /**
  * Represents a skill folder or file in the tree view
  */
+export type SkillTreeElement = SkillFileItem | TreeLoadingPlaceholder;
+
 export interface SkillFileItem {
   uri: vscode.Uri;
   fileName: string;
@@ -25,9 +33,14 @@ export interface SkillFileItem {
 /**
  * Tree data provider for user skills folder with drag and drop support
  */
-export class UserSkillsTreeProvider implements vscode.TreeDataProvider<SkillFileItem>, vscode.TreeDragAndDropController<SkillFileItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<SkillFileItem | undefined | null | void> = new vscode.EventEmitter<SkillFileItem | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<SkillFileItem | undefined | null | void> = this._onDidChangeTreeData.event;
+export class UserSkillsTreeProvider implements vscode.TreeDataProvider<SkillTreeElement>, vscode.TreeDragAndDropController<SkillFileItem> {
+  private _onDidChangeTreeData: vscode.EventEmitter<SkillTreeElement | undefined | null | void> = new vscode.EventEmitter<SkillTreeElement | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<SkillTreeElement | undefined | null | void> = this._onDidChangeTreeData.event;
+
+  private readonly rootLoader = new TreeLoadCoordinator<SkillFileItem | undefined, SkillFileItem>(
+    () => this._onDidChangeTreeData.fire(),
+    () => '__skills_root__'
+  );
 
   // Drag and drop support
   dropMimeTypes = ['application/vnd.code.tree.cursor-deeplink.userSkills'];
@@ -37,13 +50,17 @@ export class UserSkillsTreeProvider implements vscode.TreeDataProvider<SkillFile
    * Refreshes the tree view
    */
   refresh(): void {
+    this.rootLoader.clear();
     this._onDidChangeTreeData.fire();
   }
 
   /**
    * Gets the tree item for a given element
    */
-  getTreeItem(element: SkillFileItem): vscode.TreeItem {
+  getTreeItem(element: SkillTreeElement): vscode.TreeItem {
+    if (isTreeLoadingPlaceholder(element)) {
+      return renderLoadingTreeItem(element);
+    }
     if (element.type === 'category') {
       // Category item (Personal or Workspace)
       const treeItem = new vscode.TreeItem(
@@ -199,7 +216,11 @@ export class UserSkillsTreeProvider implements vscode.TreeDataProvider<SkillFile
   /**
    * Gets the children of the tree (categories, folders and files)
    */
-  async getChildren(element?: SkillFileItem): Promise<SkillFileItem[]> {
+  async getChildren(element?: SkillTreeElement): Promise<SkillTreeElement[]> {
+    if (isTreeLoadingPlaceholder(element)) {
+      return [];
+    }
+
     // If element is a category or folder, return its children
     if (element && (element.type === 'category' || element.type === 'folder')) {
       return element.children || [];
@@ -209,8 +230,11 @@ export class UserSkillsTreeProvider implements vscode.TreeDataProvider<SkillFile
     if (element && element.type === 'file') {
       return [];
     }
-    
-    // Root level - get categories (Personal and Workspace)
+
+    return this.rootLoader.resolveChildren(undefined, () => this.loadRootChildren());
+  }
+
+  private async loadRootChildren(): Promise<SkillFileItem[]> {
     const items: SkillFileItem[] = [];
 
     // Personal skills

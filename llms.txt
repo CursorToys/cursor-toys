@@ -603,14 +603,17 @@ Maximum compatibility format:
 - `cursor-toys.renamePlan`: Rename Plan
 - `cursor-toys.revealPlan`: Reveal Plan in Folder
 - `cursor-toys.refreshPlans`: Refresh Plans
-- DeepFlow panel: enable `cursorToys.experimental.deepflow` (Settings → Cursor Toys › Experimental); default off
+- CursorToys activity bar panel: icon in the left sidebar opens **Settings** and **DeepFlow** views; DeepFlow section requires `cursorToys.experimental.deepflow` (default off)
+- `cursor-toys.settings.editSetting`: Edit a single CursorToys setting via Quick Pick (Settings tree items)
+- `cursor-toys.settings.openSettingsJson`: Open user settings.json
+- `cursor-toys.settings.toggleDeepflow`: Toggle DeepFlow panel section
 - `cursor-toys.deepflow.refresh`: Refresh DeepFlow specs tree
 - `cursor-toys.deepflow.createTask`: Open form to create a new spec (type, title, description) and send to chat
 - `cursor-toys.deepflow.initialize`: Download deep-flow skill if missing, then chat: `@.deepflow` + `Initialize DeepFlow`
 - `cursor-toys.deepflow.approveTask`: `@` draft task folder + `Approve task`
 - `cursor-toys.deepflow.completeTask`: `@` active task folder + `Complete task`
 - `cursor-toys.deepflow.sendToChatExecute`: `@` active task folder (implementation per skill)
-- `cursor-toys.deepflow.sendToChatPlan`: `@` draft task folder (planning per skill)
+- `cursor-toys.deepflow.sendToChatPlan`: pastes `@` draft task folder + `Plan:` in chat (no auto-submit; user adds notes then submits)
 - `cursor-toys.deepflow.openAbcFile`: Open DeepFlow A-B-C markdown file
 
 ### Hooks Commands
