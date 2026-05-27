@@ -109,32 +109,50 @@ export class HttpCodeLensProvider implements vscode.CodeLensProvider {
   }
 
   /**
+   * Finds assertion comment blocks and their start lines within a range
+   */
+  private findAssertionBlocks(
+    document: vscode.TextDocument,
+    startLine: number,
+    endLine: number
+  ): Array<{ startLine: number; count: number }> {
+    const blocks: Array<{ startLine: number; count: number }> = [];
+    let inCommentBlock = false;
+    let blockStartLine = -1;
+    let blockCount = 0;
+
+    for (let i = startLine; i <= endLine && i < document.lineCount; i++) {
+      const line = document.lineAt(i).text;
+
+      if (line.includes('/*')) {
+        inCommentBlock = true;
+        blockStartLine = i;
+        blockCount = 0;
+      }
+
+      if (inCommentBlock && line.includes('@assert')) {
+        blockCount++;
+      }
+
+      if (inCommentBlock && line.includes('*/')) {
+        if (blockCount > 0) {
+          blocks.push({ startLine: blockStartLine, count: blockCount });
+        }
+        inCommentBlock = false;
+        blockStartLine = -1;
+        blockCount = 0;
+      }
+    }
+
+    return blocks;
+  }
+
+  /**
    * Counts assertions in a section or curl command
    */
   private countAssertions(document: vscode.TextDocument, startLine: number, endLine: number): number {
-    let count = 0;
-    let inCommentBlock = false;
-    
-    for (let i = startLine; i <= endLine && i < document.lineCount; i++) {
-      const line = document.lineAt(i).text;
-      
-      // Check for start of comment block
-      if (line.includes('/*')) {
-        inCommentBlock = true;
-      }
-      
-      // Count @assert in comment blocks
-      if (inCommentBlock && line.includes('@assert')) {
-        count++;
-      }
-      
-      // Check for end of comment block
-      if (line.includes('*/')) {
-        inCommentBlock = false;
-      }
-    }
-    
-    return count;
+    return this.findAssertionBlocks(document, startLine, endLine)
+      .reduce((sum, block) => sum + block.count, 0);
   }
 
   /**
@@ -171,22 +189,20 @@ export class HttpCodeLensProvider implements vscode.CodeLensProvider {
     const text = document.getText();
     const lines = text.split('\n');
     
-    // Check if file has ANY assertions
-    const totalAssertions = this.countAssertions(document, 0, lines.length - 1);
-    
-    // If file has assertions, add "Run Assertions" CodeLens at the top
-    if (totalAssertions > 0) {
+    // Add "Run Assertions" CodeLens above each assertion block (not at file top or method line)
+    const assertionBlocks = this.findAssertionBlocks(document, 0, lines.length - 1);
+    for (const block of assertionBlocks) {
       const runAssertionsCodeLens = new vscode.CodeLens(
-        new vscode.Range(0, 0, 0, 0),
+        new vscode.Range(block.startLine, 0, block.startLine, 0),
         {
-          title: `$(play) Run Assertions (${totalAssertions} ${totalAssertions === 1 ? 'test' : 'tests'})`,
+          title: `$(play) Run Assertions (${block.count} ${block.count === 1 ? 'test' : 'tests'})`,
           command: 'cursor-toys.runAssertions',
           arguments: [document.uri]
         }
       );
       this.codeLenses.push(runAssertionsCodeLens);
     }
-    
+
     // CASCADING SUPPORT: Find global environment at the top of the file
     let globalEnv: string | null = null;
     for (let i = 0; i < lines.length; i++) {

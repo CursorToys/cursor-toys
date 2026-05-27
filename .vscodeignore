@@ -15,6 +15,7 @@ node_modules/**
 # Exceto estes específicos
 !README.md
 !LICENSE
+!resources/skills/**/SKILL.md
 
 # Git files
 .git/**

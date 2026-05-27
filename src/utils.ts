@@ -654,464 +654,110 @@ export async function isSkillFolder(folderPath: string): Promise<boolean> {
   }
 }
 
+/** Skill folder name installed by createHttpDocsSkill */
+export const HTTP_DOCS_SKILL_NAME = 'cursor-toys-http';
+
+export interface CreateHttpDocsSkillOptions {
+  /** VS Code extension root (contains resources/skills/) */
+  extensionPath?: string;
+  /** Install into ~/.{baseFolder}/skills (default: ask user) */
+  installPersonal?: boolean;
+  /** Workspace folder path when installing a project skill */
+  workspacePath?: string;
+}
+
 /**
- * Creates the HTTP Requests documentation skill in personal skills folder
- * @param httpFolderPath Path to the HTTP folder (used for reference)
+ * Loads the bundled HTTP skill template and substitutes folder placeholders.
  */
-export async function createHttpDocsSkill(httpFolderPath?: string): Promise<void> {
+export function loadHttpDocsSkillTemplate(extensionPath: string, baseFolderName?: string): string {
+  const baseFolder = baseFolderName ?? getBaseFolderName();
+  const httpFolder = `.${baseFolder}/http`;
+  const templatePath = path.join(extensionPath, 'resources', 'skills', HTTP_DOCS_SKILL_NAME, 'SKILL.md');
+  const raw = fs.readFileSync(templatePath, 'utf8');
+  return raw.split('{{HTTP_FOLDER}}').join(httpFolder).split('{{BASE_FOLDER}}').join(baseFolder);
+}
+
+/**
+ * Installs the CursorToys HTTP skill (create, organize, test .req files + CLI).
+ */
+export async function createHttpDocsSkill(options: CreateHttpDocsSkillOptions = {}): Promise<void> {
   const baseFolderName = getBaseFolderName();
-  const homePath = getUserHomePath();
-  
-  // Check if skill exists
-  const skillPath = path.join(homePath, `.${baseFolderName}`, 'skills', 'http-request-docs-cursor-toys');
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  const workspacePath = options.workspacePath ?? workspaceFolder?.uri.fsPath;
+
+  let installPersonal = options.installPersonal;
+  if (installPersonal === undefined) {
+    const location = await vscode.window.showQuickPick(
+      [
+        {
+          label: 'Project skill',
+          description: workspacePath
+            ? `Shared with this repo (${path.join(`.${baseFolderName}`, 'skills')})`
+            : 'Requires an open workspace',
+          value: false as const,
+        },
+        {
+          label: 'Personal skill',
+          description: `Available in all projects (~/.${baseFolderName}/skills)`,
+          value: true as const,
+        },
+      ],
+      { placeHolder: 'Where should the HTTP skill be installed?' }
+    );
+    if (location === undefined) {
+      return;
+    }
+    installPersonal = location.value;
+  }
+
+  if (!installPersonal && !workspacePath) {
+    vscode.window.showErrorMessage('Open a workspace folder to install a project HTTP skill.');
+    return;
+  }
+
+  if (!options.extensionPath) {
+    vscode.window.showErrorMessage('Extension path is required to install the HTTP skill.');
+    return;
+  }
+
+  const skillsRoot = getSkillsPath(workspacePath, installPersonal);
+  const skillPath = path.join(skillsRoot, HTTP_DOCS_SKILL_NAME);
   const skillFilePath = path.join(skillPath, 'SKILL.md');
   const skillFileUri = vscode.Uri.file(skillFilePath);
-  
+
   let skillExists = false;
   try {
     await vscode.workspace.fs.stat(skillFileUri);
     skillExists = true;
   } catch {
-    // Skill doesn't exist
+    // Skill does not exist yet
   }
 
   if (skillExists) {
     const overwrite = await vscode.window.showInformationMessage(
-      'HTTP Requests Documentation skill already exists. Do you want to reinstall it?',
+      'HTTP skill (cursor-toys-http) already exists. Reinstall?',
       'Reinstall',
       'Cancel'
     );
-
     if (overwrite !== 'Reinstall') {
       return;
     }
   }
 
   try {
-    const skillFolderUri = vscode.Uri.file(skillPath);
-    await vscode.workspace.fs.createDirectory(skillFolderUri);
-    
-    const skillContent = generateHttpSkillContent(baseFolderName);
+    await vscode.workspace.fs.createDirectory(vscode.Uri.file(skillPath));
+    const skillContent = loadHttpDocsSkillTemplate(options.extensionPath, baseFolderName);
     await vscode.workspace.fs.writeFile(skillFileUri, Buffer.from(skillContent, 'utf8'));
-    
-    vscode.window.showInformationMessage('HTTP Requests Documentation skill installed successfully!');
-    
-    // Open the skill file
+
+    const scope = installPersonal ? 'personal' : 'project';
+    vscode.window.showInformationMessage(`HTTP skill installed (${scope}): ${HTTP_DOCS_SKILL_NAME}`);
+
     const document = await vscode.workspace.openTextDocument(skillFileUri);
     await vscode.window.showTextDocument(document);
   } catch (error) {
-    console.error('Failed to create HTTP Requests documentation skill:', error);
-    vscode.window.showErrorMessage(`Failed to install skill: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('Failed to create HTTP skill:', error);
+    vscode.window.showErrorMessage(
+      `Failed to install HTTP skill: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
-}
-
-/**
- * Generates the content for HTTP Requests documentation skill.
- * Content matches the canonical SKILL.md for http-request-docs-cursor-toys.
- * @param _baseFolderName Unused; skill text uses .cursor as default and mentions .vscode/.ai in config.
- * @returns Skill content as string
- */
-function generateHttpSkillContent(_baseFolderName: string): string {
-  return `---
-name: http-request-docs-cursor-toys
-description: Provides documentation and guidance for using the CursorToys HTTP Requests feature. Use this Skill to learn how to create, run, and test HTTP/API requests directly within Cursor, including handling environment variables, helper functions, and interpreting responses. Apply this Skill when you need to document, develop, or troubleshoot API integrations using .req or .request files in your project.
----
-
-# CursorToys HTTP Requests Documentation
-
-Test HTTP requests without leaving Cursor. This documentation covers how to use the CursorToys HTTP Requests feature to execute API calls directly from the editor.
-
-## File Location
-
-Create \`.req\` or \`.request\` files in the \`.cursor/http/\` folder (or \`.vscode/http/\`, \`.ai/http/\` depending on configuration).
-
-## When to Use
-
-Use this skill when:
-- Creating or testing HTTP/API requests in Cursor
-- Setting up API testing workflows
-- Writing automated tests for REST APIs
-- Documenting API endpoints with examples
-- Working with environment variables for different stages (dev, staging, prod)
-- Need to execute requests from CLI or editor
-
-## Supported Formats
-
-### REST Client Format (Recommended)
-
-**Prefer this format** - it supports test assertions and can be executed via CLI.
-
-\`METHOD URL\` with headers and body (similar to VS Code REST Client extension):
-
-\`\`\`http
-## Get All Users
-GET {{BASE_URL}}/api/users
-Authorization: Bearer {{API_KEY}}
-
-## Create User
-POST {{BASE_URL}}/api/users
-Content-Type: application/json
-
-{
-  "name": "John Doe",
-  "email": "john@example.com"
-}
-\`\`\`
-
-## Multiple Requests
-
-Use markdown sections (\`## Section Title\`) to organize multiple requests in one file. Each section gets its own "Send Request" CodeLens link.
-
-## Environment Variables
-
-Store variables in project-root \`.env*\` files:
-- Files: \`.env\`, \`.env.local\`, \`.env.dev\`, \`.env.staging\`, \`.env.prod\`, etc.
-- Use \`{{variableName}}\` syntax in requests
-- Switch environments via Command Palette: "CursorToys: Select HTTP Environment"
-- Status bar shows current active environment
-
-## Inline Variables
-
-Define variables directly in request files: \`# @var VAR_NAME=value\`
-- Section-specific variables override global variables
-- Cascading behavior: section variables inherit from previous section or global
-
-## Helper Functions
-
-- \`{{@prompt("label")}}\` - Prompt user for input value
-- \`{{@randomIn(min, max)}}\` - Generate random integer between min and max (inclusive)
-- \`{{@datetime}}\` or \`{{@datetime("format")}}\` - Current date/time (format: ISO, timestamp, date, time)
-- \`{{@uuid()}}\` - Generate random UUID v4
-- \`{{@randomString(length)}}\` - Generate random alphanumeric string
-- \`{{@userAgent()}}\` - Generate random browser User-Agent string
-- \`{{@ip()}}\` - Generate random IPv4 address
-- \`{{@lorem(count)}}\` - Generate Lorem Ipsum text (1 to 100 words; default 5)
-- \`{{@randomFrom("a", "b", "c")}}\` - Pick a random item from the list of arguments
-
-## Environment Decorators
-
-Use \`# @env environmentName\` before sections to specify environment:
-
-\`\`\`http
-# @env qa
-
-## Request 1 - Uses 'qa' environment
-GET {{BASE_URL}}/api/users
-
-# @env prod - Uses 'prod' environment (explicit)
-## Request 2
-POST {{BASE_URL}}/api/users
-
-## Request 3
-GET {{BASE_URL}}/api/posts
-\`\`\`
-
-## Test Assertions
-
-Add automated test assertions using comment blocks with \`@assert\` annotations:
-
-\`\`\`http
-## Get User by ID
-GET {{API_BASE}}/users/1
-/*
- * @assert("res.status", "equals", 200)
- * @assert("res.body.id", "equals", 1)
- * @assert("res.body.name", "isString")
- * @assert("res.body.email", "contains", "@")
- */
-
-## Login with Correct Password
-POST {{BASE_URL}}/v1/api/pharmacist/{{BRAND}}/login
-BranchId: {{BRANCH_ID}}
-Content-Type: application/json
-
-{
-  "login": "user.123",
-  "password": "correct_password"
-}
-/*
- * @assert("login success", "res.status", "equals", 200)
- * @assert("res.body.operatorCode", "isNumber")
- * @assert("res.body.operatorName", "isNotEmpty")
- */
-
-## Login with Wrong Password
-POST {{BASE_URL}}/v1/api/pharmacist/{{BRAND}}/login
-Content-Type: application/json
-
-{
-  "login": "user.123",
-  "password": "wrong_password"
-}
-/*
- * @assert("res.status", "equals", 401)
- */
-\`\`\`
-
-### Available Assertion Operators
-
-#### Comparison
-- \`equals\` - Exact match
-- \`notEquals\` - Not equal
-- \`gt\` - Greater than
-- \`gte\` - Greater than or equal
-- \`lt\` - Less than
-- \`lte\` - Less than or equal
-
-#### String
-- \`contains\` - String contains substring
-- \`notContains\` - String does not contain substring
-- \`startsWith\` - String starts with substring
-- \`endsWith\` - String ends with substring
-- \`matches\` - String matches RegExp
-- \`notMatches\` - String does not match RegExp
-
-#### Type Checks
-- \`isNull\` - Value is null
-- \`isNotEmpty\` - Value is not empty (string, array, or object)
-- \`isEmpty\` - Value is empty (string, array, or object)
-- \`isDefined\` - Value is defined (not null or undefined)
-- \`isUndefined\` - Value is undefined
-
-#### Value Checks
-- \`isTruthy\` - Value evaluates to true
-- \`isFalsy\` - Value evaluates to false
-- \`isNumber\` - Value is a number
-- \`isString\` - Value is a string
-- \`isBoolean\` - Value is a boolean
-- \`isArray\` - Value is an array
-- \`isJson\` - Value is valid JSON
-
-#### Other
-- \`in\` - Value is one of the provided values
-- \`notIn\` - Value is not in the provided values
-- \`between\` - Value is between two values (inclusive)
-- \`length\` - Length of the value matches (string/array/object)
-
-### CLI Testing
-
-Execute assertions from command line:
-
-\`\`\`bash
-# Test specific file
-cursortoys http test -f .cursor/http/api-tests.req
-
-# Test all files in folder
-cursortoys http test -d .cursor/http/
-
-# Test with specific environment
-cursortoys http test -f api-tests.req -e prod
-\`\`\`
-
-## Response Handling
-
-- **When using the CLI (\`cursortoys http test ...\`), the response and test results are shown directly in the terminal using a test runner style output similar to Jest (clear pass/fail for each assertion, timing, and summary)**
-- Responses are saved to \`.res\` or \`.response\` files (or preview-only mode) in the editor
-- Automatic JSON and XML formatting
-- Execution time is displayed in the response tab title
-- Syntax highlighting for both request and response files in the editor
-
-
-## Configuration
-
-- \`cursorToys.httpRequestTimeout\`: Timeout in seconds (default: 10)
-- \`cursorToys.httpRequestSaveFile\`: Save response to file or preview only (default: false)
-- \`cursorToys.httpDefaultEnvironment\`: Default environment name (default: "dev")
-
-## Usage
-
-1. Create a \`.req\` or \`.request\` file in the http folder
-2. Write your HTTP request using cURL or REST Client format
-3. Click "Send Request" CodeLens link that appears above the request
-4. Response opens in a new tab with formatted output
-
-## Examples
-
-### Example 1: Simple GET Request
-
-\`\`\`http
-## Get User
-GET https://api.github.com/users/octocat
-\`\`\`
-
-### Example 2: Using Environment Variables
-
-1. Create \`.env.dev\` at the project root:
-\`\`\`env
-BASE_URL=http://localhost:3000
-API_KEY=dev-key-123
-\`\`\`
-2. Create request file:
-\`\`\`http
-## Get Users
-GET {{BASE_URL}}/api/users
-Authorization: Bearer {{API_KEY}}
-\`\`\`
-3. Switch environment via Command Palette: "CursorToys: Select HTTP Environment"
-4. Select \`dev\` environment
-5. Click "Send Request" - variables are automatically substituted
-
-### Example 3: Using Inline Variables
-
-\`\`\`http
-# @var API_BASE=https://api.example.com
-# @var USER_ID=12345
-
-## Get User
-GET {{API_BASE}}/users/{{USER_ID}}
-
-# @var USER_ID=67890
-## Get Another User
-GET {{API_BASE}}/users/{{USER_ID}}
-\`\`\`
-
-### Example 4: Using Helper Functions
-
-\`\`\`http
-## Create User with Random Data
-POST {{BASE_URL}}/api/users
-Content-Type: application/json
-
-{
-  "id": "{{@uuid()}}",
-  "name": "User{{@randomString(8)}}",
-  "age": {{@randomIn(18, 65)}},
-  "createdAt": "{{@datetime}}",
-  "email": "{{@prompt("Enter email")}}"
-}
-\`\`\`
-
-### Example 5: Using userAgent, ip, lorem and randomFrom
-
-\`\`\`http
-## Request with random helpers
-GET {{BASE_URL}}/api/items
-User-Agent: {{@userAgent()}}
-X-Forwarded-For: {{@ip()}}
-X-Request-Type: {{@randomFrom("internal", "external", "test")}}
-
-POST {{BASE_URL}}/api/feedback
-Content-Type: application/json
-
-{
-  "summary": "{{@lorem(10)}}",
-  "source": "{{@randomFrom("web", "mobile", "api")}}"
-}
-\`\`\`
-
-### Example 6: Complete Test Suite with Assertions
-
-\`\`\`http
-# @env qa
-# @var BASE_URL_MS_COMMUNICATIONS=https://api.example.com
-# @var AUTH_TOKEN=token123
-# @var BRAND=raia
-
-### ============================================
-### AUTHENTICATION TESTS
-### ============================================
-
-## Login - Correct Password
-POST {{BASE_URL_MS_COMMUNICATIONS}}/v1/api/pharmacist/{{BRAND}}/login
-BranchId: 167
-Channel: web
-Authorization: {{AUTH_TOKEN}}
-Content-Type: application/json
-
-{
-  "login": "user.167",
-  "password": "correct_password"
-}
-/*
- * @assert("login success", "res.status", "equals", 200)
- * @assert("res.body.operatorCode", "isNumber")
- * @assert("res.body.operatorName", "isNotEmpty")
- * @assert("res.body.token", "isDefined")
- */
-
-## Login - Wrong Password
-POST {{BASE_URL_MS_COMMUNICATIONS}}/v1/api/pharmacist/{{BRAND}}/login
-BranchId: 167
-Channel: web
-Authorization: {{AUTH_TOKEN}}
-Content-Type: application/json
-
-{
-  "login": "user.167",
-  "password": "wrong_password"
-}
-/*
- * @assert("res.status", "equals", 401)
- * @assert("res.body.error", "contains", "invalid")
- */
-\`\`\`
-
-## Best Practices
-
-**Best Practices for HTTP Request Files (\`.req\`, \`.request\`):**
-
-- **Add a file-level comment at the top describing the test suite and its goal.**  
-  Use a markdown or plain comment starting with \`#\` or \`/* ... */\` at the very top of the file to briefly explain the suite's purpose (see examples near line 297-299).
-
-- **Use REST Client syntax:**  
-  Write requests in the REST Client format (\`METHOD URL\` with optional headers and body) for maximum compatibility, easy test execution, and assertion support.
-
-- **Organize requests by feature or domain:**  
-  Separate related requests with markdown sections, using lines like \`## Feature Name\` to help navigation and logical grouping.
-
-- **Always use environment variables:**  
-  Reference variables (like URLs, tokens, or custom values) using \`{{VAR_NAME}}\` placeholders to avoid hardcoding credentials and enable multi-environment support.
-
-- **Define multiple environments:**  
-  Create files like \`.env\`, \`.env.local\`, \`.env.dev\`, \`.env.staging\`, etc. at the project root, and use \`# @env ENVNAME\` at file or section scope for easy switching.
-
-- **Use inline variables for request-specific overrides:**  
-  Add \`# @var VAR_NAME=value\` at the top of files, sections, or before requests to override or add variables only for that context.
-
-- **Leverage helper functions:**  
-  Use dynamic helpers such as \`@uuid()\`, \`@datetime\`, etc., when you need runtime-generated values in your requests.
-
-- **Annotate sections/scopes with environment decorators:**  
-  Mark different test groups with \`# @env\` (e.g., \`# @env qa\`) to disambiguate configuration for that portion of the suite.
-
-- **Write test assertions for every important output:**  
-  Add \`@assert\` lines (multi-line comment block after each request) to automatically check status codes, response bodies, and types, ensuring regression safety.
-
-- **Use descriptive assertion labels:**  
-  Name your assertions (first argument) for context clarity, e.g., \`"login success"\` or \`"user created"\`, to make failed tests easily understandable.
-
-- **Group logically related tests together:**  
-  Keep suites for authentication, CRUD, validation, or integration endpoints as contiguous blocks; this helps maintain and debug tests efficiently.
-
-## Troubleshooting
-
-### HTTP Request Not Executing
-- Verify \`curl\` is installed and in PATH
-- Check file is in \`.cursor/http/\` folder (or configured base folder)
-- Verify file extension is \`.req\` or \`.request\`
-
-### Environment Variables Not Resolving
-- Verify environment file exists at the project root (e.g. \`.env.dev\` for \`# @env dev\`)
-- Check environment name matches (case-insensitive)
-- Verify variable name matches exactly (case-insensitive)
-- Check active environment in status bar
-- Use \`# @env\` decorator for section-specific environments
-
-### CodeLens Not Showing
-- Verify file is in correct folder (\`.cursor/http/\`)
-- Check file extension is \`.req\` or \`.request\`
-- Reload window: \`Cmd+Shift+P\` → "Developer: Reload Window"
-
-### Test Assertions Failing
-- Check assertion syntax: \`@assert("label", "path", "operator", value)\`
-- Verify response structure matches assertion path (e.g., \`res.body.id\`)
-- Use correct operator for data type (\`equals\` for values, \`contains\` for strings)
-- Check if environment variables are resolved correctly
-- Run with verbose output: \`cursortoys http test -f file.req --verbose\`
-
-### CLI Command Not Found
-- Install CursorToys CLI: \`npm install -g cursortoys-cli\`
-- Or use via npx: \`npx cursortoys-cli http test -f file.req\`
-- Verify Node.js is installed: \`node --version\`
-`;
 }

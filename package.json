@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.5.26",
+  "version": "2026.5.27",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -157,28 +157,12 @@
         "title": "CursorToys: Share as CursorToys (HTTP Request)"
       },
       {
-        "command": "cursor-toys.shareAsCursorToysEnv",
-        "title": "CursorToys: Share as CursorToys (Environment)"
-      },
-      {
         "command": "cursor-toys.shareAsCursorToysHttpWithPath",
         "title": "CursorToys: Share as CursorToys with Folder Structure (HTTP Request)"
       },
       {
-        "command": "cursor-toys.shareAsCursorToysEnvWithPath",
-        "title": "CursorToys: Share as CursorToys with Folder Structure (Environment)"
-      },
-      {
         "command": "cursor-toys.shareAsCursorToysHttpFolder",
         "title": "CursorToys: Share Folder as CursorToys (HTTP Requests)"
-      },
-      {
-        "command": "cursor-toys.shareAsCursorToysEnvFolder",
-        "title": "CursorToys: Share Folder as CursorToys (Environments)"
-      },
-      {
-        "command": "cursor-toys.shareAsCursorToysHttpFolderWithEnv",
-        "title": "CursorToys: Share Folder as CursorToys (HTTP + Environments)"
       },
       {
         "command": "cursor-toys.shareAsCursorToysCommandFolder",
@@ -382,6 +366,16 @@
         "icon": "$(file-text)"
       },
       {
+        "command": "cursor-toys.deepflow.openMemory",
+        "title": "CursorToys: Open DeepFlow Memory",
+        "icon": "$(notebook)"
+      },
+      {
+        "command": "cursor-toys.deepflow.openMemoryEntry",
+        "title": "CursorToys: Open DeepFlow Memory Entry",
+        "icon": "$(link-external)"
+      },
+      {
         "command": "cursor-toys.deepflow.approveTask",
         "title": "CursorToys: DeepFlow Send to Chat (Approve)",
         "icon": "$(check)"
@@ -509,20 +503,13 @@
         "title": "CursorToys: Select HTTP Environment"
       },
       {
-        "command": "cursor-toys.openEnvironments",
-        "title": "CursorToys: Open Project Environment Files"
-      },
-      {
         "command": "cursor-toys.createEnvironment",
         "title": "CursorToys: Create New HTTP Environment"
       },
       {
-        "command": "cursor-toys.initializeEnvironments",
-        "title": "CursorToys: Initialize Project Environment Files"
-      },
-      {
         "command": "cursor-toys.generateHttpLlms",
-        "title": "CursorToys: Add Skill: HTTP Requests Documentation"
+        "title": "CursorToys: Install HTTP Requests Skill",
+        "icon": "$(book)"
       },
       {
         "command": "cursor-toys.minifyFile",
@@ -977,6 +964,16 @@
           "group": "inline"
         },
         {
+          "command": "cursor-toys.deepflow.openMemory",
+          "when": "view == cursor-toys.deepflow && viewItem == deepflowMemoryFile",
+          "group": "inline"
+        },
+        {
+          "command": "cursor-toys.deepflow.openMemoryEntry",
+          "when": "view == cursor-toys.deepflow && viewItem == deepflowMemoryEntry",
+          "group": "inline"
+        },
+        {
           "command": "cursor-toys.openSkill",
           "when": "view == cursor-toys.userSkills && viewItem == userSkillFile",
           "group": "inline"
@@ -1208,28 +1205,12 @@
           "when": "resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]http[\\\\/].*\\.(req|request)$/ && !explorerResourceIsFolder"
         },
         {
-          "command": "cursor-toys.shareAsCursorToysEnv",
-          "when": "resourceFilename =~ /^\\.env/ && !(resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]http[\\\\/]) && !explorerResourceIsFolder"
-        },
-        {
           "command": "cursor-toys.shareAsCursorToysHttpWithPath",
           "when": "resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]http[\\\\/].*\\.(req|request)$/ && !explorerResourceIsFolder"
         },
         {
-          "command": "cursor-toys.shareAsCursorToysEnvWithPath",
-          "when": "resourceFilename =~ /^\\.env/ && !(resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]http[\\\\/]) && !explorerResourceIsFolder"
-        },
-        {
           "command": "cursor-toys.shareAsCursorToysHttpFolder",
           "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]http($|[\\\\/])/"
-        },
-        {
-          "command": "cursor-toys.shareAsCursorToysHttpFolderWithEnv",
-          "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]http($|[\\\\/])/"
-        },
-        {
-          "command": "cursor-toys.shareAsCursorToysEnvFolder",
-          "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)$/"
         },
         {
           "command": "cursor-toys.shareAsCursorToysProject",
@@ -1242,10 +1223,6 @@
         {
           "command": "cursor-toys.shareHooksViaGist",
           "when": "resourceFilename == hooks.json"
-        },
-        {
-          "command": "cursor-toys.initializeEnvironments",
-          "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]http($|[\\\\/])/"
         },
         {
           "command": "cursor-toys.generateHttpLlms",

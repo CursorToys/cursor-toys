@@ -3,9 +3,9 @@ import * as path from 'path';
 import { generateDeeplink } from './deeplinkGenerator';
 import { importDeeplink } from './deeplinkImporter';
 import { importRemoteSkillFromGitHubFolderUrl, validateGitHubSkillFolderUrl } from './skillRemoteImporter';
-import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForEnvFolder, generateShareableForHttpFolderWithEnv, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
+import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist, createSkillFromStructure } from './shareableImporter';
-import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getProjectEnvRoot, getProjectEnvFilePath, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getProjectEnvFilePath, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { EnvCodeLensProvider } from './envCodeLensProvider';
@@ -27,8 +27,10 @@ import {
   buildPlanChatMessage,
 } from './deepflowChatPrompts';
 import { syncDeepflowNeedsInit, syncDeepflowPanelEnabled } from './deepflowContext';
+import { getDeepflowRootUri } from './deepflowPaths';
 import { DeepflowCreateTaskPanel } from './deepflowCreateTaskPanel';
 import { openDeepflowSpecFile } from './deepflowFileOps';
+import { openDeepflowMemoryFile, openMemoryEntryTarget } from './deepflowMemory';
 import { sendDeepflowToChat } from './deepflowSendToChat';
 import { ensureDeepflowSkillOrPromptDownload } from './deepflowSkillInstaller';
 import { UserHooksTreeProvider, HooksFileItem } from './userHooksTreeProvider';
@@ -663,27 +665,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   );
 
-  // Specific command to generate ENV shareable
-  const generateShareableEnvSpecific = vscode.commands.registerCommand(
-    'cursor-toys.shareAsCursorToysEnv',
-    async (uri?: vscode.Uri) => {
-      await generateShareableWithValidation(uri, 'env');
-    }
-  );
-
   // Specific command to generate HTTP shareable with path
   const generateShareableHttpWithPathSpecific = vscode.commands.registerCommand(
     'cursor-toys.shareAsCursorToysHttpWithPath',
     async (uri?: vscode.Uri) => {
       await generateShareableWithPathValidation(uri, 'http');
-    }
-  );
-
-  // Specific command to generate ENV shareable with path
-  const generateShareableEnvWithPathSpecific = vscode.commands.registerCommand(
-    'cursor-toys.shareAsCursorToysEnvWithPath',
-    async (uri?: vscode.Uri) => {
-      await generateShareableWithPathValidation(uri, 'env');
     }
   );
 
@@ -718,72 +704,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           
           vscode.window.showInformationMessage(
             `${shareables.length} HTTP request(s) copied to clipboard as CursorToys shareable!`
-          );
-        }
-      } catch (error) {
-        vscode.window.showErrorMessage(`Error generating folder shareable: ${error}`);
-      }
-    }
-  );
-
-  // Command to share entire ENV folder
-  const shareEnvFolderCommand = vscode.commands.registerCommand(
-    'cursor-toys.shareAsCursorToysEnvFolder',
-    async () => {
-      try {
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders || workspaceFolders.length === 0) {
-          vscode.window.showErrorMessage('No workspace folder open');
-          return;
-        }
-
-        const folderPath = workspaceFolders[0].uri.fsPath;
-        const shareables = await generateShareableForEnvFolder(folderPath);
-        if (shareables && shareables.length > 0) {
-          // Join all shareables with newlines
-          const shareableText = shareables.join('\n');
-          
-          // Copy to clipboard
-          await vscode.env.clipboard.writeText(shareableText);
-          
-          vscode.window.showInformationMessage(
-            `${shareables.length} environment file(s) copied to clipboard as CursorToys shareable!`
-          );
-        }
-      } catch (error) {
-        vscode.window.showErrorMessage(`Error generating folder shareable: ${error}`);
-      }
-    }
-  );
-
-  // Command to share HTTP folder with environments
-  const shareHttpFolderWithEnvCommand = vscode.commands.registerCommand(
-    'cursor-toys.shareAsCursorToysHttpFolderWithEnv',
-    async (uri?: vscode.Uri) => {
-      try {
-        let folderPath: string;
-        
-        if (uri) {
-          // Get folder path from URI
-          const stat = await vscode.workspace.fs.stat(uri);
-          if (stat.type !== vscode.FileType.Directory) {
-            vscode.window.showErrorMessage('Please select a folder');
-            return;
-          }
-          folderPath = uri.fsPath;
-        } else {
-          vscode.window.showErrorMessage('Please select a folder');
-          return;
-        }
-
-        // Generate shareables for all files in folder
-        const shareable = await generateShareableForHttpFolderWithEnv(folderPath);
-        if (shareable) {
-          // Copy to clipboard
-          await vscode.env.clipboard.writeText(shareable);
-          
-          vscode.window.showInformationMessage(
-            `HTTP + Environments bundle copied to clipboard as CursorToys shareable!`
           );
         }
       } catch (error) {
@@ -3400,6 +3320,25 @@ Detailed instructions for the agent.
     }
   );
 
+  const deepflowOpenMemory = vscode.commands.registerCommand(
+    'cursor-toys.deepflow.openMemory',
+    async () => {
+      await openDeepflowMemoryFile();
+    }
+  );
+
+  const deepflowOpenMemoryEntry = vscode.commands.registerCommand(
+    'cursor-toys.deepflow.openMemoryEntry',
+    async (arg?: DeepFlowTreeItem) => {
+      const root = getDeepflowRootUri();
+      if (!root || !arg?.memoryEntry) {
+        await openDeepflowMemoryFile();
+        return;
+      }
+      await openMemoryEntryTarget(arg.memoryEntry, root);
+    }
+  );
+
   const deepflowCreateTask = vscode.commands.registerCommand(
     'cursor-toys.deepflow.createTask',
     () => {
@@ -3637,7 +3576,7 @@ Detailed instructions for the agent.
       });
       
       terminal.show();
-      terminal.sendText(`cursortoys http test -f "${filePath}"`);
+      terminal.sendText(`npx cursortoys http test -f "${filePath}"`);
     }
   );
 
@@ -3657,7 +3596,7 @@ Detailed instructions for the agent.
 
       if (availableEnvs.length === 0) {
         vscode.window.showWarningMessage(
-          'No environment files found at the project root. Run "CursorToys: Initialize Project Environment Files" or create .env / .env.dev at the workspace root.'
+          'No environment files found at the project root. Create .env / .env.dev at the workspace root.'
         );
         return;
       }
@@ -3678,30 +3617,6 @@ Detailed instructions for the agent.
         envManager.clearCache(); // Clear cache to reload variables
         vscode.window.showInformationMessage(`Environment set to: ${selected.label}`);
       }
-    }
-  );
-
-  // Command to open environments folder
-  const openEnvironmentsCommand = vscode.commands.registerCommand(
-    'cursor-toys.openEnvironments',
-    async () => {
-      const workspaceFolders = vscode.workspace.workspaceFolders;
-      if (!workspaceFolders || workspaceFolders.length === 0) {
-        vscode.window.showErrorMessage('No workspace folder open');
-        return;
-      }
-
-      const workspacePath = workspaceFolders[0].uri.fsPath;
-      const envRoot = getProjectEnvRoot(workspacePath);
-      const defaultEnvPath = getProjectEnvFilePath(workspacePath, 'default');
-
-      if (fs.existsSync(defaultEnvPath)) {
-        await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(defaultEnvPath));
-        return;
-      }
-
-      const envRootUri = vscode.Uri.file(envRoot);
-      await vscode.commands.executeCommand('revealFileInOS', envRootUri);
     }
   );
 
@@ -3749,37 +3664,22 @@ Detailed instructions for the agent.
     }
   );
 
-  // Command to initialize environments folder structure
-  const initializeEnvironmentsCommand = vscode.commands.registerCommand(
-    'cursor-toys.initializeEnvironments',
-    async (uri?: vscode.Uri) => {
-      const workspaceFolders = vscode.workspace.workspaceFolders;
-      if (!workspaceFolders || workspaceFolders.length === 0) {
-        vscode.window.showErrorMessage('No workspace folder open');
-        return;
-      }
-
-      const workspacePath = workspaceFolders[0].uri.fsPath;
-      const envManager = EnvironmentManager.getInstance();
-      await envManager.initializeDefaultEnvironments(workspacePath);
-      vscode.window.showInformationMessage('Project environment files initialized at the workspace root (.env, .env.example).');
-
-      const defaultEnvPath = getProjectEnvFilePath(workspacePath, 'default');
-      if (fs.existsSync(defaultEnvPath)) {
-        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(defaultEnvPath));
-        await vscode.window.showTextDocument(document);
-      }
-    }
-  );
-
-  // Command to add HTTP Requests documentation skill
+  // Command to install HTTP Requests skill (context: HTTP folder in Explorer)
   const generateHttpLlmsCommand = vscode.commands.registerCommand(
     'cursor-toys.generateHttpLlms',
-    async (uri?: vscode.Uri) => {
+    async (_uri?: vscode.Uri) => {
       try {
-        await createHttpDocsSkill();
+        const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        await createHttpDocsSkill({
+          extensionPath: context.extensionPath,
+          workspacePath,
+          // Default to project skill when installing from a workspace HTTP folder
+          installPersonal: workspacePath ? false : undefined,
+        });
       } catch (error) {
-        vscode.window.showErrorMessage(`Failed to install skill: ${error instanceof Error ? error.message : String(error)}`);
+        vscode.window.showErrorMessage(
+          `Failed to install HTTP skill: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     }
   );
@@ -4551,12 +4451,8 @@ Detailed instructions for the agent.
     generateShareablePlanSpecific,
     generateSkillSpecific,
     generateShareableHttpSpecific,
-    generateShareableEnvSpecific,
     generateShareableHttpWithPathSpecific,
-    generateShareableEnvWithPathSpecific,
     shareHttpFolderCommand,
-    shareEnvFolderCommand,
-    shareHttpFolderWithEnvCommand,
     shareCommandFolderCommand,
     shareRuleFolderCommand,
     sharePromptFolderCommand,
@@ -4604,6 +4500,8 @@ Detailed instructions for the agent.
     deepflowInitialize,
     deepflowCreateTask,
     openDeepflowAbcFile,
+    deepflowOpenMemory,
+    deepflowOpenMemoryEntry,
     deepflowApproveTask,
     deepflowCompleteTask,
     deepflowSendToChatExecute,
@@ -4640,9 +4538,7 @@ Detailed instructions for the agent.
     copyCurlCommandCommand,
     runAssertionsCommand,
     selectEnvironmentCommand,
-    openEnvironmentsCommand,
     createEnvironmentCommand,
-    initializeEnvironmentsCommand,
     generateHttpLlmsCommand,
     minifyFileCommand,
     trimClipboardCommand,

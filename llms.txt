@@ -539,11 +539,9 @@ Maximum compatibility format:
 - `cursor-toys.shareAsCursorToysPrompt`: Share as CursorToys (Prompt)
 - `cursor-toys.shareAsCursorToysSkill`: Share as CursorToys (Skill)
 - `cursor-toys.shareAsCursorToysHttp`: Share as CursorToys (HTTP Request)
-- `cursor-toys.shareAsCursorToysEnv`: Share as CursorToys (Environment)
 - `cursor-toys.shareAsCursorToysNotepad`: Share as CursorToys (Notepad)
 - `cursor-toys.shareAsCursorToysPlan`: Share as CursorToys (Plan)
 - `cursor-toys.shareAsCursorToysHttpFolder`: Share Folder as CursorToys (HTTP Requests)
-- `cursor-toys.shareAsCursorToysHttpFolderWithEnv`: Share Folder as CursorToys (HTTP + Environments)
 - `cursor-toys.shareAsCursorToysCommandFolder`: Share Folder as CursorToys (Commands Bundle)
 - `cursor-toys.shareAsCursorToysRuleFolder`: Share Folder as CursorToys (Rules Bundle)
 - `cursor-toys.shareAsCursorToysPromptFolder`: Share Folder as CursorToys (Prompts Bundle)
@@ -561,9 +559,7 @@ Maximum compatibility format:
 ### HTTP Request Commands
 - `cursor-toys.sendHttpRequest`: Execute HTTP Request
 - `cursor-toys.selectEnvironment`: Select HTTP Environment
-- `cursor-toys.openEnvironments`: Open HTTP Environments Folder
 - `cursor-toys.createEnvironment`: Create New HTTP Environment
-- `cursor-toys.initializeEnvironments`: Create Environments Folder
 - `cursor-toys.copyCurlCommand`: Copy as cURL Command
 
 ### Personal Libraries Commands

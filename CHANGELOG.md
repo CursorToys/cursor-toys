@@ -16,13 +16,21 @@ The Guide’s entry for version **2025.5.26** notes that the average developer, 
 ### Added
 
 - **Project-root env discovery**: Autocomplete, hover, watchers, and `# @env` resolution use `.env*` files at the workspace root (`.env.example` is documentation-only and not listed as a runnable environment).
-- **Initialize command**: "CursorToys: Initialize Project Environment Files" creates `.env` and `.env.example` at the workspace root.
 - **HTTP response panel (default)**: HTTP responses are shown in a reusable webview panel that updates in place when you re-run the request (instead of opening many editor tabs). Configure via `cursorToys.httpRequestResponseView` (`panel`/`editor`).
 
 ### Changed
 
+- **HTTP skill (Explorer)**: Right-click the HTTP folder → **Install HTTP Requests Skill** installs `cursor-toys-http` (project by default) with folder layout, `.env*` at project root, CodeLens workflow, and `npx cursortoys` CLI commands for agents.
+- **Run assertions (CodeLens)**: Terminal command now uses `npx cursortoys http test` so the CLI runs without a global install.
 - **Open environments command**: Reveals `.env` at the project root (or the workspace root folder if `.env` is missing).
 - **Share/import**: Environment shareables and bundles use project-root filenames (legacy `environments/...` paths in imports are normalized to the root).
+- **Removed environment file commands and sharing**: Since environments now live as standard project-root `.env*` files, the following commands were removed:
+  - `cursor-toys.openEnvironments`
+  - `cursor-toys.initializeEnvironments`
+  - `cursor-toys.shareAsCursorToysEnv`
+  - `cursor-toys.shareAsCursorToysEnvWithPath`
+  - `cursor-toys.shareAsCursorToysEnvFolder`
+  - `cursor-toys.shareAsCursorToysHttpFolderWithEnv`
 
 ### DeepFlow Sidebar
 
@@ -35,6 +43,7 @@ The Guide’s entry for version **2025.5.26** notes that the average developer, 
 - **DeepFlow empty stages**: Stages with no task folders (e.g. `active/` only containing `.gitkeep`) show an explicit empty message instead of a blank/spinning row; removed spinning icon on **In development**.
 - **New DeepFlow Spec** panel: choose type (bug, feature, refactor, chore, docs, spike), title, and description; **Send to chat** uses Remote Telegram-style injection (`cursorInject.send` / paste flow).
 - **Open spec files**: fixed tree click on A-B-C files (stable file URI resolution).
+- **DeepFlow memory view**: Parses `.deepflow/memory.md` into **Memory** topics (**Archived Tasks**, **Lessons**) with simplified session lines (`[NN] summary`, lesson bullets). Click an archived entry to open its `COMPLETION_REPORT.md` when the archive ref exists; open **memory.md** from the tree footer.
 - **Chat auto-submit**: Windows fallback via PowerShell (`Ctrl+Enter`); warning when text is pasted but submit fails (DeepFlow, Remote Chat, inject command), with platform hints (Linux: wmctrl/xdotool).
 
 ### Sidebar View Visibility
