@@ -1819,19 +1819,23 @@ export async function executeHttpRequestFromFile(
             endLine,
             sectionTitle
           );
-          HttpResponsePanel.showOrUpdate(panelKey, {
-            requestLabel: `${config.method || 'GET'} ${config.url}`,
-            statusCode: result.statusCode,
-            statusText: result.statusText,
-            executionTimeSeconds,
-            envName: envUsed && envName ? envName : undefined,
-            headers: result.headers,
-            body: displayBody,
-            requestPayload,
-            assertionResults: assertionResults as AssertionResult[],
-            rawFormatted: responseText,
-            savePath: saveFile ? responsePath : undefined,
-          });
+          HttpResponsePanel.showOrUpdate(
+            panelKey,
+            {
+              requestLabel: `${config.method || 'GET'} ${config.url}`,
+              statusCode: result.statusCode,
+              statusText: result.statusText,
+              executionTimeSeconds,
+              envName: envUsed && envName ? envName : undefined,
+              headers: result.headers,
+              body: displayBody,
+              requestPayload,
+              assertionResults: assertionResults as AssertionResult[],
+              rawFormatted: responseText,
+              savePath: saveFile ? responsePath : undefined,
+            },
+            { requestUri, startLine, endLine, sectionTitle }
+          );
         } else {
           let responseDoc: vscode.TextDocument;
 

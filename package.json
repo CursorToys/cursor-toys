@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.5.28",
+  "version": "2026.5.29",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -418,8 +418,18 @@
         "icon": "$(add)"
       },
       {
+        "command": "cursor-toys.deepflow.openReview",
+        "title": "CursorToys: Review DeepFlow Spec",
+        "icon": "$(comment-discussion)"
+      },
+      {
         "command": "cursor-toys.deepflow.openAbcFile",
-        "title": "CursorToys: Open DeepFlow Spec File",
+        "title": "CursorToys: Review DeepFlow Spec",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "cursor-toys.deepflow.openAbcFileInEditor",
+        "title": "CursorToys: Open DeepFlow Spec in Editor",
         "icon": "$(file-text)"
       },
       {
@@ -441,6 +451,16 @@
         "command": "cursor-toys.deepflow.completeTask",
         "title": "CursorToys: DeepFlow Send to Chat (Complete)",
         "icon": "$(archive)"
+      },
+      {
+        "command": "cursor-toys.deepflow.discardTask",
+        "title": "CursorToys: Discard DeepFlow Draft",
+        "icon": "$(close)"
+      },
+      {
+        "command": "cursor-toys.deepflow.sendToChatDiscard",
+        "title": "CursorToys: DeepFlow Send to Chat (Discard)",
+        "icon": "$(comment-discussion)"
       },
       {
         "command": "cursor-toys.deepflow.sendToChatExecute",
@@ -718,60 +738,86 @@
     "views": {
       "cursor-toys": [
         {
-          "id": "cursor-toys.settings",
-          "name": "Settings"
-        },
-        {
-          "id": "cursor-toys.utils",
-          "name": "Utils"
-        },
-        {
-          "id": "cursor-toys.deepflow",
-          "name": "DeepFlow",
-          "when": "cursorToys.deepflow.panelEnabled"
-        },
-        {
-          "id": "cursor-toys.userCommands",
-          "name": "Commands",
-          "when": "cursorToys.sidebar.commandsVisible"
-        },
-        {
-          "id": "cursor-toys.userPrompts",
-          "name": "Prompts",
-          "when": "cursorToys.sidebar.promptsVisible"
-        },
-        {
-          "id": "cursor-toys.userNotepads",
-          "name": "Notepads",
-          "when": "cursorToys.sidebar.notepadsVisible"
+          "id": "cursor-toys.userSkills",
+          "name": "Skills",
+          "when": "cursorToys.sidebar.skillsVisible",
+          "visibility": "collapsed"
         },
         {
           "id": "cursor-toys.userPlans",
           "name": "Cursor Plans",
-          "when": "cursorToys.sidebar.plansVisible"
-        },
-        {
-          "id": "cursor-toys.userSkills",
-          "name": "Skills",
-          "when": "cursorToys.sidebar.skillsVisible"
-        },
-        {
-          "id": "cursor-toys.userHooks",
-          "name": "Cursor Hooks",
-          "when": "cursorToys.sidebar.hooksVisible"
-        },
-        {
-          "id": "cursor-toys.userMcpb",
-          "name": "MCPB Packages",
-          "when": "cursorToys.sidebar.mcpbVisible"
+          "when": "cursorToys.sidebar.plansVisible",
+          "visibility": "collapsed"
         },
         {
           "id": "cursor-toys.userHttp",
           "name": "HTTP Requests",
-          "when": "cursorToys.sidebar.httpVisible"
+          "when": "cursorToys.sidebar.httpVisible",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "cursor-toys.userCommands",
+          "name": "Commands",
+          "when": "cursorToys.sidebar.commandsVisible",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "cursor-toys.userPrompts",
+          "name": "Prompts",
+          "when": "cursorToys.sidebar.promptsVisible",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "cursor-toys.userNotepads",
+          "name": "Notepads",
+          "when": "cursorToys.sidebar.notepadsVisible",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "cursor-toys.userHooks",
+          "name": "Cursor Hooks",
+          "when": "cursorToys.sidebar.hooksVisible",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "cursor-toys.userMcpb",
+          "name": "MCPB Packages",
+          "when": "cursorToys.sidebar.mcpbVisible",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "cursor-toys.deepflow",
+          "name": "DeepFlow",
+          "when": "cursorToys.deepflow.panelEnabled",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "cursor-toys.utils",
+          "name": "Utils",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "cursor-toys.settings",
+          "name": "Settings",
+          "visibility": "collapsed"
         }
       ],
       "explorer": [
+        {
+          "id": "cursor-toys.explorer.userSkills",
+          "name": "Skills",
+          "when": "cursorToys.explorer.skillsVisible"
+        },
+        {
+          "id": "cursor-toys.explorer.userPlans",
+          "name": "Cursor Plans",
+          "when": "cursorToys.explorer.plansVisible"
+        },
+        {
+          "id": "cursor-toys.explorer.userHttp",
+          "name": "HTTP Requests",
+          "when": "cursorToys.explorer.httpVisible"
+        },
         {
           "id": "cursor-toys.explorer.userNotepads",
           "name": "Notepads",
@@ -786,21 +832,6 @@
           "id": "cursor-toys.explorer.userPrompts",
           "name": "Prompts",
           "when": "cursorToys.explorer.promptsVisible"
-        },
-        {
-          "id": "cursor-toys.explorer.userPlans",
-          "name": "Cursor Plans",
-          "when": "cursorToys.explorer.plansVisible"
-        },
-        {
-          "id": "cursor-toys.explorer.userSkills",
-          "name": "Skills",
-          "when": "cursorToys.explorer.skillsVisible"
-        },
-        {
-          "id": "cursor-toys.explorer.userHttp",
-          "name": "HTTP Requests",
-          "when": "cursorToys.explorer.httpVisible"
         },
         {
           "id": "cursor-toys.explorer.userHooks",
@@ -1111,6 +1142,16 @@
           "group": "1_actions"
         },
         {
+          "command": "cursor-toys.deepflow.discardTask",
+          "when": "view == cursor-toys.deepflow && viewItem == deepflowTaskDraft",
+          "group": "2_actions"
+        },
+        {
+          "command": "cursor-toys.deepflow.sendToChatDiscard",
+          "when": "view == cursor-toys.deepflow && viewItem == deepflowTaskDraft",
+          "group": "2_actions"
+        },
+        {
           "command": "cursor-toys.deepflow.sendToChatExecute",
           "when": "view == cursor-toys.deepflow && viewItem == deepflowTaskActive",
           "group": "1_actions"
@@ -1121,9 +1162,14 @@
           "group": "1_actions"
         },
         {
-          "command": "cursor-toys.deepflow.openAbcFile",
+          "command": "cursor-toys.deepflow.openReview",
           "when": "view == cursor-toys.deepflow && viewItem == deepflowAbcFile",
           "group": "inline"
+        },
+        {
+          "command": "cursor-toys.deepflow.openAbcFileInEditor",
+          "when": "view == cursor-toys.deepflow && viewItem == deepflowAbcFile",
+          "group": "1_actions"
         },
         {
           "command": "cursor-toys.deepflow.openMemory",
@@ -1733,6 +1779,20 @@
             "default": false,
             "order": 1,
             "markdownDescription": "Show the **DeepFlow** section in the CursorToys activity bar sidebar: spec-driven tasks (drafts → in development → archive). Off by default; reload the window after changing."
+          },
+          "cursorToys.deepflow.reviewPanelColumn": {
+            "type": "string",
+            "default": "active",
+            "enum": [
+              "active",
+              "beside"
+            ],
+            "enumDescriptions": [
+              "Open the review panel in the active editor column (full width).",
+              "Open the review panel beside the current editor (split view)."
+            ],
+            "order": 2,
+            "markdownDescription": "Where to open the **DeepFlow Spec Review** webview when you click an A-B-C file."
           }
         }
       }

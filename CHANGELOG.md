@@ -17,6 +17,12 @@ The Guide’s entry for version **2025.5.26** notes that the average developer, 
 
 ### Added
 
+- **DeepFlow — discard draft**: Archive abandoned drafts without implementation (`cursor-toys.deepflow.discardTask` with optional reason, or **Send to Chat (Discard)**). Updates `COMPLETION_REPORT.md` to `[DISCARDED]` and indexes `memory.md` with `[discarded]`. Skill command: `Discard task` (`drafts/` → `archive/`).
+
+- **DeepFlow spec review**: Click A-B-C files in the DeepFlow tree to open a review webview with **rendered markdown**, a **chat icon per line** in the gutter to add comments (block selection via line numbers), send structured feedback to chat, and approve draft specs or LGTM on active tasks. **Open DeepFlow Spec in Editor** remains in the context menu.
+
+### Added
+
 - **HTTP file CodeLens — Run All**: When a `.req` / `.request` file has more than one runnable block (sections, curl, or REST lines), a **Run All Requests** CodeLens appears at the top and runs `npx cursortoys http test -f` for the whole file in the terminal (same as the HTTP tree **Run tests** action).
 - **HTTP sidebar tree**: Explorer **HTTP** view lists `.req` / `.request` files under `.{baseFolder}/http/` (recursive folders). Expanding a file shows each runnable block (`##` sections, standalone `curl`, REST method lines). Click a request to run **Send Request** (same as CodeLens). Hide via `cursorToys.sidebar.hiddenViews` → `http`.
 - **HTTP tree — run tests via CLI**: Context menu and view title actions run `npx cursortoys http test` for the selected file, folder (`--folder`), or entire `http/` tree (workspace category or view toolbar).
@@ -33,6 +39,7 @@ The Guide’s entry for version **2025.5.26** notes that the average developer, 
 
 ### Changed
 
+- **CursorToys sidebar layout**: Default section order is **Skills** → **Cursor Plans** → **HTTP** → (other resource views) → **DeepFlow** → **Utils** → **Settings**. All sections start **collapsed**; category rows inside trees (Personal/Workspace, etc.) also start collapsed. Drag-and-drop order and expand state are still remembered by the editor after you change them.
 - **Explorer sidebar default**: `cursorToys.sidebar.explorerViews` now defaults to `skills` and `plans` so those sections appear in the Files (Explorer) sidebar on first install.
 - **HTTP skill (Explorer)**: Right-click the HTTP folder → **Install HTTP Requests Skill** installs `cursor-toys-http` (project by default) with folder layout, `.env*` at project root, CodeLens workflow, and `npx cursortoys` CLI commands for agents.
 - **Run assertions (CodeLens)**: Terminal command now uses `npx cursortoys http test` so the CLI runs without a global install.

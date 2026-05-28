@@ -23,6 +23,7 @@ node_modules/**
 
 # Cursor folder
 .cursor/**
+.deepflow
 
 # Misc
 .yarnrc

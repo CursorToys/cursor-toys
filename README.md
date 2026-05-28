@@ -75,9 +75,11 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 - **Send to chat actions** (`cursorInject.send` → paste → submit):
   - **Plan** — `@` draft task folder
   - **Approve** — `@` folder + `Approve task`
+  - **Discard** — `@` folder + `Discard task` (optional reason)
   - **Execute** — `@` active task folder
   - **Complete** — `@` folder + `Complete task`
-- **Open spec files**: Click A-B-C files in the tree to open in the editor.
+- **Discard draft** (context menu): Moves the draft to `archive/` without implementation, updates `COMPLETION_REPORT.md` (`[DISCARDED]`), and indexes `memory.md` with `[discarded]`. Optional reason prompt.
+- **Spec review**: Click A-B-C files in the tree to open a **review preview** (line numbers, range comments, **Send review to chat**, **Approve spec**). Use **Open in editor** from the review panel or context menu to edit markdown directly.
 - **Auto-submit**: Tries Cursor composer commands, then `Cmd+Enter` / `Ctrl+Enter` (macOS AppleScript, Linux `xdotool`, Windows PowerShell). Warns if pasted but not submitted.
 
 **Commands** (Command Palette):
@@ -88,6 +90,8 @@ CursorToys includes over 10 utility categories to optimize your Cursor AI workfl
 | **CursorToys: Initialize DeepFlow** | Bootstrap `.deepflow/` via chat |
 | **CursorToys: DeepFlow Send to Chat (Plan)** | Draft folder ref |
 | **CursorToys: DeepFlow Send to Chat (Approve)** | Draft folder + Approve task |
+| **CursorToys: Discard DeepFlow Draft** | Archive draft (no implementation); optional reason |
+| **CursorToys: DeepFlow Send to Chat (Discard)** | Draft folder + Discard task |
 | **CursorToys: DeepFlow Send to Chat (Execute)** | Active folder ref |
 | **CursorToys: DeepFlow Send to Chat (Complete)** | Active folder + Complete task |
 | **CursorToys: Refresh DeepFlow** | Refresh the specs tree |
@@ -377,7 +381,7 @@ Click the "Send Request" link that appears above → See formatted response!
 
 **Unreleased (see [CHANGELOG](CHANGELOG.md))**
 
-- **DeepFlow (experimental)** — Activity bar panel for spec-driven tasks (`drafts` / `active` / `archive`); off by default (`cursorToys.experimental.deepflow`). New spec form, skill download on init, send-to-chat with folder `@` refs and skill commands (`Initialize DeepFlow`, `Create task`, `Approve task`, `Complete task`). Shared chat injection with auto-submit and platform fallbacks.
+- **DeepFlow (experimental)** — Activity bar panel for spec-driven tasks (`drafts` / `active` / `archive`); off by default (`cursorToys.experimental.deepflow`). New spec form, skill download on init, send-to-chat with folder `@` refs and skill commands (`Initialize DeepFlow`, `Create task`, `Approve task`, `Discard task`, `Complete task`). Discard draft archives abandoned specs without implementation. Shared chat injection with auto-submit and platform fallbacks.
 - **HTTP environments at project root** — **Breaking:** `.env*` at workspace root; removed `cursorToys.environmentsFolder` and `http/environments` folders.
 - **HTTP response panel (default)** — Send Request shows responses in a reusable panel that updates in place. Configure `cursorToys.httpRequestResponseView` (`panel`/`editor`); optionally write `.res` to disk via `cursorToys.httpRequestSaveFile`.
 - **Hide Explorer sidebar sections** — `cursorToys.sidebar.hiddenViews` to hide Notepads, Commands, Prompts, Plans, Skills, Hooks, or MCPB in the Explorer.

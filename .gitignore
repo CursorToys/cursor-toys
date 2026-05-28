@@ -18,3 +18,5 @@ node_modules
 analytics-local.json
 analytics-export-*.json
 cursor-toys-vsx-extension.code-workspace
+.deepflow
+.vscode

@@ -65,7 +65,7 @@ export class UserSkillsTreeProvider implements vscode.TreeDataProvider<SkillTree
       // Category item (Personal or Workspace)
       const treeItem = new vscode.TreeItem(
         element.fileName,
-        vscode.TreeItemCollapsibleState.Expanded
+        vscode.TreeItemCollapsibleState.Collapsed
       );
       treeItem.iconPath = new vscode.ThemeIcon('folder');
       treeItem.contextValue = element.isPersonal ? 'skillCategoryPersonal' : 'skillCategoryWorkspace';

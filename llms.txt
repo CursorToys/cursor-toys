@@ -611,10 +611,14 @@ Maximum compatibility format:
 - `cursor-toys.deepflow.createTask`: Open form to create a new spec (type, title, description) and send to chat
 - `cursor-toys.deepflow.initialize`: Download deep-flow skill if missing, then chat: `@.deepflow` + `Initialize DeepFlow`
 - `cursor-toys.deepflow.approveTask`: `@` draft task folder + `Approve task`
+- `cursor-toys.deepflow.discardTask`: discard draft → archive (updates COMPLETION_REPORT + memory.md `[discarded]` index)
+- `cursor-toys.deepflow.sendToChatDiscard`: `@` draft task folder + `Discard task` (optional reason)
 - `cursor-toys.deepflow.completeTask`: `@` active task folder + `Complete task`
 - `cursor-toys.deepflow.sendToChatExecute`: `@` active task folder (implementation per skill)
 - `cursor-toys.deepflow.sendToChatPlan`: pastes `@` draft task folder + `Plan:` in chat (no auto-submit; user adds notes then submits)
-- `cursor-toys.deepflow.openAbcFile`: Open DeepFlow A-B-C markdown file
+- `cursor-toys.deepflow.openReview`: Open DeepFlow A-B-C spec in review webview (line comments, send to chat, approve)
+- `cursor-toys.deepflow.openAbcFile`: Same as openReview (alias)
+- `cursor-toys.deepflow.openAbcFileInEditor`: Open A-B-C markdown in the text editor
 
 ### Hooks Commands
 - `cursor-toys.createHooksFile`: Create Hooks File

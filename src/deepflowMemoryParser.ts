@@ -9,6 +9,7 @@ export interface DeepflowMemoryArchivedEntry {
   date: string;
   taskNum: string;
   summary: string;
+  discarded?: boolean;
   ref?: string;
   archiveFolderName?: string;
   rawLine: string;
@@ -44,7 +45,8 @@ const ARCHIVE_REF_FOLDER_REGEX = /specs\/archive\/([\w-]+)\/?$/;
 export function formatMemoryEntryLabel(entry: DeepflowMemoryEntry): string {
   if (entry.kind === 'archived') {
     const summary = truncate(entry.summary, 72);
-    return `[${entry.taskNum}] ${summary}`;
+    const prefix = entry.discarded ? '⊘ ' : '';
+    return `${prefix}[${entry.taskNum}] ${summary}`;
   }
   return truncate(entry.text, 80);
 }
@@ -129,11 +131,13 @@ export function parseMemoryMarkdown(content: string): DeepflowMemoryDoc {
       const match = line.match(ARCHIVED_INDEX_REGEX);
       if (match) {
         const ref = match[4]?.trim();
+        const { summary, discarded } = parseArchivedSummary(match[3].trim());
         currentTopic.entries.push({
           kind: 'archived',
           date: match[1],
           taskNum: match[2],
-          summary: match[3].trim(),
+          summary,
+          discarded,
           ref,
           archiveFolderName: ref ? parseArchiveFolderFromRef(ref) : undefined,
           rawLine: rawLine.trim(),
@@ -178,6 +182,17 @@ function topicIdFromTitle(title: string): DeepflowMemoryTopicId {
 function parseArchiveFolderFromRef(ref: string): string | undefined {
   const match = ref.match(ARCHIVE_REF_FOLDER_REGEX);
   return match?.[1];
+}
+
+function parseArchivedSummary(rawSummary: string): { summary: string; discarded: boolean } {
+  const discardedMatch = rawSummary.match(/^\[discarded\]\s*(.*)$/i);
+  if (discardedMatch) {
+    return {
+      summary: discardedMatch[1].trim() || 'Discarded draft',
+      discarded: true,
+    };
+  }
+  return { summary: rawSummary, discarded: false };
 }
 
 function splitLessonIntoPoints(paragraph: string): string[] {

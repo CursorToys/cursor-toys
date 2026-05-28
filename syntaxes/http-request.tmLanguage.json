@@ -50,6 +50,39 @@
               "name": "keyword.operator.assertion"
             }
           }
+        },
+        {
+          "match": "(?i)(\\*)\\s*(@setter)\\s*\\(\\s*\"([^\"]+)\"\\s*,\\s*\"([^\"]+)\"\\s*\\)",
+          "name": "meta.response-chain.setter.http-request",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.comment.star"
+            },
+            "2": {
+              "name": "keyword.control.setter.http-request"
+            },
+            "3": {
+              "name": "variable.parameter.setter-key"
+            },
+            "4": {
+              "name": "variable.other.setter-expression"
+            }
+          }
+        },
+        {
+          "match": "(?i)(\\*)\\s*(@getter)\\s*\\(\\s*\"([^\"]+)\"\\s*\\)",
+          "name": "meta.response-chain.getter.http-request",
+          "captures": {
+            "1": {
+              "name": "punctuation.definition.comment.star"
+            },
+            "2": {
+              "name": "keyword.control.getter.http-request"
+            },
+            "3": {
+              "name": "variable.parameter.getter-key"
+            }
+          }
         }
       ]
     },
@@ -81,6 +114,21 @@
       }
     },
     {
+      "match": "^(?i)(#\\s*@getter)\\s+(?:\"([^\"]+)\"|([a-zA-Z_][a-zA-Z0-9_]*))\\s*$",
+      "name": "meta.preprocessor.getter-decorator",
+      "captures": {
+        "1": {
+          "name": "keyword.control.directive.getter"
+        },
+        "2": {
+          "name": "variable.parameter.getter-key"
+        },
+        "3": {
+          "name": "variable.parameter.getter-key"
+        }
+      }
+    },
+    {
       "match": "\\{\\{\\s*@(prompt|randomIn|datetime|uuid|randomString)\\s*\\([^)]*\\)\\s*\\}\\}",
       "name": "meta.helper.expression",
       "captures": {
@@ -102,7 +150,7 @@
       }
     },
     {
-      "match": "^(#(?!\\s*@env)(?!\\s*@var)(?!##).*)$",
+      "match": "^(#(?!\\s*@env)(?!\\s*@var)(?!\\s*@getter)(?!\\s*@GETTER)(?!##).*)$",
       "name": "comment.line.number-sign.http-request"
     },
     {
@@ -187,6 +235,39 @@
                     },
                     "4": {
                       "name": "keyword.operator.assertion"
+                    }
+                  }
+                },
+                {
+                  "match": "(?i)(\\*)\\s*(@setter)\\s*\\(\\s*\"([^\"]+)\"\\s*,\\s*\"([^\"]+)\"\\s*\\)",
+                  "name": "meta.response-chain.setter.http-request",
+                  "captures": {
+                    "1": {
+                      "name": "punctuation.definition.comment.star"
+                    },
+                    "2": {
+                      "name": "keyword.control.setter.http-request"
+                    },
+                    "3": {
+                      "name": "variable.parameter.setter-key"
+                    },
+                    "4": {
+                      "name": "variable.other.setter-expression"
+                    }
+                  }
+                },
+                {
+                  "match": "(?i)(\\*)\\s*(@getter)\\s*\\(\\s*\"([^\"]+)\"\\s*\\)",
+                  "name": "meta.response-chain.getter.http-request",
+                  "captures": {
+                    "1": {
+                      "name": "punctuation.definition.comment.star"
+                    },
+                    "2": {
+                      "name": "keyword.control.getter.http-request"
+                    },
+                    "3": {
+                      "name": "variable.parameter.getter-key"
                     }
                   }
                 }
@@ -348,6 +429,39 @@
                     },
                     "4": {
                       "name": "keyword.operator.assertion"
+                    }
+                  }
+                },
+                {
+                  "match": "(?i)(\\*)\\s*(@setter)\\s*\\(\\s*\"([^\"]+)\"\\s*,\\s*\"([^\"]+)\"\\s*\\)",
+                  "name": "meta.response-chain.setter.http-request",
+                  "captures": {
+                    "1": {
+                      "name": "punctuation.definition.comment.star"
+                    },
+                    "2": {
+                      "name": "keyword.control.setter.http-request"
+                    },
+                    "3": {
+                      "name": "variable.parameter.setter-key"
+                    },
+                    "4": {
+                      "name": "variable.other.setter-expression"
+                    }
+                  }
+                },
+                {
+                  "match": "(?i)(\\*)\\s*(@getter)\\s*\\(\\s*\"([^\"]+)\"\\s*\\)",
+                  "name": "meta.response-chain.getter.http-request",
+                  "captures": {
+                    "1": {
+                      "name": "punctuation.definition.comment.star"
+                    },
+                    "2": {
+                      "name": "keyword.control.getter.http-request"
+                    },
+                    "3": {
+                      "name": "variable.parameter.getter-key"
                     }
                   }
                 }

@@ -109,7 +109,7 @@ export class CursorToysUtilsTreeProvider implements vscode.TreeDataProvider<Util
   getTreeItem(element: UtilsTreeItemModel): vscode.TreeItem {
     const collapsible =
       element.kind === 'category'
-        ? vscode.TreeItemCollapsibleState.Expanded
+        ? vscode.TreeItemCollapsibleState.Collapsed
         : vscode.TreeItemCollapsibleState.None;
 
     const item = new vscode.TreeItem(element.label, collapsible);

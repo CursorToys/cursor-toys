@@ -208,9 +208,9 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
       item.resourceUri = element.fileUri;
       item.id = deepflowFileTreeItemId(element.fileUri);
       item.command = {
-        command: 'cursor-toys.deepflow.openAbcFile',
-        title: 'Open',
-        arguments: [element.fileUri.toString()],
+        command: 'cursor-toys.deepflow.openReview',
+        title: 'Review',
+        arguments: [element],
       };
     }
     item.contextValue = 'deepflowAbcFile';

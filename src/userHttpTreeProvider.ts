@@ -72,7 +72,7 @@ export class UserHttpTreeProvider implements vscode.TreeDataProvider<HttpTreeEle
       return renderLoadingTreeItem(element);
     }
     if (element.type === 'category') {
-      const item = new vscode.TreeItem(element.fileName, vscode.TreeItemCollapsibleState.Expanded);
+      const item = new vscode.TreeItem(element.fileName, vscode.TreeItemCollapsibleState.Collapsed);
       item.iconPath = new vscode.ThemeIcon('folder');
       item.contextValue = 'httpCategory';
       return item;

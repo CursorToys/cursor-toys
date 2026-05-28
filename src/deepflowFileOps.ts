@@ -1,4 +1,8 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import type { AbcFileKind, DeepFlowStage } from './deepflowPaths';
+import { ABC_FILE_NAMES, getStageFromTaskUri } from './deepflowPaths';
+import { DeepflowReviewPanel } from './deepflowReviewPanel';
 import type { DeepFlowTreeItem } from './deepflowTreeProvider';
 
 /** Tree item id prefix for A-B-C spec files. */
@@ -46,6 +50,77 @@ export function coerceDeepflowFileUri(arg: unknown): vscode.Uri | undefined {
     return vscode.Uri.from({ scheme: loose.scheme, path: loose.path });
   }
   return undefined;
+}
+
+export interface DeepflowReviewOpenContext {
+  fileUri: vscode.Uri;
+  taskFolderUri: vscode.Uri;
+  stage: DeepFlowStage;
+  abcKind?: AbcFileKind;
+  taskId?: string;
+}
+
+/**
+ * Resolves task folder, stage, and file from a tree item or file URI.
+ */
+export function resolveDeepflowReviewContext(arg: unknown): DeepflowReviewOpenContext | undefined {
+  const fileUri = coerceDeepflowFileUri(arg);
+  if (!fileUri) {
+    return undefined;
+  }
+
+  const treeItem = arg as DeepFlowTreeItem;
+  if (treeItem?.type === 'abcFile' && treeItem.taskFolderUri && treeItem.stage) {
+    return {
+      fileUri,
+      taskFolderUri: treeItem.taskFolderUri,
+      stage: treeItem.stage,
+      abcKind: treeItem.abcKind,
+      taskId: treeItem.taskId,
+    };
+  }
+
+  const normalized = fileUri.fsPath.replace(/\\/g, '/');
+  const match = normalized.match(
+    /\/\.deepflow\/specs\/(drafts|active|archive)\/([^/]+)\/([^/]+)$/
+  );
+  if (!match) {
+    return undefined;
+  }
+
+  const stage = match[1] as DeepFlowStage;
+  const taskId = match[2];
+  const baseName = match[3];
+  const taskFolderUri = vscode.Uri.file(path.dirname(fileUri.fsPath));
+  const stageFromUri = getStageFromTaskUri(taskFolderUri);
+  if (stageFromUri !== stage) {
+    return undefined;
+  }
+
+  let abcKind: AbcFileKind | undefined;
+  for (const [kind, name] of Object.entries(ABC_FILE_NAMES) as [AbcFileKind, string][]) {
+    if (name === baseName) {
+      abcKind = kind;
+      break;
+    }
+  }
+
+  return { fileUri, taskFolderUri, stage, abcKind, taskId };
+}
+
+/**
+ * Opens a DeepFlow A-B-C file in the spec review webview.
+ */
+export async function openDeepflowSpecReview(
+  extensionUri: vscode.Uri,
+  arg: unknown
+): Promise<void> {
+  const ctx = resolveDeepflowReviewContext(arg);
+  if (!ctx) {
+    vscode.window.showErrorMessage('Could not open spec review for this file');
+    return;
+  }
+  await DeepflowReviewPanel.createOrShow(extensionUri, ctx);
 }
 
 /**

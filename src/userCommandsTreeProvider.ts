@@ -63,7 +63,7 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
       // Category item (Personal or Workspace)
       const treeItem = new vscode.TreeItem(
         element.fileName,
-        vscode.TreeItemCollapsibleState.Expanded
+        vscode.TreeItemCollapsibleState.Collapsed
       );
       treeItem.iconPath = new vscode.ThemeIcon('folder');
       treeItem.contextValue = 'commandCategory';

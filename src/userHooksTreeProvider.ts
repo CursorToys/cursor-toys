@@ -62,7 +62,7 @@ export class UserHooksTreeProvider implements vscode.TreeDataProvider<HooksTreeE
       // Category item (Personal or Project)
       const treeItem = new vscode.TreeItem(
         element.label,
-        vscode.TreeItemCollapsibleState.Expanded
+        vscode.TreeItemCollapsibleState.Collapsed
       );
       treeItem.iconPath = new vscode.ThemeIcon('folder');
       treeItem.contextValue = 'hooksCategory';
@@ -71,7 +71,7 @@ export class UserHooksTreeProvider implements vscode.TreeDataProvider<HooksTreeE
       // Hook type item (e.g., "afterFileEdit")
       const treeItem = new vscode.TreeItem(
         element.label,
-        vscode.TreeItemCollapsibleState.Expanded
+        vscode.TreeItemCollapsibleState.Collapsed
       );
       treeItem.iconPath = new vscode.ThemeIcon('symbol-event');
       treeItem.contextValue = 'hooksHook';

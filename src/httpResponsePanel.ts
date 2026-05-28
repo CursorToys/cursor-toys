@@ -15,31 +15,46 @@ export interface HttpResponsePanelData {
   savePath?: string;
 }
 
+/** Context needed to re-run the same HTTP request block from the response panel. */
+export interface HttpResendContext {
+  requestUri: vscode.Uri;
+  startLine?: number;
+  endLine?: number;
+  sectionTitle?: string;
+}
+
 /**
  * Reusable webview panel for HTTP responses (one panel per request/section key).
  */
 export class HttpResponsePanel {
   private static readonly panels = new Map<string, HttpResponsePanel>();
 
-  static showOrUpdate(key: string, data: HttpResponsePanelData): void {
+  static showOrUpdate(
+    key: string,
+    data: HttpResponsePanelData,
+    resendContext: HttpResendContext
+  ): void {
     const existing = HttpResponsePanel.panels.get(key);
     if (existing) {
-      existing.update(data);
+      existing.update(data, resendContext);
       existing.panel.reveal(vscode.ViewColumn.Beside, true);
       return;
     }
-    const created = new HttpResponsePanel(key, data);
+    const created = new HttpResponsePanel(key, data, resendContext);
     HttpResponsePanel.panels.set(key, created);
   }
 
   private readonly panel: vscode.WebviewPanel;
   private data: HttpResponsePanelData;
+  private resendContext: HttpResendContext;
 
   private constructor(
     private readonly key: string,
-    data: HttpResponsePanelData
+    data: HttpResponsePanelData,
+    resendContext: HttpResendContext
   ) {
     this.data = data;
+    this.resendContext = resendContext;
     const statusSuffix =
       data.statusCode > 0 ? `${data.statusCode}` : 'Error';
     this.panel = vscode.window.createWebviewPanel(
@@ -57,14 +72,30 @@ export class HttpResponsePanel {
       if (msg.command === 'copy') {
         await vscode.env.clipboard.writeText(this.data.rawFormatted);
         void vscode.window.showInformationMessage('HTTP response copied to clipboard.');
+        return;
+      }
+      if (msg.command === 'resend') {
+        await this.resendRequest();
       }
     });
 
     this.render();
   }
 
-  update(data: HttpResponsePanelData): void {
+  private async resendRequest(): Promise<void> {
+    const { requestUri, startLine, endLine, sectionTitle } = this.resendContext;
+    await vscode.commands.executeCommand(
+      'cursor-toys.sendHttpRequest',
+      requestUri,
+      startLine,
+      endLine,
+      sectionTitle
+    );
+  }
+
+  update(data: HttpResponsePanelData, resendContext: HttpResendContext): void {
     this.data = data;
+    this.resendContext = resendContext;
     const statusSuffix =
       data.statusCode > 0 ? `${data.statusCode}` : 'Error';
     this.panel.title = `HTTP ${statusSuffix} · ${truncateLabel(data.requestLabel)}`;
@@ -175,6 +206,10 @@ function buildHtml(data: HttpResponsePanelData): string {
       font: inherit;
     }
     button:hover { background: var(--vscode-button-hoverBackground); }
+    button.primary {
+      background: var(--vscode-button-background);
+      font-weight: 600;
+    }
     .badge {
       display: inline-block;
       padding: 4px 10px;
@@ -216,7 +251,8 @@ function buildHtml(data: HttpResponsePanelData): string {
   <div class="toolbar">
     <span class="badge ${statusClass(data.statusCode)}">${statusLine}</span>
     <span class="meta">${escapeHtml(data.executionTimeSeconds)}s${env}</span>
-    <button id="copyBtn">Copy response</button>
+    <button type="button" id="resendBtn" class="primary">Send again</button>
+    <button type="button" id="copyBtn">Copy response</button>
   </div>
   ${saved}
   ${payloadBlock}
@@ -235,6 +271,9 @@ function buildHtml(data: HttpResponsePanelData): string {
   </section>
   <script>
     const vscode = acquireVsCodeApi();
+    document.getElementById('resendBtn').addEventListener('click', () => {
+      vscode.postMessage({ command: 'resend' });
+    });
     document.getElementById('copyBtn').addEventListener('click', () => {
       vscode.postMessage({ command: 'copy' });
     });

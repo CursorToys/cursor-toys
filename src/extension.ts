@@ -23,14 +23,16 @@ import {
 import {
   buildApproveChatMessage,
   buildCompleteChatMessage,
+  buildDiscardChatMessage,
   buildExecuteChatMessage,
   buildInitializeChatMessage,
   buildPlanChatMessage,
 } from './deepflowChatPrompts';
+import { discardTask } from './deepflowTaskOps';
 import { syncDeepflowNeedsInit, syncDeepflowPanelEnabled } from './deepflowContext';
 import { getDeepflowRootUri } from './deepflowPaths';
 import { DeepflowCreateTaskPanel } from './deepflowCreateTaskPanel';
-import { openDeepflowSpecFile } from './deepflowFileOps';
+import { openDeepflowSpecFile, openDeepflowSpecReview } from './deepflowFileOps';
 import { openDeepflowMemoryFile, openMemoryEntryTarget } from './deepflowMemory';
 import { sendDeepflowToChat } from './deepflowSendToChat';
 import { ensureDeepflowSkillOrPromptDownload } from './deepflowSkillInstaller';
@@ -3493,10 +3495,24 @@ Detailed instructions for the agent.
     }
   );
 
+  const openDeepflowReview = vscode.commands.registerCommand(
+    'cursor-toys.deepflow.openReview',
+    async (arg?: unknown) => {
+      await openDeepflowSpecReview(context.extensionUri, arg);
+    }
+  );
+
+  const openDeepflowAbcFileInEditor = vscode.commands.registerCommand(
+    'cursor-toys.deepflow.openAbcFileInEditor',
+    async (arg?: unknown) => {
+      await openDeepflowSpecFile(arg);
+    }
+  );
+
   const openDeepflowAbcFile = vscode.commands.registerCommand(
     'cursor-toys.deepflow.openAbcFile',
     async (arg?: unknown) => {
-      await openDeepflowSpecFile(arg);
+      await openDeepflowSpecReview(context.extensionUri, arg);
     }
   );
 
@@ -3549,6 +3565,51 @@ Detailed instructions for the agent.
         return;
       }
       await sendDeepflowToChat(buildCompleteChatMessage(workspaceFolder.uri.fsPath, taskUri));
+    }
+  );
+
+  const deepflowDiscardTask = vscode.commands.registerCommand(
+    'cursor-toys.deepflow.discardTask',
+    async (arg?: DeepFlowTreeItem) => {
+      const taskUri = getTaskFolderUriFromArg(arg);
+      if (!taskUri) {
+        vscode.window.showErrorMessage('No draft task selected');
+        return;
+      }
+      const reason = await vscode.window.showInputBox({
+        title: 'Discard DeepFlow draft',
+        prompt: 'Optional reason (scope changed, deferred indefinitely, duplicate, etc.)',
+        placeHolder: 'Why is this draft being discarded?',
+        ignoreFocusOut: true,
+      });
+      if (reason === undefined) {
+        return;
+      }
+      await discardTask(taskUri, { reason: reason || undefined });
+    }
+  );
+
+  const deepflowSendToChatDiscard = vscode.commands.registerCommand(
+    'cursor-toys.deepflow.sendToChatDiscard',
+    async (arg?: DeepFlowTreeItem) => {
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      const taskUri = getTaskFolderUriFromArg(arg);
+      if (!workspaceFolder || !taskUri) {
+        vscode.window.showErrorMessage('No draft task selected');
+        return;
+      }
+      const reason = await vscode.window.showInputBox({
+        title: 'Discard via chat',
+        prompt: 'Optional reason to include in the chat message',
+        placeHolder: 'Why is this draft being discarded?',
+        ignoreFocusOut: true,
+      });
+      if (reason === undefined) {
+        return;
+      }
+      await sendDeepflowToChat(
+        buildDiscardChatMessage(workspaceFolder.uri.fsPath, taskUri, reason || undefined)
+      );
     }
   );
 
@@ -4837,11 +4898,15 @@ Detailed instructions for the agent.
     focusUtilsView,
     deepflowInitialize,
     deepflowCreateTask,
+    openDeepflowReview,
     openDeepflowAbcFile,
+    openDeepflowAbcFileInEditor,
     deepflowOpenMemory,
     deepflowOpenMemoryEntry,
     deepflowApproveTask,
     deepflowCompleteTask,
+    deepflowDiscardTask,
+    deepflowSendToChatDiscard,
     deepflowSendToChatExecute,
     deepflowSendToChatPlan,
     userSkillsTreeView,

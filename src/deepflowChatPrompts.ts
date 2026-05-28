@@ -9,15 +9,16 @@ export const DEEPFLOW_CMD_CREATE_TASK_PREFIX = 'Create task';
 export type DeepFlowSpecType = 'bug' | 'feature' | 'refactor' | 'chore' | 'docs' | 'spike';
 
 export const DEEPFLOW_SPEC_TYPES: readonly { id: DeepFlowSpecType; label: string }[] = [
-  { id: 'bug', label: 'Bug' },
   { id: 'feature', label: 'Feature' },
-  { id: 'refactor', label: 'Refactor' },
   { id: 'chore', label: 'Chore' },
+  { id: 'bug', label: 'Bug' },
   { id: 'docs', label: 'Docs' },
+  { id: 'refactor', label: 'Refactor' },
   { id: 'spike', label: 'Spike' },
 ] as const;
 export const DEEPFLOW_CMD_APPROVE_TASK = 'Approve task';
 export const DEEPFLOW_CMD_COMPLETE_TASK = 'Complete task';
+export const DEEPFLOW_CMD_DISCARD_TASK = 'Discard task';
 
 const DEEPFLOW_ROOT_RELATIVE = '.deepflow';
 
@@ -82,6 +83,19 @@ export function buildCompleteChatMessage(
   taskFolderUri: vscode.Uri
 ): string {
   return `${buildTaskFolderRef(workspaceFsPath, taskFolderUri)}\n\n${DEEPFLOW_CMD_COMPLETE_TASK}`;
+}
+
+/**
+ * Draft task folder ref + Discard task (drafts → archive, no implementation).
+ */
+export function buildDiscardChatMessage(
+  workspaceFsPath: string,
+  taskFolderUri: vscode.Uri,
+  reason?: string
+): string {
+  const trimmedReason = reason?.trim();
+  const reasonBlock = trimmedReason ? `\n\nReason: ${trimmedReason}` : '';
+  return `${buildTaskFolderRef(workspaceFsPath, taskFolderUri)}\n\n${DEEPFLOW_CMD_DISCARD_TASK}${reasonBlock}`;
 }
 
 /**
