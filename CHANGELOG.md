@@ -1,6 +1,16 @@
 # CursorToys
 
-![](https://i.imgur.com/mhwaZuG.jpeg)
+![](https://i.imgur.com/PD1o1q9.jpeg)
+
+## Unreleased
+
+### Breaking Changes
+
+- **DeepFlow renamed to DeepSpec**: Panel, commands (`cursor-toys.deepspec.*`), workspace folder (`.deepspec/`), skill path (`.cursor/skills/deep-spec/`), and setting `cursorToys.experimental.deepspec`. Legacy settings `cursorToys.experimental.deepflow` and `cursorToys.deepflow.enabled` are still read. Rename existing `.deepflow/` to `.deepspec/` and reinstall the skill if you used the old `deep-flow` skill.
+
+### Added
+
+- **HTTP request visual editor**: `.req` / `.request` files under `.{baseFolder}/http/` open in a Postman-style custom editor from the HTTP sidebar or Explorer (default editor association). Request **tags** show method + name with full URL on hover; **environment** panel (workspace `.env` pills, `# @var` add/remove, env keys as tags); **assertions** panel per block; clearer section layout. **Send**, **Copy cURL**, **New HTTP Request**, **Open as text**. Settings: `cursorToys.httpRequestEditor.enabled`, `cursorToys.httpRequestEditor.autoSave`.
 
 The Guide’s entry for version **2025.5.26** notes that the average developer, when confronted with a simple HTTP request, will usually respond by spawning *exactly seventeen* response tabs, none of which they meant to keep, all of which they will lose anyway. This release introduces a response panel that behaves more like a sensible life-form: it updates in place, politely, and without multiplying.
 
@@ -10,16 +20,16 @@ The Guide’s entry for version **2025.5.26** notes that the average developer, 
 
 ### Breaking Changes
 
-- **Removed Telegram / Remote Chat integration**: No more Remote Chat status bar, Telegram polling, session summaries to Telegram, or `cursor-toys.remote.*` commands. Chat paste-and-submit for DeepFlow and `cursorInject.send` is unchanged. On activation, the extension removes the legacy `cursor-toys-remote-chat` skill from your personal skills folder if present.
+- **Removed Telegram / Remote Chat integration**: No more Remote Chat status bar, Telegram polling, session summaries to Telegram, or `cursor-toys.remote.*` commands. Chat paste-and-submit for DeepSpec and `cursorInject.send` is unchanged. On activation, the extension removes the legacy `cursor-toys-remote-chat` skill from your personal skills folder if present.
 
 - **HTTP environment files moved to the project root**: `.env`, `.env.local`, `.env.dev`, etc. must live at the workspace root. The extension no longer reads or creates `.{baseFolder}/http/environments/`, `.environments/`, or related folders.
 - **Removed setting `cursorToys.environmentsFolder`**: Use standard project-root dotenv files instead.
 
 ### Added
 
-- **DeepFlow — discard draft**: Archive abandoned drafts without implementation (`cursor-toys.deepflow.discardTask` with optional reason, or **Send to Chat (Discard)**). Updates `COMPLETION_REPORT.md` to `[DISCARDED]` and indexes `memory.md` with `[discarded]`. Skill command: `Discard task` (`drafts/` → `archive/`).
+- **DeepSpec — discard draft**: Archive abandoned drafts without implementation (`cursor-toys.deepspec.discardTask` with optional reason, or **Send to Chat (Discard)**). Updates `COMPLETION_REPORT.md` to `[DISCARDED]` and indexes `memory.md` with `[discarded]`. Skill command: `Discard task` (`drafts/` → `archive/`).
 
-- **DeepFlow spec review**: Click A-B-C files in the DeepFlow tree to open a review webview with **rendered markdown**, a **chat icon per line** in the gutter to add comments (block selection via line numbers), send structured feedback to chat, and approve draft specs or LGTM on active tasks. **Open DeepFlow Spec in Editor** remains in the context menu.
+- **DeepSpec spec review — inline comments**: Composer and saved comments appear as balloons below the selected line; remove with **×**; gutter bubble icon to jump to comment; full-width review (no sidebar). Selection clears after send to chat / approve with comments.
 
 ### Added
 
@@ -39,7 +49,7 @@ The Guide’s entry for version **2025.5.26** notes that the average developer, 
 
 ### Changed
 
-- **CursorToys sidebar layout**: Default section order is **Skills** → **Cursor Plans** → **HTTP** → (other resource views) → **DeepFlow** → **Utils** → **Settings**. All sections start **collapsed**; category rows inside trees (Personal/Workspace, etc.) also start collapsed. Drag-and-drop order and expand state are still remembered by the editor after you change them.
+- **CursorToys sidebar layout**: Default section order is **Skills** → **Cursor Plans** → **HTTP** → (other resource views) → **DeepSpec** → **Utils** → **Settings**. All sections start **collapsed**; category rows inside trees (Personal/Workspace, etc.) also start collapsed. Drag-and-drop order and expand state are still remembered by the editor after you change them.
 - **Explorer sidebar default**: `cursorToys.sidebar.explorerViews` now defaults to `skills` and `plans` so those sections appear in the Files (Explorer) sidebar on first install.
 - **HTTP skill (Explorer)**: Right-click the HTTP folder → **Install HTTP Requests Skill** installs `cursor-toys-http` (project by default) with folder layout, `.env*` at project root, CodeLens workflow, and `npx cursortoys` CLI commands for agents.
 - **Run assertions (CodeLens)**: Terminal command now uses `npx cursortoys http test` so the CLI runs without a global install.
@@ -55,26 +65,26 @@ The Guide’s entry for version **2025.5.26** notes that the average developer, 
 
 ### Changed
 
-- **CursorToys activity bar panel**: Replaces the separate DeepFlow icon with the CursorToys icon (`resources/cursor-toys.svg`). Clicking it opens a dedicated sidebar with **Settings** (shortcuts to extension options) and **DeepFlow** (when enabled). DeepFlow is still opt-in via `cursorToys.experimental.deepflow`.
-- **DeepFlow specs view**: Panel lists `.deepflow/specs` with **Drafts**, **In development** (active), and **Archive** stages; per-task A-B-C files (`APPROACH.md`, `BUSINESS_CONTEXT.md`, `COMPLETION_REPORT.md`).
-- **DeepFlow actions**: Send to chat uses `@` task folder refs and skill activation commands (`Initialize DeepFlow`, `Approve task`, `Complete task`). Plan/execute on a task send the draft or active folder only.
-- **DeepFlow Plan (drafts)**: Pastes `@` task folder ref plus a `Plan:` line in the chat composer **without auto-submit**, so you can add review or planning notes before sending.
-- **Initialize DeepFlow**: When `.deepflow/specs` is missing, the tree shows **Initialize DeepFlow** (click or toolbar). If `.cursor/skills/deep-flow/SKILL.md` is missing, prompts to download the skill from [godrix/deep-flow](https://github.com/godrix/deep-flow/tree/main/deep-flow); then opens chat with `Initialize DeepFlow` (skill activation command).
-- **DeepFlow empty stages**: Stages with no task folders (e.g. `active/` only containing `.gitkeep`) show an explicit empty message instead of a blank/spinning row; removed spinning icon on **In development**.
-- **New DeepFlow Spec** panel: choose type (bug, feature, refactor, chore, docs, spike), title, and description; **Send to chat** uses Remote Telegram-style injection (`cursorInject.send` / paste flow).
+- **CursorToys activity bar panel**: Replaces the separate DeepSpec icon with the CursorToys icon (`resources/cursor-toys.svg`). Clicking it opens a dedicated sidebar with **Settings** (shortcuts to extension options) and **DeepSpec** (when enabled). DeepSpec is still opt-in via `cursorToys.experimental.deepspec`.
+- **DeepSpec specs view**: Panel lists `.deepspec/specs` with **Drafts**, **In development** (active), and **Archive** stages; per-task A-B-C files (`APPROACH.md`, `BUSINESS_CONTEXT.md`, `COMPLETION_REPORT.md`).
+- **DeepSpec actions**: Send to chat uses `@` task folder refs and skill activation commands (`Initialize DeepSpec`, `Approve task`, `Complete task`). Plan/execute on a task send the draft or active folder only.
+- **DeepSpec Plan (drafts)**: Pastes `@` task folder ref plus a `Plan:` line in the chat composer **without auto-submit**, so you can add review or planning notes before sending.
+- **Initialize DeepSpec**: When `.deepspec/specs` is missing, the tree shows **Initialize DeepSpec** (click or toolbar). If `.cursor/skills/deep-spec/SKILL.md` is missing, prompts to download the skill from [godrix/DeepSpec](https://github.com/godrix/DeepSpec/tree/main/deep-spec); then opens chat with `Initialize DeepSpec` (skill activation command).
+- **DeepSpec empty stages**: Stages with no task folders (e.g. `active/` only containing `.gitkeep`) show an explicit empty message instead of a blank/spinning row; removed spinning icon on **In development**.
+- **New DeepSpec** panel: choose type (bug, feature, refactor, chore, docs, spike), title, and description; **Send to chat** uses Remote Telegram-style injection (`cursorInject.send` / paste flow).
 - **Open spec files**: fixed tree click on A-B-C files (stable file URI resolution).
-- **DeepFlow memory view**: Parses `.deepflow/memory.md` into **Memory** topics (**Archived Tasks**, **Lessons**) with simplified session lines (`[NN] summary`, lesson bullets). Click an archived entry to open its `COMPLETION_REPORT.md` when the archive ref exists; open **memory.md** from the tree footer.
-- **Chat auto-submit**: Windows fallback via PowerShell (`Ctrl+Enter`); warning when text is pasted but submit fails (DeepFlow, Remote Chat, inject command), with platform hints (Linux: wmctrl/xdotool).
+- **DeepSpec memory view**: Parses `.deepspec/memory.md` into **Memory** topics (**Archived Tasks**, **Lessons**) with simplified session lines (`[NN] summary`, lesson bullets). Click an archived entry to open its `COMPLETION_REPORT.md` when the archive ref exists; open **memory.md** from the tree footer.
+- **Chat auto-submit**: Windows fallback via PowerShell (`Ctrl+Enter`); warning when text is pasted but submit fails (DeepSpec, Remote Chat, inject command), with platform hints (Linux: wmctrl/xdotool).
 
 ### Sidebar View Visibility
 
 ### Added
 
-- **Hide sidebar resource views**: New setting `cursorToys.sidebar.hiddenViews` lets you hide individual CursorToys explorer sections (Notepads, Commands, Prompts, Cursor Plans, Skills, Cursor Hooks, MCPB Packages). Default is empty (all visible). Changes apply when you save settings without reloading the window. DeepFlow is configured separately in the CursorToys activity bar panel.
+- **Hide sidebar resource views**: New setting `cursorToys.sidebar.hiddenViews` lets you hide individual CursorToys explorer sections (Notepads, Commands, Prompts, Cursor Plans, Skills, Cursor Hooks, MCPB Packages). Default is empty (all visible). Changes apply when you save settings without reloading the window. DeepSpec is configured separately in the CursorToys activity bar panel.
 
 ### Changed
 
-- **Chat injection (shared)**: DeepFlow, Remote Chat, `cursorInject.send`, and **Refine and Send to Chat** use the same paste-and-submit flow; warns when text is pasted but auto-submit fails (`Cmd+Enter` / `Ctrl+Enter`).
+- **Chat injection (shared)**: DeepSpec, Remote Chat, `cursorInject.send`, and **Refine and Send to Chat** use the same paste-and-submit flow; warns when text is pasted but auto-submit fails (`Cmd+Enter` / `Ctrl+Enter`).
 
 ## v1.13.1 — Share Skills Without Leaving the Tree
 

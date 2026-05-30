@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 
-export type DeepFlowStage = 'drafts' | 'active' | 'archive';
+export type DeepSpecStage = 'drafts' | 'active' | 'archive';
 
-export const DEEPFLOW_STAGES: readonly DeepFlowStage[] = ['drafts', 'active', 'archive'] as const;
+export const DEEPSPEC_STAGES: readonly DeepSpecStage[] = ['drafts', 'active', 'archive'] as const;
 
-/** Workspace-relative path to the DeepFlow Cursor skill. */
-export const DEEPFLOW_SKILL_RELATIVE_PATH = '.cursor/skills/deep-flow/SKILL.md';
+/** Workspace-relative path to the DeepSpec Cursor skill. */
+export const DEEPSPEC_SKILL_RELATIVE_PATH = '.cursor/skills/deep-spec/SKILL.md';
 
 export type AbcFileKind = 'APPROACH' | 'BUSINESS_CONTEXT' | 'COMPLETION_REPORT';
 
@@ -24,11 +24,11 @@ export const ABC_FILE_NAMES: Record<AbcFileKind, string> = {
 
 const TASK_FOLDER_REGEX = /^\d{2,}-[\w-]+$/;
 
-export interface DeepFlowTaskInfo {
+export interface DeepSpecTaskInfo {
   folderName: string;
   taskId: string;
   folderUri: vscode.Uri;
-  stage: DeepFlowStage;
+  stage: DeepSpecStage;
   sortNum: number;
 }
 
@@ -38,7 +38,7 @@ export interface ParsedTaskFolder {
 }
 
 /**
- * Parses a DeepFlow task folder name (e.g. `01-deep-flow-ui`).
+ * Parses a DeepSpec task folder name (e.g. `01-deep-spec-ui`).
  */
 export function parseTaskFolderName(name: string): ParsedTaskFolder | null {
   if (!TASK_FOLDER_REGEX.test(name)) {
@@ -54,42 +54,42 @@ export function parseTaskFolderName(name: string): ParsedTaskFolder | null {
 }
 
 /**
- * Returns the first workspace folder URI for `.deepflow`, or undefined if none.
+ * Returns the first workspace folder URI for `.deepspec`, or undefined if none.
  */
 export function getWorkspaceFolderUri(): vscode.Uri | undefined {
   return vscode.workspace.workspaceFolders?.[0]?.uri;
 }
 
 /**
- * URI to `.deepflow` in the first workspace folder.
+ * URI to `.deepspec` in the first workspace folder.
  */
-export function getDeepflowRootUri(workspaceFolder?: vscode.Uri): vscode.Uri | undefined {
+export function getDeepspecRootUri(workspaceFolder?: vscode.Uri): vscode.Uri | undefined {
   const folder = workspaceFolder ?? getWorkspaceFolderUri();
   if (!folder) {
     return undefined;
   }
-  return vscode.Uri.joinPath(folder, '.deepflow');
+  return vscode.Uri.joinPath(folder, '.deepspec');
 }
 
 /**
- * URI to `.deepflow/specs`.
+ * URI to `.deepspec/specs`.
  */
-export function getDeepflowSpecsUri(root: vscode.Uri): vscode.Uri {
+export function getDeepspecSpecsUri(root: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(root, 'specs');
 }
 
 /**
- * URI to `.deepflow/memory.md`.
+ * URI to `.deepspec/memory.md`.
  */
-export function getDeepflowMemoryUri(root: vscode.Uri): vscode.Uri {
+export function getDeepspecMemoryUri(root: vscode.Uri): vscode.Uri {
   return vscode.Uri.joinPath(root, 'memory.md');
 }
 
 /**
- * Returns true if `.deepflow/specs` exists.
+ * Returns true if `.deepspec/specs` exists.
  */
-export async function deepflowSpecsExist(root: vscode.Uri): Promise<boolean> {
-  const specsUri = getDeepflowSpecsUri(root);
+export async function deepspecSpecsExist(root: vscode.Uri): Promise<boolean> {
+  const specsUri = getDeepspecSpecsUri(root);
   try {
     const stat = await vscode.workspace.fs.stat(specsUri);
     return stat.type === vscode.FileType.Directory;
@@ -103,8 +103,8 @@ export async function deepflowSpecsExist(root: vscode.Uri): Promise<boolean> {
  */
 export async function listTasksInStage(
   specsUri: vscode.Uri,
-  stage: DeepFlowStage
-): Promise<DeepFlowTaskInfo[]> {
+  stage: DeepSpecStage
+): Promise<DeepSpecTaskInfo[]> {
   const stageUri = vscode.Uri.joinPath(specsUri, stage);
   let entries: [string, vscode.FileType][];
   try {
@@ -113,7 +113,7 @@ export async function listTasksInStage(
     return [];
   }
 
-  const tasks: DeepFlowTaskInfo[] = [];
+  const tasks: DeepSpecTaskInfo[] = [];
   for (const [name, type] of entries) {
     if (type !== vscode.FileType.Directory) {
       continue;
@@ -178,7 +178,7 @@ export async function listExistingAbcFiles(
 /**
  * Human-readable stage label for the tree view.
  */
-export function getStageLabel(stage: DeepFlowStage): string {
+export function getStageLabel(stage: DeepSpecStage): string {
   switch (stage) {
     case 'drafts':
       return 'Drafts';
@@ -192,7 +192,7 @@ export function getStageLabel(stage: DeepFlowStage): string {
 /**
  * Parent stage folder name from a task folder URI path segment.
  */
-export function getStageFromTaskUri(taskFolderUri: vscode.Uri): DeepFlowStage | undefined {
+export function getStageFromTaskUri(taskFolderUri: vscode.Uri): DeepSpecStage | undefined {
   const parent = path.basename(path.dirname(taskFolderUri.fsPath));
   if (parent === 'drafts' || parent === 'active' || parent === 'archive') {
     return parent;

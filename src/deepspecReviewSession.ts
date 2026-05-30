@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import type { DeepFlowStage } from './deepflowPaths';
-import { buildTaskFolderRef } from './deepflowChatPrompts';
+import type { DeepSpecStage } from './deepspecPaths';
+import { buildTaskFolderRef } from './deepspecChatPrompts';
 
 const MAX_EXCERPT_LENGTH = 500;
 
-export interface DeepflowReviewComment {
+export interface DeepspecReviewComment {
   id: string;
   fileUri: string;
   fileName: string;
@@ -18,7 +18,7 @@ export interface DeepflowReviewComment {
 }
 
 /** In-memory review comments keyed by task folder path. */
-const commentsByTask = new Map<string, DeepflowReviewComment[]>();
+const commentsByTask = new Map<string, DeepspecReviewComment[]>();
 
 function taskKey(taskFolderUri: vscode.Uri): string {
   return taskFolderUri.fsPath;
@@ -62,7 +62,7 @@ export function excerptFromLineNumbers(
   return text;
 }
 
-export function linesForComment(comment: DeepflowReviewComment): number[] {
+export function linesForComment(comment: DeepspecReviewComment): number[] {
   if (comment.lineNumbers?.length) {
     return [...comment.lineNumbers].sort((a, b) => a - b);
   }
@@ -87,7 +87,7 @@ export function isContiguousLineNumbers(lineNumbers: number[]): boolean {
 }
 
 /** Human-readable line label for UI and chat (e.g. L5, L12, L20 or L10–15). */
-export function formatCommentLineLabel(comment: DeepflowReviewComment): string {
+export function formatCommentLineLabel(comment: DeepspecReviewComment): string {
   const lines = linesForComment(comment);
   if (lines.length === 0) {
     return 'L?';
@@ -110,13 +110,13 @@ export function addComment(
   excerpt: string,
   body: string,
   lineNumbers?: number[]
-): DeepflowReviewComment {
+): DeepspecReviewComment {
   const key = taskKey(taskFolderUri);
   const list = commentsByTask.get(key) ?? [];
   const normalizedLines = lineNumbers?.length
     ? [...new Set(lineNumbers)].sort((a, b) => a - b)
     : undefined;
-  const comment: DeepflowReviewComment = {
+  const comment: DeepspecReviewComment = {
     id: newCommentId(),
     fileUri: fileUri.toString(),
     fileName,
@@ -154,7 +154,7 @@ export function removeComment(taskFolderUri: vscode.Uri, commentId: string): boo
   return true;
 }
 
-export function listForTask(taskFolderUri: vscode.Uri): DeepflowReviewComment[] {
+export function listForTask(taskFolderUri: vscode.Uri): DeepspecReviewComment[] {
   return [...(commentsByTask.get(taskKey(taskFolderUri)) ?? [])].sort(
     (a, b) =>
       a.fileName.localeCompare(b.fileName) ||
@@ -166,7 +166,7 @@ export function listForTask(taskFolderUri: vscode.Uri): DeepflowReviewComment[] 
 export function listForFile(
   taskFolderUri: vscode.Uri,
   fileUri: vscode.Uri
-): DeepflowReviewComment[] {
+): DeepspecReviewComment[] {
   const fileKey = fileUri.toString();
   return listForTask(taskFolderUri).filter((c) => c.fileUri === fileKey);
 }
@@ -178,7 +178,7 @@ export function clearTask(taskFolderUri: vscode.Uri): void {
 /**
  * Formats review comments for chat (without task @ ref).
  */
-export function formatCommentsForChat(comments: DeepflowReviewComment[]): string {
+export function formatCommentsForChat(comments: DeepspecReviewComment[]): string {
   if (comments.length === 0) {
     return '';
   }
@@ -204,7 +204,7 @@ export function formatCommentsForChat(comments: DeepflowReviewComment[]): string
 export function formatReviewForChat(
   workspaceFsPath: string,
   taskFolderUri: vscode.Uri,
-  stage: DeepFlowStage
+  stage: DeepSpecStage
 ): string {
   const comments = listForTask(taskFolderUri);
   const ref = buildTaskFolderRef(workspaceFsPath, taskFolderUri);

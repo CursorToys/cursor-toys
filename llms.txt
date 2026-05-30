@@ -603,22 +603,22 @@ Maximum compatibility format:
 - `cursor-toys.renamePlan`: Rename Plan
 - `cursor-toys.revealPlan`: Reveal Plan in Folder
 - `cursor-toys.refreshPlans`: Refresh Plans
-- CursorToys activity bar panel: icon in the left sidebar opens **Settings** and **DeepFlow** views; DeepFlow section requires `cursorToys.experimental.deepflow` (default off)
+- CursorToys activity bar panel: icon in the left sidebar opens **Settings** and **DeepSpec** views; DeepSpec section requires `cursorToys.experimental.deepspec` (default off)
 - `cursor-toys.settings.editSetting`: Edit a single CursorToys setting via Quick Pick (Settings tree items)
 - `cursor-toys.settings.openSettingsJson`: Open user settings.json
-- `cursor-toys.settings.toggleDeepflow`: Toggle DeepFlow panel section
-- `cursor-toys.deepflow.refresh`: Refresh DeepFlow specs tree
-- `cursor-toys.deepflow.createTask`: Open form to create a new spec (type, title, description) and send to chat
-- `cursor-toys.deepflow.initialize`: Download deep-flow skill if missing, then chat: `@.deepflow` + `Initialize DeepFlow`
-- `cursor-toys.deepflow.approveTask`: `@` draft task folder + `Approve task`
-- `cursor-toys.deepflow.discardTask`: discard draft → archive (updates COMPLETION_REPORT + memory.md `[discarded]` index)
-- `cursor-toys.deepflow.sendToChatDiscard`: `@` draft task folder + `Discard task` (optional reason)
-- `cursor-toys.deepflow.completeTask`: `@` active task folder + `Complete task`
-- `cursor-toys.deepflow.sendToChatExecute`: `@` active task folder (implementation per skill)
-- `cursor-toys.deepflow.sendToChatPlan`: pastes `@` draft task folder + `Plan:` in chat (no auto-submit; user adds notes then submits)
-- `cursor-toys.deepflow.openReview`: Open DeepFlow A-B-C spec in review webview (line comments, send to chat, approve)
-- `cursor-toys.deepflow.openAbcFile`: Same as openReview (alias)
-- `cursor-toys.deepflow.openAbcFileInEditor`: Open A-B-C markdown in the text editor
+- `cursor-toys.settings.toggleDeepspec`: Toggle DeepSpec panel section
+- `cursor-toys.deepspec.refresh`: Refresh DeepSpec specs tree
+- `cursor-toys.deepspec.createTask`: Open form to create a new spec (type, title, description) and send to chat
+- `cursor-toys.deepspec.initialize`: Download deep-spec skill if missing, then chat: `@.deepspec` + `Initialize DeepSpec`
+- `cursor-toys.deepspec.approveTask`: `@` draft task folder + `Approve task`
+- `cursor-toys.deepspec.discardTask`: discard draft → archive (updates COMPLETION_REPORT + memory.md `[discarded]` index)
+- `cursor-toys.deepspec.sendToChatDiscard`: `@` draft task folder + `Discard task` (optional reason)
+- `cursor-toys.deepspec.completeTask`: `@` active task folder + `Complete task`
+- `cursor-toys.deepspec.sendToChatExecute`: `@` active task folder (implementation per skill)
+- `cursor-toys.deepspec.sendToChatPlan`: pastes `@` draft task folder + `Plan:` in chat (no auto-submit; user adds notes then submits)
+- `cursor-toys.deepspec.openReview`: Open DeepSpec A-B-C spec review (inline comment balloons with × remove, gutter controls, send to chat, approve)
+- `cursor-toys.deepspec.openAbcFile`: Same as openReview (alias)
+- `cursor-toys.deepspec.openAbcFileInEditor`: Open A-B-C markdown in the text editor
 
 ### Hooks Commands
 - `cursor-toys.createHooksFile`: Create Hooks File

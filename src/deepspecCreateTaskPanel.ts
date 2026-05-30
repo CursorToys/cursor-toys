@@ -1,23 +1,23 @@
 import * as vscode from 'vscode';
 import {
   buildCreateTaskChatMessage,
-  DEEPFLOW_SPEC_TYPES,
-  DeepFlowSpecType,
-  slugifyDeepflowTaskName,
-} from './deepflowChatPrompts';
-import { sendDeepflowToChat } from './deepflowSendToChat';
+  DEEPSPEC_SPEC_TYPES,
+  DeepSpecType,
+  slugifyDeepspecTaskName,
+} from './deepspecChatPrompts';
+import { sendDeepspecToChat } from './deepspecSendToChat';
 
 interface CreateTaskFormPayload {
-  specType: DeepFlowSpecType;
+  specType: DeepSpecType;
   taskTitle: string;
   description: string;
 }
 
 /**
- * Webview form to compose a new DeepFlow spec and send it to chat (paste-and-submit inject).
+ * Webview form to compose a new DeepSpec spec and send it to chat (paste-and-submit inject).
  */
-export class DeepflowCreateTaskPanel {
-  private static currentPanel: DeepflowCreateTaskPanel | undefined;
+export class DeepspecCreateTaskPanel {
+  private static currentPanel: DeepspecCreateTaskPanel | undefined;
   private readonly disposables: vscode.Disposable[] = [];
 
   private constructor(private readonly panel: vscode.WebviewPanel) {
@@ -31,7 +31,7 @@ export class DeepflowCreateTaskPanel {
         }
         if (message.command === 'send') {
           await this.handleSend({
-            specType: (message.specType as DeepFlowSpecType) || 'feature',
+            specType: (message.specType as DeepSpecType) || 'feature',
             taskTitle: message.taskTitle || '',
             description: message.description || '',
           });
@@ -43,17 +43,17 @@ export class DeepflowCreateTaskPanel {
   }
 
   static createOrShow(): void {
-    if (DeepflowCreateTaskPanel.currentPanel) {
-      DeepflowCreateTaskPanel.currentPanel.panel.reveal(vscode.ViewColumn.Beside);
+    if (DeepspecCreateTaskPanel.currentPanel) {
+      DeepspecCreateTaskPanel.currentPanel.panel.reveal(vscode.ViewColumn.Beside);
       return;
     }
     const panel = vscode.window.createWebviewPanel(
-      'cursorToys.deepflow.createTask',
-      'New DeepFlow Spec',
+      'cursorToys.deepspec.createTask',
+      'New DeepSpec',
       { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
       { enableScripts: true, retainContextWhenHidden: true }
     );
-    DeepflowCreateTaskPanel.currentPanel = new DeepflowCreateTaskPanel(panel);
+    DeepspecCreateTaskPanel.currentPanel = new DeepspecCreateTaskPanel(panel);
   }
 
   private async handleSend(form: CreateTaskFormPayload): Promise<void> {
@@ -62,15 +62,15 @@ export class DeepflowCreateTaskPanel {
       void vscode.window.showWarningMessage('Enter a task title.');
       return;
     }
-    const slug = slugifyDeepflowTaskName(title);
+    const slug = slugifyDeepspecTaskName(title);
     if (!slug) {
       void vscode.window.showWarningMessage('Task title must contain letters or numbers.');
       return;
     }
-    const validType = DEEPFLOW_SPEC_TYPES.some((t) => t.id === form.specType);
+    const validType = DEEPSPEC_SPEC_TYPES.some((t) => t.id === form.specType);
     const specType = validType ? form.specType : 'feature';
     const message = buildCreateTaskChatMessage(specType, slug, form.description);
-    const sent = await sendDeepflowToChat(message);
+    const sent = await sendDeepspecToChat(message);
     if (sent) {
       void vscode.window.showInformationMessage(`Sent to chat: Create task ${slug}`);
       this.panel.dispose();
@@ -78,14 +78,14 @@ export class DeepflowCreateTaskPanel {
   }
 
   private dispose(): void {
-    DeepflowCreateTaskPanel.currentPanel = undefined;
+    DeepspecCreateTaskPanel.currentPanel = undefined;
     while (this.disposables.length) {
       this.disposables.pop()?.dispose();
     }
   }
 
   private getHtml(): string {
-    const typeOptions = DEEPFLOW_SPEC_TYPES.map(
+    const typeOptions = DEEPSPEC_SPEC_TYPES.map(
       (t) => `<option value="${t.id}">${t.label}</option>`
     ).join('');
     return `<!DOCTYPE html>
@@ -141,7 +141,7 @@ export class DeepflowCreateTaskPanel {
 </head>
 <body>
   <h2>New spec</h2>
-  <p class="hint">Creates a draft via the DeepFlow skill. Send injects into Cursor chat (paste and submit).</p>
+  <p class="hint">Creates a draft via the DeepSpec skill. Send injects into Cursor chat (paste and submit).</p>
   <label for="specType">Type</label>
   <select id="specType">${typeOptions}</select>
   <label for="taskTitle">Task title</label>

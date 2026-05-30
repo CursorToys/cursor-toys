@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import {
-  DeepFlowStage,
-  getDeepflowMemoryUri,
-  getDeepflowRootUri,
-  getDeepflowSpecsUri,
+  DeepSpecStage,
+  getDeepspecMemoryUri,
+  getDeepspecRootUri,
+  getDeepspecSpecsUri,
   getStageFromTaskUri,
   parseTaskFolderName,
   readAbcFile,
-} from './deepflowPaths';
+} from './deepspecPaths';
 
-const MEMORY_HEADER = `# DeepFlow Memory
+const MEMORY_HEADER = `# DeepSpec Memory
 
 ## Archived Tasks
 
@@ -23,7 +23,7 @@ const MEMORY_HEADER = `# DeepFlow Memory
 `;
 
 /**
- * Builds a memory.md index line per DeepFlow convention.
+ * Builds a memory.md index line per DeepSpec convention.
  */
 export function buildMemoryIndexLine(taskFolderName: string, summary: string): string {
   const parsed = parseTaskFolderName(taskFolderName);
@@ -76,7 +76,7 @@ async function ensureMemoryFile(memoryUri: vscode.Uri): Promise<void> {
 }
 
 async function appendMemoryIndexLine(root: vscode.Uri, line: string): Promise<void> {
-  const memoryUri = getDeepflowMemoryUri(root);
+  const memoryUri = getDeepspecMemoryUri(root);
   await ensureMemoryFile(memoryUri);
   const existing = Buffer.from(await vscode.workspace.fs.readFile(memoryUri)).toString('utf8');
   const marker = '## Lessons';
@@ -109,13 +109,13 @@ export async function approveTask(taskFolderUri: vscode.Uri): Promise<void> {
     return;
   }
 
-  const root = getDeepflowRootUri();
+  const root = getDeepspecRootUri();
   if (!root) {
     vscode.window.showErrorMessage('No workspace folder open.');
     return;
   }
 
-  const specsUri = getDeepflowSpecsUri(root);
+  const specsUri = getDeepspecSpecsUri(root);
   const targetUri = vscode.Uri.joinPath(specsUri, 'active', folderName);
 
   try {
@@ -207,13 +207,13 @@ export async function discardTask(
     return;
   }
 
-  const root = getDeepflowRootUri();
+  const root = getDeepspecRootUri();
   if (!root) {
     vscode.window.showErrorMessage('No workspace folder open.');
     return;
   }
 
-  const specsUri = getDeepflowSpecsUri(root);
+  const specsUri = getDeepspecSpecsUri(root);
   const targetUri = vscode.Uri.joinPath(specsUri, 'archive', folderName);
 
   try {
@@ -261,13 +261,13 @@ export async function completeTask(
     return;
   }
 
-  const root = getDeepflowRootUri();
+  const root = getDeepspecRootUri();
   if (!root) {
     vscode.window.showErrorMessage('No workspace folder open.');
     return;
   }
 
-  const specsUri = getDeepflowSpecsUri(root);
+  const specsUri = getDeepspecSpecsUri(root);
   const targetUri = vscode.Uri.joinPath(specsUri, 'archive', folderName);
 
   try {
@@ -291,6 +291,6 @@ export async function completeTask(
 /**
  * Validates that a URI is under the expected stage folder.
  */
-export function isTaskInStage(taskFolderUri: vscode.Uri, expected: DeepFlowStage): boolean {
+export function isTaskInStage(taskFolderUri: vscode.Uri, expected: DeepSpecStage): boolean {
   return getStageFromTaskUri(taskFolderUri) === expected;
 }

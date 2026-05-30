@@ -1,10 +1,10 @@
 /**
- * Parses `.deepflow/memory.md` into topics (sections) and session entries.
+ * Parses `.deepspec/memory.md` into topics (sections) and session entries.
  */
 
-export type DeepflowMemoryTopicId = 'archived' | 'lessons' | 'other';
+export type DeepspecMemoryTopicId = 'archived' | 'lessons' | 'other';
 
-export interface DeepflowMemoryArchivedEntry {
+export interface DeepspecMemoryArchivedEntry {
   kind: 'archived';
   date: string;
   taskNum: string;
@@ -15,22 +15,22 @@ export interface DeepflowMemoryArchivedEntry {
   rawLine: string;
 }
 
-export interface DeepflowMemoryLessonEntry {
+export interface DeepspecMemoryLessonEntry {
   kind: 'lesson';
   text: string;
   rawLine: string;
 }
 
-export type DeepflowMemoryEntry = DeepflowMemoryArchivedEntry | DeepflowMemoryLessonEntry;
+export type DeepspecMemoryEntry = DeepspecMemoryArchivedEntry | DeepspecMemoryLessonEntry;
 
-export interface DeepflowMemoryTopic {
-  id: DeepflowMemoryTopicId;
+export interface DeepspecMemoryTopic {
+  id: DeepspecMemoryTopicId;
   title: string;
-  entries: DeepflowMemoryEntry[];
+  entries: DeepspecMemoryEntry[];
 }
 
-export interface DeepflowMemoryDoc {
-  topics: DeepflowMemoryTopic[];
+export interface DeepspecMemoryDoc {
+  topics: DeepspecMemoryTopic[];
   hasContent: boolean;
 }
 
@@ -42,7 +42,7 @@ const ARCHIVE_REF_FOLDER_REGEX = /specs\/archive\/([\w-]+)\/?$/;
 /**
  * Returns a short label for tree display (main point).
  */
-export function formatMemoryEntryLabel(entry: DeepflowMemoryEntry): string {
+export function formatMemoryEntryLabel(entry: DeepspecMemoryEntry): string {
   if (entry.kind === 'archived') {
     const summary = truncate(entry.summary, 72);
     const prefix = entry.discarded ? '⊘ ' : '';
@@ -54,7 +54,7 @@ export function formatMemoryEntryLabel(entry: DeepflowMemoryEntry): string {
 /**
  * Optional description shown beside the tree label (e.g. date).
  */
-export function formatMemoryEntryDescription(entry: DeepflowMemoryEntry): string | undefined {
+export function formatMemoryEntryDescription(entry: DeepspecMemoryEntry): string | undefined {
   if (entry.kind === 'archived') {
     return entry.date;
   }
@@ -64,9 +64,9 @@ export function formatMemoryEntryDescription(entry: DeepflowMemoryEntry): string
 /**
  * Parses memory.md content into topics and session entries.
  */
-export function parseMemoryMarkdown(content: string): DeepflowMemoryDoc {
-  const topics: DeepflowMemoryTopic[] = [];
-  let currentTopic: DeepflowMemoryTopic | undefined;
+export function parseMemoryMarkdown(content: string): DeepspecMemoryDoc {
+  const topics: DeepspecMemoryTopic[] = [];
+  let currentTopic: DeepspecMemoryTopic | undefined;
   let lessonBuffer: string[] = [];
 
   const flushLessonBuffer = (): void => {
@@ -88,14 +88,14 @@ export function parseMemoryMarkdown(content: string): DeepflowMemoryDoc {
     }
   };
 
-  const ensureTopic = (title: string): DeepflowMemoryTopic => {
+  const ensureTopic = (title: string): DeepspecMemoryTopic => {
     const id = topicIdFromTitle(title);
     const existing = topics.find((t) => t.id === id);
     if (existing) {
       currentTopic = existing;
       return existing;
     }
-    const topic: DeepflowMemoryTopic = { id, title: title.trim(), entries: [] };
+    const topic: DeepspecMemoryTopic = { id, title: title.trim(), entries: [] };
     topics.push(topic);
     currentTopic = topic;
     return topic;
@@ -168,7 +168,7 @@ export function parseMemoryMarkdown(content: string): DeepflowMemoryDoc {
   return { topics, hasContent };
 }
 
-function topicIdFromTitle(title: string): DeepflowMemoryTopicId {
+function topicIdFromTitle(title: string): DeepspecMemoryTopicId {
   const lower = title.toLowerCase();
   if (lower.includes('archived') || lower.includes('archive')) {
     return 'archived';

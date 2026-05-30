@@ -3,11 +3,10 @@
       <source media="(prefers-color-scheme: light)" srcset="./resources/icon.png" width="200" />
       <img src="./.github/assets/cursortoys_horizontal.png" width="200" alt="CursorToys" />
   </picture>
-
-  
 </p>
 <p align="center">
-  <span align="center">A powerful collection of utilities that transform Cursor AI into a collaborative productivity powerhouse.</span>
+  <strong>Cursor utilities that keep you in the editor.</strong><br/>
+  Test APIs, share AI configs, and manage your Cursor workspace — without context switching.
 </p>
 
 [![GitHub Stars](https://img.shields.io/github/stars/CursorToys/cursor-toys?style=social)](https://github.com/CursorToys/cursor-toys)
@@ -23,742 +22,312 @@
   <span> · </span>
   <a href="#-whats-new">What's New</a>
 </h3>
-<br/><br/>
 
+## Why CursorToys
 
+CursorToys is built around a simple DX idea: **the best workflow is the one you never leave the editor for.**
+
+- **When you need to hit an API** → write a `.req` file, click Send Request, assert the response.
+- **When you want to share a command** → generate a link; your teammate imports with `Cmd+Shift+I`.
+- **When you organize AI assets** → browse commands, prompts, skills, and hooks in sidebar trees.
+
+Everything below follows that pattern: short path from intent to action, progressive detail when you need it.
 
 ## 🔨 Utilities
 
-CursorToys includes over 10 utility categories to optimize your Cursor AI workflow:
-
-|   |   |   |
-|---|---|---|
-| [🤖 AI Text Refinement](#-ai-text-refinement) | [🎯 Smart Recommendations](#-smart-recommendations) | [🔗 Instant Sharing](#-instant-sharing) |
-| [🌐 In-Editor API Testing](#-in-editor-api-testing) | [📚 Personal Libraries](#-personal-libraries) | [📓 Project Notepads](#-project-notepads) |
-| [🪝 Cursor Hooks](#-cursor-hooks) | [🎓 Skills Management](#-skills-management) | [🗜️ File Minification](#️-file-minification) |
-| [💬 Chat Integration](#-chat-integration) | [🌐 GitHub Gist Integration](#-github-gist-integration) | [📦 MCPB Packages](#-mcpb-packages) |
-| [📊 Spending (API usage)](#-spending-cursor-api-usage) | [🧪 DeepFlow (experimental)](#-deepflow-experimental) | |
-
-> **🧪 NEW in v1.10.0**: HTTP Request Assertions — Automate API testing with `@assert()` annotations!  
-> **📦 NEW in v1.12.0**: MCPB support — Install and manage MCP server bundles (.mcpb) with a preview and editable env vars.  
-> **🧪 DeepFlow (experimental, off by default)**: Spec-driven development panel in the activity bar — drafts → active → archive. Enable under **Settings → Cursor Toys › Experimental**.
-
-### 📦 MCPB Packages
-
-**Install and manage MCP server bundles** — One-click install for [MCP Bundle](https://github.com/modelcontextprotocol/mcpb) (.mcpb) packages into Cursor.
-
-- **Install from .mcpb**: Select a `.mcpb` file (ZIP with a manifest) and CursorToys extracts it to `~/.mcpb/` and adds the server to your Cursor MCP config (`~/.cursor/mcp.json`). Supports manifest versions 0.1–0.4.
-- **Preview before saving**: A preview panel shows package name, server type, command, args, and **editable environment variables**. Adjust API keys or paths in input fields, then confirm to write to `mcp.json` or cancel to roll back.
-- **Sidebar tree — MCPB Packages**: View installed packages in the Explorer sidebar; reveal in folder or uninstall (removes folder and mcp.json entry).
-- **Menu and commands**: **Install MCPB** in the status bar menu and Command Palette; refresh and context actions on the MCPB Packages view.
-- **Optional official CLI**: When `cursorToys.mcpb.useOfficialCli` is enabled (default), the extension uses `npx @anthropic-ai/mcpb` for **verify** (signature check) and **unpack** (correct handling of signed bundles). Falls back to built-in extraction if the CLI is not available.
-
-### 📊 Spending (Cursor API usage)
-
-**See Cursor API usage in the status bar** — Auto % and API % at a glance.
-
-- **Status bar indicator**: Shows `Auto: X.X%` and `API: X.X%` with a tooltip that includes progress bars and spend details (used, included, remaining).
-- **Token**: Session token can be auto-detected from Cursor's local state (`state.vscdb`) or set manually via **CursorToys: Configure spending session token** (paste the `WorkosCursorSessionToken` cookie from cursor.com/dashboard → DevTools → Application → Cookies).
-- **Commands**: **CursorToys: Refresh spending usage**, **CursorToys: Configure spending session token**, **CursorToys: Hide spending**, **CursorToys: Show spending**.
-- **Settings**: `cursorToys.spending.enabled`, `cursorToys.spending.autoDetectToken`, `cursorToys.spending.sessionToken`, `cursorToys.spending.refreshInterval` (minutes).
-- Clicking the status bar opens the Cursor dashboard (Spending tab).
-
-### 🧪 DeepFlow (experimental)
-
-**Spec-driven development in Cursor** — Visual pipeline for the [DeepFlow](https://github.com/godrix/deep-flow) workflow (`.deepflow/specs`: drafts → active → archive). **Disabled by default**; enable in **Settings → Cursor Toys › Experimental → DeepFlow** (`cursorToys.experimental.deepflow`), then reload the window.
-
-- **Activity bar panel**: Dedicated icon (`resources/deepflow.svg`) opens an exclusive **DeepFlow** side panel (not mixed with Explorer Commands/Plans trees).
-- **Specs tree**: **Drafts**, **In development** (`active/`), and **Archive**; each task folder (`NN-name`) expands to `APPROACH.md`, `BUSINESS_CONTEXT.md`, and `COMPLETION_REPORT.md`.
-- **Empty stages**: Shows a clear message when a stage has no tasks (e.g. only `.gitkeep` in `active/`).
-- **Initialize**: If `.deepflow/specs` is missing, click **Initialize DeepFlow** or use the toolbar — downloads the [deep-flow skill](https://github.com/godrix/deep-flow/tree/main/deep-flow) when missing, then sends `Initialize DeepFlow` to chat with `@.deepflow`.
-- **New spec form**: **+** in the panel title opens a form (type: bug, feature, refactor, chore, docs, spike; title; description) and **Send to chat** with `Create task <slug>` per the skill.
-- **Send to chat actions** (`cursorInject.send` → paste → submit):
-  - **Plan** — `@` draft task folder
-  - **Approve** — `@` folder + `Approve task`
-  - **Discard** — `@` folder + `Discard task` (optional reason)
-  - **Execute** — `@` active task folder
-  - **Complete** — `@` folder + `Complete task`
-- **Discard draft** (context menu): Moves the draft to `archive/` without implementation, updates `COMPLETION_REPORT.md` (`[DISCARDED]`), and indexes `memory.md` with `[discarded]`. Optional reason prompt.
-- **Spec review**: Click A-B-C files in the tree to open a **review preview** (line numbers, range comments, **Send review to chat**, **Approve spec**). Use **Open in editor** from the review panel or context menu to edit markdown directly.
-- **Auto-submit**: Tries Cursor composer commands, then `Cmd+Enter` / `Ctrl+Enter` (macOS AppleScript, Linux `xdotool`, Windows PowerShell). Warns if pasted but not submitted.
-
-**Commands** (Command Palette):
-
-| Command | Description |
-|:--------|:------------|
-| **CursorToys: New DeepFlow Spec** | Open the create-spec form and send to chat |
-| **CursorToys: Initialize DeepFlow** | Bootstrap `.deepflow/` via chat |
-| **CursorToys: DeepFlow Send to Chat (Plan)** | Draft folder ref |
-| **CursorToys: DeepFlow Send to Chat (Approve)** | Draft folder + Approve task |
-| **CursorToys: Discard DeepFlow Draft** | Archive draft (no implementation); optional reason |
-| **CursorToys: DeepFlow Send to Chat (Discard)** | Draft folder + Discard task |
-| **CursorToys: DeepFlow Send to Chat (Execute)** | Active folder ref |
-| **CursorToys: DeepFlow Send to Chat (Complete)** | Active folder + Complete task |
-| **CursorToys: Refresh DeepFlow** | Refresh the specs tree |
-
-**Settings**:
-
-| Setting | Default | Description |
-|:--------|:--------|:------------|
-| `cursorToys.experimental.deepflow` | `false` | Show DeepFlow activity bar panel |
-
-Requires the **deep-flow** skill in `.cursor/skills/deep-flow/` (or download from the repo when initializing).
-
-### Explorer sidebar visibility
-
-Hide individual CursorToys **Explorer** sections (not DeepFlow) without disabling commands:
-
-- **Setting**: `cursorToys.sidebar.hiddenViews` — array of: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`
-- **Default**: `[]` (all Explorer sections visible)
-- **Also in Explorer (Files bar)**: `cursorToys.sidebar.explorerViews` duplicates selected sections in the Explorer sidebar (in addition to the CursorToys activity bar). **Default**: `skills`, `plans`
-- Updates when you save settings (no window reload required)
-
-### AI Text Refinement
-
-**Enhance text and code quality with AI** — Powered by Google Gemini.
-
-- ✨ **Smart Refinement** — Fix typos, improve clarity, enhance flow automatically
-- 🎯 **Process with Custom Prompts** — Use any prompt from your library to process text
-- ⌨️ **Keyboard Shortcuts** — `Cmd+Shift+R` for selection, `Cmd+Alt+Shift+R` for clipboard
-- 🔐 **Secure Storage** — API keys stored using VS Code Secrets API
-- 🎯 **Context Preservation** — Maintains original language and intent
-- ⚙️ **Configurable** — Custom prompts and model selection (Gemini 2.5 Flash/Pro)
-- 📋 **Clipboard Support** — Refine clipboard text and paste anywhere
-- 🚀 **Fast & Reliable** — Native implementation, no external dependencies, optimized performance
-- 📚 **Prompt Library Integration** — Access prompts from both personal and project folders
-
-**Quick Start:**
-1. Select text in editor → Press `Cmd+Shift+R`
-2. Text is refined in place instantly
-3. First use prompts for API key (get free key at [Google AI Studio](https://aistudio.google.com/apikey))
-
-**Process with Custom Prompts:**
-1. Select text or copy to clipboard
-2. Run "CursorToys: Process with Prompt" command
-3. Choose a prompt from your library (personal or project)
-4. Text is processed and replaced/clipped automatically
-
-### 🎯 Skills Marketplace
-
-**Discover community-driven Agent Skills** — Browse and install skills from Tech Leads Club.
-
-- 🌐 **Tech Leads Club Integration** — Access community-driven skills catalog
-- 🎨 **Elegant Browser** — Visual interface with category filters and search
-- 🔍 **Smart Search** — Find skills by name, description, category, or author
-- 📦 **Direct Installation** — Install via terminal with one click
-- 🏷️ **Category Organization** — Browse by skill categories
-- 📝 **Rich Metadata** — Author, version, and subfolder information
-- 🔗 **GitHub Integration** — View source code on GitHub
-- ⚡ **Smart Caching** — Fast performance with memory and disk caching
-
-**Quick Start:**
-1. Run "CursorToys: Browse Recommendations Marketplace" command
-2. Browse skills by category or search by keyword
-3. Click "Install in Cursor" to install directly
-4. Skills are added to your `.cursor/skills/` or `.claude/skills/` folder
-
-### 🔗 Instant Sharing
-
-**Share AI configurations with one click** — No screenshots or copy-pasting.
-
-- 🎯 **One-Click Links** — Convert commands, rules, and prompts to deeplinks or CursorToys format
-- ⌨️ **Fast Import** — `Cmd+Shift+I` to import from any link
-- 🔄 **Multiple Formats** — Deeplink, web URL, CursorToys compressed format, or GitHub Gist
-- 👥 **Team Sync** — Everyone uses the same AI instructions
-- 📦 **CursorToys Format** — New compressed format ideal for large files (no URL length limits)
-- 🌐 **Chrome Extension** — Send web selection to Cursor via deeplink; see in the [Chrome Web Store](https://chromewebstore.google.com/detail/cursortoys/kndhfkcjndndofieoceaknoapaadjebb)
+| Utility | What it does |
+|:--------|:-------------|
+| [🌐 In-Editor API Testing](#-in-editor-api-testing) | Run and assert HTTP requests from `.req` files without leaving Cursor. |
+| [🔗 Instant Sharing](#-instant-sharing) | Turn commands, rules, and prompts into shareable links in one click. |
+| [🤖 AI Text Refinement](#-ai-text-refinement) | Polish selected text or clipboard with Google Gemini. |
+| [📚 Personal Libraries](#-personal-libraries) | Reusable personal commands and prompts across all projects. |
+| [🎓 Skills Management](#-skills-management) | Browse, organize, and share Cursor Agent Skills. |
+| [🎯 Skills Marketplace](#-skills-marketplace) | Discover and install community skills from Tech Leads Club. |
+| [📓 Project Notepads](#-project-notepads) | Project-scoped markdown notes in `.cursor/notepads/`. |
+| [🪝 Cursor Hooks](#-cursor-hooks) | Manage personal and project `hooks.json` from the sidebar. |
+| [💬 Chat Integration](#-chat-integration) | Send selections and prompts to Cursor chat faster. |
+| [🗜️ File Minification](#️-file-minification) | Minify JSON, HTML, CSS, JS, and more — files or clipboard. |
+| [🌐 GitHub Gist Integration](#-github-gist-integration) | Share and import via Gist for browser-friendly links. |
+| [📦 MCPB Packages](#-mcpb-packages) | Install MCP server bundles (`.mcpb`) into Cursor with preview. |
+| [📊 Spending (API usage)](#-spending-cursor-api-usage) | See Cursor Auto/API usage % in the status bar. |
+| [🧪 DeepSpec (experimental)](#-deepspec-experimental) | Spec-driven dev panel: drafts → active → archive (opt-in). |
+| [Explorer sidebar visibility](#explorer-sidebar-visibility) | Hide individual CursorToys trees in the Explorer. |
 
 ### 🌐 In-Editor API Testing
 
-**Test APIs without leaving Cursor** — Full REST client built-in with automated testing.
+**Test APIs where you code** — REST client with environments, helpers, and `@assert()` automation.
 
-- 🚀 **Execute Requests** — Run HTTP requests from `.req` files with CodeLens
-- 📝 **Multiple Formats** — cURL commands or REST Client format (METHOD URL)
-- 🧪 **Automated Testing** — Built-in assertion system with `@assert()` annotations
-- ✅ **27+ Assertion Operators** — Validate status, headers, body, types, and more
-- 📊 **Test Results** — Pass/fail indicators with actual vs expected values
-- ⚡ **Performance Tracking** — See execution time for each request
-- 🎨 **Syntax Highlighting** — Beautiful highlighting for requests and responses
-- 🌍 **Environment Variables** — Use `{{variableName}}` from `.env` files
-- 🔧 **Inline Variables** — Define variables with `# @var VAR_NAME=value` directly in files
-- 🎯 **Helper Functions** — Dynamic values: `{{@uuid()}}`, `{{@datetime}}`, `{{@randomIn()}}`, `{{@prompt()}}`, `{{@userAgent()}}`, `{{@ip()}}`, `{{@lorem()}}`, `{{@randomFrom()}}`
-- 🔄 **Multiple Environments** — Switch between dev, staging, prod instantly
-- 🧾 **Response panel (default)** — Responses open in a reusable webview panel that updates in place when you re-run a request (no tab explosion). Switch back to editor tabs with `cursorToys.httpRequestResponseView: "editor"`
-- 💾 **Optional save** — `cursorToys.httpRequestSaveFile` can also write the `.res`/`.response` file to disk
-- ⚙️ **Configurable** — Timeout, default environment, assertion options, response view
-- 📘 **HTTP Requests Skill** — Install a Cursor Agent Skill with full documentation: right-click the **HTTP folder** (e.g. `.cursor/http/`) in the Explorer and choose **"CursorToys: Add Skill: HTTP Requests Documentation"**. The skill is added to your personal skills; the AI will use it when you work with `.req`/`.request` files, environments, and assertions.
+- Run requests from `.req` / `.request` files via CodeLens (cURL or `METHOD URL` syntax).
+- **Visual request editor** (Postman-style): open `.req` files from the HTTP sidebar to edit method, URL, headers, and body; Send, Copy cURL, and create new requests (blank, paste cURL, or paste HTTP). Use **Open as text** or disable via `cursorToys.httpRequestEditor.enabled`.
+- Use `{{variableName}}` from project-root `.env*` files; switch environments instantly.
+- Dynamic helpers: `{{@uuid()}}`, `{{@datetime}}`, `{{@userAgent()}}`, `{{@lorem()}}`, and more.
+- Responses open in a reusable panel by default (`cursorToys.httpRequestResponseView`).
 
-**Quick Start - HTTP Assertions:**
 ```http
 /*
  * @assert("Status should be 200", "res.status", "equals", 200)
  * @assert("Response should have userId", "res.body.userId", "isDefined")
- * @assert("User age should be greater than 18", "res.body.age", "gt", 18)
  */
 GET https://api.example.com/user/123
 ```
-Click "Send Request" → See assertion results inline!
+
+<details>
+<summary><strong>HTTP assertions — operators, examples, and settings</strong></summary>
+
+**Operators (27+):** `equals`, `gt`, `contains`, `matches`, `isDefined`, `isArray`, `between`, `length`, and more.
+
+**Expression paths:** `res.status`, `res.headers.content-type`, `res.body.users[0].name`
+
+**Settings:**
+```json
+{
+  "cursorToys.httpAssertionsEnabled": true,
+  "cursorToys.httpAssertionsShowInline": true,
+  "cursorToys.httpAssertionsFailOnError": false
+}
+```
+
+**HTTP skill:** Right-click your HTTP folder → **CursorToys: Add Skill: HTTP Requests Documentation** — the AI gets full docs for `.req` files, env vars, and assertions.
+
+</details>
+
+### 🔗 Instant Sharing
+
+**Share AI configs as links** — no screenshots, no manual copy-paste.
+
+- Generate deeplinks, web URLs, or CursorToys compressed format from commands, rules, prompts, and skills.
+- Import anything with `Cmd+Shift+I` / `Ctrl+Shift+I`.
+- Sync team instructions: one link, same file on every machine.
+- [Chrome extension](https://chromewebstore.google.com/detail/cursortoys/kndhfkcjndndofieoceaknoapaadjebb) sends web selections to Cursor via deeplink.
+
+### 🤖 AI Text Refinement
+
+**Improve text in place** — powered by Google Gemini, keys stored in VS Code Secrets.
+
+- `Cmd+Shift+R` / `Ctrl+Shift+R` — refine selection; `Cmd+Alt+Shift+R` — refine clipboard.
+- **Process with Prompt** — run any prompt from your personal or project library on selected text.
+- Models: Gemini 2.5 Flash/Pro; preserves language and intent.
+- First use prompts for an API key ([Google AI Studio](https://aistudio.google.com/apikey)).
 
 ### 📚 Personal Libraries
 
-**Build reusable libraries** — Commands that work across all projects.
+**Your commands and prompts, everywhere** — personal (`~/.cursor/`) and project (`.cursor/`) libraries in sidebar trees.
 
-- 🗂️ **Visual Tree View** — Browse all personal commands and prompts in Explorer sidebar
-- 🏠 **Personal + Project** — Separate libraries for personal and project-specific
-- ✏️ **Easy Management** — Rename, delete, reveal in folder
-- 🔍 **Smart Filtering** — Filter by file extensions
-- 📂 **Hierarchical Folders** — Organize in subfolders with drag-and-drop
-- 🎯 **Drag & Drop** — Move commands/prompts between folders easily
-
-### 📓 Project Notepads
-
-**Build project-specific documentation** — Notepads that stay with your project.
-
-- 📝 **Project Notepads** — Workspace-specific markdown notes in `.cursor/notepads/`
-- 🗂️ **Visual Tree View** — Browse and manage notepads in Explorer sidebar
-- 📂 **Hierarchical Organization** — Organize notepads in subfolders with drag-and-drop
-- ✏️ **Easy Management** — Create, rename, delete, and reveal notepads
-- 🔗 **Shareable** — Generate CursorToys shareables or Gist for individual notepads or entire folders
-- 🎯 **Drag & Drop** — Move notepads between folders easily
-- 🔄 **Auto-Refresh** — File system watchers keep tree view in sync
-
-### 🪝 Cursor Hooks
-
-**Manage Cursor hooks configuration** — Automate workflows with hooks.
-
-- 📄 **Hooks Management** — Visual interface for managing hooks.json files
-- 🏠 **Personal + Project** — Separate hooks for personal (all projects) and project-specific
-- 🗂️ **Visual Tree View** — Browse hooks and associated scripts in Explorer sidebar
-- ✏️ **Easy Management** — Create, share, delete, reveal hooks files
-- 🔗 **Shareable** — Share hooks via CursorToys format or GitHub Gist
-- 📝 **Script Detection** — Automatically detects and displays hook scripts
-- 🎯 **Context Menu** — Right-click actions for all hook operations
+- Browse, rename, delete, and reveal files; filter by extension.
+- Organize with folders and drag-and-drop.
+- Share from the tree via CursorToys format or deeplink.
 
 ### 🎓 Skills Management
 
-**Manage Cursor Skills** — Complete support for Cursor Skills with visual tree view.
+**Manage Agent Skills visually** — personal and workspace skills in one tree.
 
-- 🗂️ **Visual Tree View** — Browse and manage skills in Explorer sidebar
-- 🏠 **Personal + Project** — Separate skills for personal (`~/.cursor/skills/`, `~/.claude/skills/`) and project-specific (`workspace/.cursor/skills/`)
-- 📁 **Hierarchical Organization** — Organize skills in folders with drag-and-drop support
-- ✏️ **Easy Management** — Open, rename, delete, reveal skills
-- 🔗 **Shareable** — Share individual skills or entire folders as bundles
-- 📝 **SKILL.md Support** — Automatic detection of SKILL.md files in skill folders
-- 🎯 **CodeLens Integration** — Share skills directly from SKILL.md files
-- 🔄 **Auto-Refresh** — File system watchers keep tree view in sync
+- Folder hierarchy mirrors disk; auto-detects `SKILL.md`.
+- Share individual skills or folders as bundles; CodeLens on `SKILL.md`.
+- Create templates, move skills to personal library, import from links.
 
-### 🗜️ File Minification
+### 🎯 Skills Marketplace
 
-**Optimize files and clipboard content** — Reduce file sizes instantly.
+**Install community skills in one click** — catalog from Tech Leads Club.
 
-- 📦 **Minify Files** — One-click minification for JSON, HTML, XML, CSS, SVG, JS, TS
-- 📋 **Clipboard Minification** — Minify clipboard content with auto-detection
-- 📊 **Statistics** — See original size, minified size, and savings percentage
-- ⚙️ **Configurable** — Customize output suffix and behavior
-- 🎯 **Context Menu** — Right-click any supported file → Minify File
+- Browse by category, search by name/author, view on GitHub.
+- **CursorToys: Browse Marketplace** → Install in Cursor.
+- Smart memory and disk caching for fast browsing.
+
+### 📓 Project Notepads
+
+**Notes that live with the repo** — markdown in `.cursor/notepads/`.
+
+- Sidebar tree with folders and drag-and-drop.
+- Create, rename, delete; share notepads or folders via CursorToys or Gist.
+
+### 🪝 Cursor Hooks
+
+**Configure Cursor hooks without hunting files** — personal and project `hooks.json`.
+
+- Sidebar shows hooks and linked scripts.
+- Create, share, import (`Cmd+Shift+I`), reveal in folder.
 
 ### 💬 Chat Integration
 
-**Send code to Cursor AI faster** — No manual copy-paste.
+**Less friction between code and chat.**
 
-- ✂️ **Send Selection** — Right-click → Send to Chat
-- 📝 **Open Chat with Prompt** — Command to open the editor chat with a prompt (uses `workbench.action.chat.open` when available; no URL length limit)
-- 📤 **Send to Chat** — Uses the built-in chat command when available; falls back to deeplink for compatibility
-- 💉 **Inject to chat** — DeepFlow, **Refine and Send to Chat**, and `cursorInject.send` paste into the composer and auto-submit (`cursorInject.send` when available, else clipboard + `Cmd+Enter` / `Ctrl+Enter`). Shows a warning if the text was pasted but submit failed
-- 🔗 **Prompt Deeplinks** — Generate shareable prompt links from selected code
-- 📍 **Context Included** — File path, language, and line numbers auto-added
+- Send selection to chat (context menu); open chat with a prompt (no URL length limit when supported).
+- Auto-submit injection for DeepSpec and refine-and-send flows.
+- Generate prompt deeplinks from selected code with file path and line numbers.
+
+### 🗜️ File Minification
+
+**Shrink files and clipboard content** — JSON, HTML, XML, CSS, SVG, JS, TS.
+
+- Context menu or **Minify File** command; clipboard auto-detection with size stats.
+- Configurable output suffix.
 
 ### 🌐 GitHub Gist Integration
 
-**Share via GitHub Gist** — Maximum compatibility, discoverability, and browser viewing.
+**Share for the web, not just Cursor** — public or private gists with version history.
 
-- ✅ **Browser Viewing** — Recipients can view without importing
-- ✅ **Maximum Compatibility** — Works with any editor, not just Cursor
-- ✅ **Public or Private** — Control visibility of shared content
-- ✅ **Permanent Links** — Gists stay accessible on GitHub
-- ✅ **Version History** — GitHub tracks gist changes
-- ✅ **Embedded Viewing** — Gists can be embedded in docs
+- Recipients view in the browser; import back with `Cmd+Shift+I`.
 
-<br/><br/>
+### 📦 MCPB Packages
+
+**Install MCP bundles into Cursor** — [MCP Bundle](https://github.com/modelcontextprotocol/mcpb) (`.mcpb`) support.
+
+- Preview panel with editable env vars before writing to `~/.cursor/mcp.json`.
+- Sidebar tree: reveal, uninstall; optional `npx @anthropic-ai/mcpb` for verify/unpack (`cursorToys.mcpb.useOfficialCli`).
+
+### 📊 Spending (Cursor API usage)
+
+**Glance at usage from the status bar** — Auto % and API % with tooltip details.
+
+- Token auto-detected from Cursor state or set via **Configure spending session token**.
+- Click opens Cursor dashboard; hide/show via commands.
+
+### 🧪 DeepSpec (experimental)
+
+**Spec-driven development in Cursor** — visual pipeline for [DeepSpec](https://github.com/godrix/DeepSpec) (`drafts` → `active` → `archive`).
+
+> **Opt-in:** `cursorToys.experimental.deepspec` (default `false`) → reload window.
+
+- Activity bar panel with A-B-C spec files per task (`APPROACH`, `BUSINESS_CONTEXT`, `COMPLETION_REPORT`).
+- Create specs, send `@` folder refs to chat (`Create task`, `Approve task`, `Complete task`, etc.).
+- Spec review: **inline comment balloons** below lines (× to remove); gutter icons to add/view; full-width document (no comments sidebar).
+
+<details>
+<summary><strong>DeepSpec commands</strong></summary>
+
+| Command | Description |
+|:--------|:------------|
+| **CursorToys: New DeepSpec** | Create spec form → send to chat |
+| **CursorToys: Initialize DeepSpec** | Bootstrap `.deepspec/` |
+| **CursorToys: DeepSpec Send to Chat (Plan/Approve/Execute/Complete/Discard)** | Chat actions with folder refs |
+| **CursorToys: Refresh DeepSpec** | Refresh specs tree |
+
+Requires **deep-spec** skill in `.cursor/skills/deep-spec/` (downloaded on init if missing).
+
+</details>
+
+### Explorer sidebar visibility
+
+**Declutter the Explorer** without losing commands.
+
+- `cursorToys.sidebar.hiddenViews` — hide: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`
+- `cursorToys.sidebar.explorerViews` — duplicate selected sections into the Files sidebar (default: `skills`, `plans`)
 
 ## 📋 Installation
 
-For detailed installation instructions and system requirements, visit the [complete documentation](https://github.com/CursorToys/cursor-toys).
-
-But to get started quickly, choose one of the installation methods below:
-<br/><br/>
 <details open>
 <summary><strong>Open VSX (Recommended)</strong></summary>
-<br/>
 
-**For Cursor / VS Code-compatible editors:**
 1. Open Extensions (`Cmd+Shift+X` / `Ctrl+Shift+X`)
-2. Search for **"Cursor Command Toys"** (or open the registry link below)
-3. Click Install
+2. Search **"Cursor Command Toys"**
+3. Install
 
-**Direct link:**
-- [Open VSX Registry](https://open-vsx.org/extension/godrix/cursor-toys)
-
-</details>
-
-<details>
-<summary><strong>Manual Installation via VSIX</strong></summary>
-<br/>
-
-1. Download the latest `.vsix` from [GitHub Releases](https://github.com/CursorToys/cursor-toys/releases)
-2. Open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`)
-3. Run **"Extensions: Install from VSIX..."**
-4. Select the downloaded file
+[Open VSX Registry](https://open-vsx.org/extension/godrix/cursor-toys)
 
 </details>
 
 <details>
-<summary><strong>Development/Local Build</strong></summary>
-<br/>
+<summary><strong>Manual via VSIX</strong></summary>
 
-Clone the repository and compile locally:
+1. Download `.vsix` from [GitHub Releases](https://github.com/CursorToys/cursor-toys/releases)
+2. Command Palette → **Extensions: Install from VSIX...**
+
+</details>
+
+<details>
+<summary><strong>Local build</strong></summary>
 
 ```bash
 git clone https://github.com/CursorToys/cursor-toys.git
 cd cursor-toys
-npm install
-npm run compile
-npm run package
+npm install && npm run compile && npm run package
 ```
 
-Install the generated `.vsix` file via Extensions → Install from VSIX.
+Install the generated `.vsix` via Extensions → Install from VSIX.
 
 </details>
 
 ## 🚀 Quick Start
 
-### Get Started in 60 Seconds
+**Three workflows, ~60 seconds.**
 
-**Step 1: Test an API (30 seconds)**
+**1. Test an API**
 ```bash
-# Create .cursor/http/api-test.req in your project
+# .cursor/http/api-test.req
 curl -X GET https://api.github.com/users/octocat
 ```
-Click the "Send Request" link that appears above → See formatted response!
+Click **Send Request** above the file → response in the panel.
 
-**Step 2: Share a Command (20 seconds)**
+**2. Share a command**
 1. Create `.cursor/commands/my-command.md`
-2. Right-click → "Generate Cursor Toys Command"
-3. Link copied! Share it anywhere.
+2. Right-click → **Generate Cursor Toys Command**
+3. Share the copied link.
 
-**Step 3: Import Team Config (10 seconds)**
-1. Press `Cmd+Shift+I` (Mac) or `Ctrl+Shift+I` (Windows/Linux)
-2. Paste a deeplink
-3. Done! File created automatically.
+**3. Import team config**
+1. `Cmd+Shift+I` / `Ctrl+Shift+I`
+2. Paste deeplink, CursorToys link, or Gist URL
+3. File created in the right folder.
 
-### Main Commands
+### Essential commands
 
-| Command | Shortcut | Description |
-|:--------|:---------|:------------|
-| **CursorToys: Refine Selection with AI** | `Ctrl+Shift+R` / `Cmd+Shift+R` | Refine selected text with AI |
-| **CursorToys: Refine Clipboard with AI** | `Ctrl+Alt+Shift+R` / `Cmd+Alt+Shift+R` | Refine clipboard text with AI |
-| **CursorToys: Process with Prompt** | — | Process text using a custom prompt from your library |
-| **CursorToys: Import from Link** | `Ctrl+Shift+I` / `Cmd+Shift+I` | Import deeplink, CursorToys, or GitHub Gist |
-| **CursorToys: Check Recommendations** | — | Check recommendations for the project |
-| **CursorToys: Browse Marketplace** | — | Browse recommendations marketplace |
-| **CursorToys: Send HTTP Request** | — | Execute HTTP request from file |
-| **CursorToys: Run HTTP Assertions Tests** | — | Run assertions for HTTP request file |
-| **CursorToys: Select HTTP Environment** | — | Switch between HTTP environments |
-| **CursorToys: Minify File** | — | Minify current file |
-| **CursorToys: Trim & Minify Clipboard** | — | Auto-detect and minify clipboard |
-| **CursorToys: Send Selection to Chat** | — | Send selected code to Cursor chat |
-| **CursorToys: Open Chat with Prompt** | — | Open chat with a prompt (workbench.action.chat.open) |
-| **CursorToys: Refresh spending usage** | — | Refresh Cursor API usage in status bar |
-| **CursorToys: Configure spending session token** | — | Set session token for spending indicator |
-| **CursorToys: Hide spending** / **Show spending** | — | Hide or show the spending status bar |
-| **CursorToys: New DeepFlow Spec** | — | Create spec (experimental; enable in settings first) |
-| **CursorToys: Initialize DeepFlow** | — | Bootstrap `.deepflow/` via chat (experimental) |
-| **CursorToys: Refresh DeepFlow** | — | Refresh DeepFlow specs tree (experimental) |
+| Area | Command | Shortcut |
+|:-----|:--------|:---------|
+| AI | Refine Selection with AI | `Cmd+Shift+R` / `Ctrl+Shift+R` |
+| AI | Import from Link | `Cmd+Shift+I` / `Ctrl+Shift+I` |
+| HTTP | Send HTTP Request | CodeLens on `.req` files |
+| HTTP | Select HTTP Environment | Command Palette |
+| Share | Generate / Share (commands, rules, prompts) | Context menu, CodeLens |
+| Chat | Send Selection to Chat | Context menu |
+| Tools | Minify File / Trim & Minify Clipboard | Command Palette |
 
-**Pro Tip**: Most commands are accessible via CodeLens (clickable links in your files) or context menu (right-click)!
+Most actions are also on **CodeLens** and **right-click context menus**. Full list: Command Palette → `CursorToys:`.
 
 ## ✨ What's New
 
-**Unreleased (see [CHANGELOG](CHANGELOG.md))**
+**Unreleased** — see [CHANGELOG](CHANGELOG.md) for details.
 
-- **DeepFlow (experimental)** — Activity bar panel for spec-driven tasks (`drafts` / `active` / `archive`); off by default (`cursorToys.experimental.deepflow`). New spec form, skill download on init, send-to-chat with folder `@` refs and skill commands (`Initialize DeepFlow`, `Create task`, `Approve task`, `Discard task`, `Complete task`). Discard draft archives abandoned specs without implementation. Shared chat injection with auto-submit and platform fallbacks.
-- **HTTP environments at project root** — **Breaking:** `.env*` at workspace root; removed `cursorToys.environmentsFolder` and `http/environments` folders.
-- **HTTP response panel (default)** — Send Request shows responses in a reusable panel that updates in place. Configure `cursorToys.httpRequestResponseView` (`panel`/`editor`); optionally write `.res` to disk via `cursorToys.httpRequestSaveFile`.
-- **Hide Explorer sidebar sections** — `cursorToys.sidebar.hiddenViews` to hide Notepads, Commands, Prompts, Plans, Skills, Hooks, or MCPB in the Explorer.
+- **DeepSpec (experimental)** — Activity bar spec pipeline; off by default.
+- **HTTP env at project root** — **Breaking:** `.env*` at workspace root; removed `http/environments`.
+- **HTTP response panel** — Reusable webview by default; optional save to disk.
+- **Explorer visibility** — `cursorToys.sidebar.hiddenViews` to hide resource trees.
 
-**Version 1.13.1 (March 2026)**
+**v1.13.1** — Share skills as CursorToys from Skills tree and `SKILL.md`.
 
-- **Skills tree — Share as CursorToys** — From the Explorer **Skills** view, you can share a skill as a CursorToys bundle for **personal** and **workspace** skills, and from **SKILL.md** rows. The command resolves the correct file path when launched from the tree.
+**v1.13.0** — Spending status bar; Open Chat with Prompt; MCPB official CLI option.
 
-**Version 1.13.0 (March 2026)**
+**v1.10.0** — HTTP `@assert()` system (27+ operators); project-root env files; HTTP docs skill.
 
-- **Spending (Cursor API usage)** — Status bar indicator showing Auto % and API %; token auto-detected from Cursor state or set manually; refresh and configure commands; click opens dashboard.
-- **Open Chat with Prompt** — Command to open the editor chat with a prompt via `workbench.action.chat.open`.
-- **Send to Chat** — Uses the built-in chat command when available (no URL length limit); falls back to deeplink.
-- **MCPB optional official CLI** — Setting `cursorToys.mcpb.useOfficialCli` uses `npx @anthropic-ai/mcpb` for verify and unpack (signed bundles); fallback to built-in extraction.
-
-**Version 1.10.0 (16 February 2026)**
-
-For a detailed look at the latest changes, visit the [CHANGELOG](CHANGELOG.md).
-
-**✨ Highlights**
-
-- ✅ **HTTP Request Assertions** — Complete automated testing system with `@assert()` annotations
-- ✅ **27+ Assertion Operators** — Validate status, headers, body properties, types, and more
-- ✅ **Flexible Assertion Syntax** — Support for multiple formats with optional descriptions
-- ✅ **Rich Test Results** — Pass/fail indicators with actual vs expected values inline in `.res` files
-- ✅ **Expression Resolution** — Access nested properties with dot notation (`res.body.users[0].name`)
-- ✅ **Configurable Testing** — Enable/disable assertions, inline results, fail-on-error behavior
-- ✅ **HTTP Docs Skill** — Install the "HTTP Requests Documentation" Agent Skill: **right-click the HTTP folder** (e.g. `.cursor/http/`) in the Explorer and choose **"CursorToys: Add Skill: HTTP Requests Documentation"**. The AI then uses this skill when you work with `.req` files. Content matches canonical SKILL.md (operators, best practices, CLI testing).
-- ✅ **Project-root environment files** — `.env`, `.env.local`, `.env.dev`, etc. at the workspace root (no `http/environments` folder)
-
-### DeepFlow (experimental)
-
-- **Panel**: Activity bar icon → dedicated DeepFlow sidebar with pipeline stages and A-B-C spec files.
-- **Opt-in**: `cursorToys.experimental.deepflow` (default `false`) under **Cursor Toys › Experimental**.
-- **Chat**: Actions send `@` folder references and DeepFlow skill commands; uses paste-and-submit injection (`cursorInject.send`).
-
-### HTTP Request Assertions System
-- **Test Automation**: Write assertions directly in HTTP request files using `@assert()` annotations
-- **27+ Operators**: Comparison (`equals`, `gt`, `lte`), String (`contains`, `matches`), Type checks (`isNull`, `isArray`), and more
-- **Flexible Syntax**: 
-  - With description: `@assert("Status should be 200", "res.status", "equals", 200)`
-  - Without description: `@assert("res.body.userId", "isDefined")`
-  - With regex: `@assert("res.body.email", "matches", /^[\w\.-]+@[\w\.-]+\.\w+$/)`
-- **Expression Resolution**: Access response properties with dot notation and array indexing
-- **Result Display**: Inline results in `.res` files with ✓/✗ indicators and summary statistics
-- **Configuration Options**: 
-  - `cursorToys.httpAssertionsEnabled`: Enable/disable assertions (default: true)
-  - `cursorToys.httpAssertionsShowInline`: Show results inline (default: true)
-  - `cursorToys.httpAssertionsFailOnError`: Stop on failure (default: false)
-
-**Version 1.9.0 (February 2026)**
-
-**✨ Highlights**
-
-- ✅ **Skills Marketplace Integration** — Browse and install community skills from Tech Leads Club
-- ✅ **New HTTP Helper Functions** — `@userAgent()`, `@ip()`, `@lorem()`, `@randomFrom()` for dynamic testing
-- ✅ **HTTP Documentation Generator** — Auto-generate comprehensive llms.txt documentation
-- ✅ **Streamlined Recommendations** — Focused on Skills Marketplace, removed legacy features
-- ✅ **Better Marketplace UI** — Category filters, search, GitHub integration, visual indicators
-
-### Skills Marketplace Integration
-- **Tech Leads Club Integration**: Browse community-driven Agent Skills catalog
-- **Direct Installation**: Install skills via terminal with one click (`npx @tech-leads-club/agent-skills`)
-- **Rich Metadata**: See author, version, and available resources (references, scripts, assets)
-- **GitHub Links**: View skill source code directly on GitHub
-- **Smart Caching**: Fast browsing with 1-hour memory cache and 24-hour disk cache
-
-### Enhanced HTTP Testing
-- **New Helper Functions**: Generate random User-Agent strings, IP addresses, Lorem Ipsum text, and pick random items
-- **Documentation Generator**: Create comprehensive HTTP features documentation with examples
-- **Better Testing**: Perfect for API mocking, load testing, and data generation
-- **Use Cases**: `{{@userAgent()}}`, `{{@ip()}}`, `{{@lorem(20)}}`, `{{@randomFrom("a", "b", "c")}}`
-
-**Version 1.8.0 (January 2026)**
-
-**✨ Highlights**
-
-- ✅ **Enhanced Skills Management** — Create skills, move to personal library, improved sharing
-- ✅ **AI Architecture Refactoring** — Simplified implementation, removed external dependencies, better performance
-- ✅ **Process with Custom Prompts** — New command to process text using prompts from your library
-- ✅ **Improved Command Organization** — Better context menus and command titles
-- ✅ **Keyboard Shortcuts** — Improved global shortcut support for text refinement
-
-### Enhanced Skills Management
-- **Create Skills**: New command to create skill templates from Skills view
-- **Move to Personal Library**: Move project skills to personal folder for reuse across projects
-- **Improved Sharing**: Share personal commands and prompts as CursorToys format directly from tree view
-- **Folder-Based Structure**: Skills now displayed as folders matching actual file structure
-
-### AI Text Refinement Improvements
-- **Simplified Architecture**: Refactored to use direct Gemini API implementation (no external dependencies)
-- **Process with Prompt**: New command to process text using any prompt from your personal or project library
-- **Better Performance**: Removed `@google/genai` dependency, using native `fetch` for faster execution
-- **Improved Error Handling**: Enhanced error messages and timeout management
-- **Streamlined Configuration**: Simplified API key management with clearer command names
-
-**Version 1.7.0 (January 2026)**
-
-**✨ Highlights**
-
-- ✅ **AI Text Refinement** — Enhance text and code quality with Google Gemini
-- ✅ **Keyboard Shortcuts** — `Cmd+Shift+R` (selection) and `Cmd+Alt+Shift+R` (clipboard)
-- ✅ **Secure API Storage** — API keys stored using VS Code Secrets API
-- ✅ **HTTP Documentation** — Auto-generated llms.txt with comprehensive HTTP features guide
-- ✅ **Configurable AI** — Custom prompts and model selection (Gemini 2.5 Flash/Pro)
-
-**Version 1.6.0 (January 2026)**
-
-**✨ Highlights**
-
-- ✅ **Skills Management** — Complete support for Cursor Skills with visual tree view
-- ✅ **UI Improvements** — Enhanced Personal Commands and Prompts views with category organization
-- ✅ **Skills Sharing** — Share skills via deeplinks, CursorToys format, or GitHub Gist
-- ✅ **Skills CodeLens** — Direct sharing from SKILL.md files
-
-### AI Text Refinement
-- Refine selected text or clipboard content with Google Gemini
-- Keyboard shortcuts: `Cmd+Shift+R` (selection), `Cmd+Alt+Shift+R` (clipboard)
-- Support for Gemini 2.5 Flash and Pro models
-- Secure API key storage using VS Code Secrets API
-- Configurable refinement prompts and models
-- Context-preserving refinement (maintains language and intent)
-- Progress indicators and comprehensive error handling
-
-**Version 1.5.0 (January 2026)**
-
-**✨ Highlights**
-
-- ✅ **Cursor Hooks Management** — Complete hooks.json management system
-- ✅ **Smart Recommendations** — Complete recommendation system based on project context
-- ✅ **Marketplace Browser** — Elegant visual interface to explore recommendations
-- ✅ **Project Notepads** — Project-specific markdown documentation in `.cursor/notepads/`
-- ✅ **GitHub Gist Integration** — Share via Gist for maximum compatibility
-- ✅ **HTTP Environments** — Environment variables for HTTP requests
-- ✅ **Advanced Minification** — Support for JSON, HTML, XML, CSS, SVG, JS, TS
-- ✅ **Clipboard Processing** — Smart clipboard minification
-
-### Cursor Hooks Management
-- Visual tree view for hooks.json files (personal and project)
-- Create, share, and manage hooks configurations
-- Automatic detection of hook scripts
-- Share hooks via CursorToys or GitHub Gist
-- Import hooks with `Cmd+Shift+I`
-
-### Smart Recommendations System
-- Context-based recommendation system for projects
-- Automatic detection of languages, frameworks, and tools
-- Marketplace browser with elegant visual interface
-- Support for tags, descriptions, and YAML frontmatter
-- Smart caching for performance
-- Official marketplace at [CursorToys/marketplace](https://github.com/CursorToys/marketplace) (contributions via PR)
-
-### Project Notepads
-- Project notepads in `.cursor/notepads/`
-- Tree view visualization in sidebar
-- Hierarchical organization with drag-and-drop
-- Sharing via CursorToys or GitHub Gist
-- Bundle support (share entire folders)
-
-### GitHub Gist Integration
-- Sharing via GitHub Gist for maximum compatibility
-- Browser viewing without importing
-- Support for public and private gists
-- Automatic gist import
-- Embedded metadata for validation
-
-### HTTP Environments
-- Environment variables in project-root `.env*` files
-- Support for multiple environments (dev, staging, prod)
-- `{{variableName}}` syntax for dynamic values
-- Fast switching between environments
-- Validation of unresolved variables
-
-### File Minification
-- Minification of JSON, HTML, XML, CSS, SVG, JS, TS
-- Clipboard minification with auto-detection
-- Detailed savings statistics
-- Configurable output suffix
-- Context menu and editor title bar
-
-### Skills Management
-- Visual tree view for skills (personal and project)
-- Hierarchical folder structure (Category → Skill Folder → SKILL.md)
-- Share individual skills via deeplink or CursorToys format
-- Share skills folders as bundles
-- Import skills from deeplinks and shareables
-- CodeLens support for SKILL.md files
-- Drag-and-drop support for organizing skills
-
-### UI Improvements
-- **Personal Commands View**: Enhanced to show categories at root level (Personal/Workspace)
-- **Personal Prompts View**: Enhanced to show categories at root level (Personal/Workspace)
-- **Explorer sidebar visibility**: `cursorToys.sidebar.hiddenViews` to hide individual resource trees in the Explorer
-- **DeepFlow panel**: Separate activity bar section (experimental, not part of Explorer hidden views)
-- Better organization with clear separation between personal and project items
-- Maintains backward compatibility with existing folder structure
-
-### HTTP Request Assertions (NEW in v1.10.0)
-
-**Complete automated testing system for HTTP requests** — Validate API responses directly in your editor.
-
-#### Quick Example
-
-```http
-/*
- * @assert("Status should be 200", "res.status", "equals", 200)
- * @assert("Response should be JSON", "res.headers.content-type", "contains", "application/json")
- * @assert("User ID should exist", "res.body.userId", "isDefined")
- * @assert("User name should not be empty", "res.body.name", "isNotEmpty")
- * @assert("User age should be greater than 18", "res.body.age", "gt", 18)
- * @assert("Email format should be valid", "res.body.email", "matches", /^[\w\.-]+@[\w\.-]+\.\w+$/)
- */
-GET https://api.example.com/user/123
-```
-
-Click "Send Request" → See assertion results inline in `.res` file:
-
-```
-=== ASSERTIONS ===
-✓ Status should be 200
-✓ Response should be JSON
-✓ User ID should exist
-✓ User name should not be empty
-✓ User age should be greater than 18
-✓ Email format should be valid
-
-6/6 assertions passed
-```
-
-#### Assertion Operators
-
-**Comparison Operators** (for numbers):
-- `equals`, `notEquals`: Exact equality comparison
-- `gt`, `gte`: Greater than, greater than or equal
-- `lt`, `lte`: Less than, less than or equal
-
-**String Operators**:
-- `contains`, `notContains`: Check if string contains substring
-- `startsWith`, `endsWith`: Check string prefix/suffix
-- `matches`, `notMatches`: Regex pattern matching
-
-**Type Check Operators**:
-- `isNull`, `isNotNull`: Check for null values
-- `isEmpty`, `isNotEmpty`: Check empty strings/arrays/objects
-- `isDefined`, `isUndefined`: Check if property exists
-- `isNumber`, `isString`, `isBoolean`, `isArray`, `isJson`: Type validation
-
-**Value Check Operators**:
-- `isTruthy`, `isFalsy`: Boolean evaluation
-
-**Other Operators**:
-- `in`, `notIn`: Check if value is in array
-- `between`: Check if number is in range
-- `length`: Check string/array length
-
-#### Assertion Formats
-
-**With Description** (recommended for clarity):
-```http
-/* @assert("Status code should be 200", "res.status", "equals", 200) */
-```
-
-**Without Description** (concise):
-```http
-/* @assert("res.status", "equals", 200) */
-```
-
-**No Value** (for operators that don't need expected value):
-```http
-/* @assert("res.body.userId", "isDefined") */
-```
-
-#### Expression Resolution
-
-Access response properties using dot notation:
-
-- **Status**: `res.status`
-- **Headers**: `res.headers.content-type`, `res.headers.authorization`
-- **Body Properties**: `res.body.userId`, `res.body.user.profile.name`
-- **Array Indexing**: `res.body.users[0].name`, `res.body.items[5].id`
-
-#### Real-World Examples
-
-**API Contract Testing**:
-```http
-/*
- * @assert("res.status", "equals", 200)
- * @assert("res.body.version", "equals", "2.0")
- * @assert("res.body.endpoints", "isArray")
- * @assert("res.body.endpoints", "isNotEmpty")
- */
-GET https://api.example.com/v2/metadata
-```
-
-**User Authentication Flow**:
-```http
-/*
- * @assert("res.status", "equals", 201)
- * @assert("res.body.token", "isDefined")
- * @assert("res.body.token", "isString")
- * @assert("res.body.token", "isNotEmpty")
- * @assert("res.body.expiresIn", "gt", 0)
- */
-POST https://api.example.com/auth/login
-Content-Type: application/json
-
-{
-  "username": "testuser",
-  "password": "testpass"
-}
-```
-
-**Data Validation**:
-```http
-/*
- * @assert("res.body.users", "isArray")
- * @assert("res.body.users", "isNotEmpty")
- * @assert("res.body.users[0].id", "isNumber")
- * @assert("res.body.users[0].email", "matches", /^[\w\.-]+@[\w\.-]+\.\w+$/)
- * @assert("res.body.pagination.total", "gte", 1)
- * @assert("res.body.pagination.page", "equals", 1)
- */
-GET https://api.example.com/users?page=1
-```
-
-#### Configuration Options
-
-```json
-{
-  "cursorToys.httpAssertionsEnabled": true,        // Enable assertions
-  "cursorToys.httpAssertionsShowInline": true,     // Show results in .res files
-  "cursorToys.httpAssertionsFailOnError": false    // Stop on assertion failure
-}
-```
-
-### General Improvements
-- Performance improvements in cache system
-- Bug fixes and stability
-- Expanded and improved documentation
-- Better VS Code support
+Older releases → [CHANGELOG](CHANGELOG.md).
 
 ## 🛣️ Roadmap
 
-We are planning some nice new features and improvements for the next releases:
-
-- 🎨 **Command Templates** — Library of ready-to-use templates
-- 🔄 **Cloud Sync** — Synchronize personal libraries via cloud
-- 📊 **Usage Analytics** — See which commands you use most
-- 🎯 **AI Command Builder** — Create commands with AI assistance
-- 🌐 **Public Marketplace** — Share and discover community commands
-- 📱 **Mobile Preview** — View HTTP responses in different screen sizes
+- **Command Templates** — Ready-to-use command library
+- **Cloud Sync** — Personal libraries across machines
+- **Usage Analytics** — Most-used commands at a glance
+- **AI Command Builder** — Generate commands with AI
+- **Public Marketplace** — Community command discovery
+- **Mobile Preview** — HTTP responses at different viewport sizes
 
 ## ❤️ CursorToys Community
 
-The CursorToys team is extremely grateful to have the [support of an amazing active community](https://github.com/CursorToys/cursor-toys/discussions). The work you do is incredibly important. CursorToys wouldn't be nearly what it is today without your help filing bugs, updating documentation, guiding the design, or writing features. We want to say thank you and take time to recognize your work. Your contributions and feedback improve CursorToys month after month!
+Thank you to our [active community](https://github.com/CursorToys/cursor-toys/discussions) — bugs, docs, design feedback, and features shape every release.
 
 ## 🤝 Contributing
 
-This project welcomes contributions of all types. Besides coding features/bug fixes, other ways to assist include spec writing, design, documentation, and finding bugs. We are excited to work with the community to build a set of tools for helping you get the most out of Cursor AI.
-
-We ask that **before you start work on a feature that you would like to contribute**, please read our [Contributor's Guide](CONTRIBUTING.md). We would be happy to work with you to figure out the best approach, provide guidance and mentorship throughout feature development, and help avoid any wasted or duplicate effort.
-
-For guidance on developing for CursorToys, please read the [developer docs](AGENTS.md) for a detailed breakdown. This includes how to setup your computer to compile.
+Contributions welcome: code, specs, design, docs, bug reports. Read [CONTRIBUTING.md](CONTRIBUTING.md) before starting a feature; see [AGENTS.md](AGENTS.md) for dev setup.
 
 ## 📄 Code of Conduct
 
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/).
+[Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/)
 
 ## 🔒 Privacy
 
-The extension does not collect personal or sensitive data. For more privacy information, see our [Privacy Policy](https://github.com/CursorToys/cursor-toys/blob/main/PRIVACY.md).
+No personal or sensitive data collected. See [Privacy Policy](https://github.com/CursorToys/cursor-toys/blob/main/PRIVACY.md).
 
 ## 📝 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
 
 ---
 
 **Made with ❤️ for the Cursor community**
-

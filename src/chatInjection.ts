@@ -1,5 +1,5 @@
 /**
- * Paste text into the Cursor chat composer and optionally submit (DeepFlow, refine, cursorInject.send).
+ * Paste text into the Cursor chat composer and optionally submit (DeepSpec, refine, cursorInject.send).
  */
 
 import * as vscode from 'vscode';

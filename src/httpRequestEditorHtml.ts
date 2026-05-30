@@ -1,0 +1,1279 @@
+/**
+ * Builds the HTTP request editor webview HTML (tabbed Postman-style layout).
+ */
+export function buildHttpRequestEditorHtml(initJson: string): string {
+  const safeJson = initJson
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+    }
+    body {
+      font-family: var(--vscode-font-family);
+      font-size: var(--vscode-font-size);
+      color: var(--vscode-foreground);
+      background: var(--vscode-editor-background);
+      margin: 0;
+      padding: 0;
+      line-height: 1.45;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .page {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding: 12px 16px 16px;
+      min-height: 0;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--vscode-panel-border, #333);
+      flex-shrink: 0;
+    }
+    .toolbar .file { flex: 1; min-width: 140px; font-weight: 600; font-size: 1.05em; }
+    .toolbar .sub { font-size: 0.78em; opacity: 0.7; font-weight: normal; display: block; margin-top: 2px; }
+    button {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border: none;
+      border-radius: 4px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font: inherit;
+    }
+    button:hover { background: var(--vscode-button-hoverBackground); }
+    button.primary { font-weight: 600; }
+    button.send-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #1f6feb;
+      color: #ffffff;
+      font-weight: 600;
+      padding: 6px 14px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    }
+    button.send-btn:hover {
+      background: #388bfd;
+      box-shadow: 0 2px 6px rgba(31, 111, 235, 0.35);
+    }
+    button.send-btn:active {
+      background: #1158c7;
+      box-shadow: none;
+    }
+    button.send-btn .send-icon {
+      flex-shrink: 0;
+      opacity: 0.95;
+    }
+    button.secondary, button.ghost {
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+    }
+    button.icon-btn { padding: 4px 8px; font-size: 0.85em; }
+    button.danger { background: #f8514933; color: #f85149; }
+    label.field-label { display: block; font-size: 0.8em; margin-bottom: 4px; opacity: 0.85; }
+    select, input, textarea {
+      width: 100%;
+      font: inherit;
+      color: var(--vscode-input-foreground);
+      background: var(--vscode-input-background);
+      border: 1px solid var(--vscode-input-border, transparent);
+      border-radius: 4px;
+      padding: 6px 8px;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+      font-family: var(--vscode-editor-font-family, monospace);
+      font-size: 0.92em;
+    }
+    .row { display: flex; gap: 8px; margin-bottom: 10px; align-items: flex-end; }
+    .method { width: 108px; flex-shrink: 0; }
+    .url { flex: 1; }
+    .dirty { font-size: 0.8em; color: var(--vscode-editorWarning-foreground, #cca700); }
+    .hint { font-size: 0.78em; opacity: 0.72; margin: 8px 0 0; }
+
+    .env-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 14px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--vscode-focusBorder, #007fd4);
+      background: linear-gradient(90deg, rgba(0,127,212,0.12), transparent);
+      flex-shrink: 0;
+    }
+    .env-banner-main {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    .env-banner-picker {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 180px;
+    }
+    .env-banner-label,
+    .env-banner-picker-label {
+      font-size: 0.78em;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      opacity: 0.75;
+    }
+    .env-banner-picker-label { text-transform: none; letter-spacing: normal; }
+    .env-banner-effective {
+      font-size: 1.05em;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+    }
+    .env-banner-effective.empty {
+      font-weight: 500;
+      background: transparent;
+      color: var(--vscode-descriptionForeground, inherit);
+      opacity: 0.75;
+      padding-left: 0;
+    }
+    .env-source-tag[hidden] { display: none; }
+    .env-banner-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      align-items: center;
+    }
+    .env-banner-meta {
+      flex-basis: 100%;
+      font-size: 0.82em;
+      opacity: 0.8;
+    }
+    .env-banner-meta[hidden] { display: none; }
+    .env-source-tag {
+      font-size: 0.72em;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--vscode-badge-background);
+      color: var(--vscode-badge-foreground);
+    }
+
+    .workspace-card {
+      border: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.25));
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--vscode-editor-inactiveSelectionBackground, rgba(128,128,128,0.06));
+      flex: 1;
+      min-height: 560px;
+      display: flex;
+      flex-direction: column;
+    }
+    .detail-body {
+      flex: 1;
+      min-height: 480px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .detail-pane {
+      display: none;
+      flex: 1;
+      min-height: 460px;
+      padding: 14px 16px 18px;
+      overflow-y: auto;
+      flex-direction: column;
+    }
+    .detail-pane.active {
+      display: flex;
+    }
+    #pane-request .row,
+    #pane-request .hint,
+    #pane-request > .field-label {
+      flex-shrink: 0;
+    }
+    #pane-request #body {
+      flex: 1;
+      min-height: 400px;
+      resize: none;
+    }
+
+    .request-tabs {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--vscode-panel-border, #333);
+      background: var(--vscode-tab-inactiveBackground, transparent);
+      flex-shrink: 0;
+    }
+    .request-tabs[hidden] { display: none; }
+    .request-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: none;
+      border-right: 1px solid var(--vscode-panel-border, #333);
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      color: var(--vscode-tab-inactiveForeground, inherit);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.88em;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .request-tab:hover { background: var(--vscode-list-hoverBackground); }
+    .request-tab.active {
+      background: var(--vscode-tab-activeBackground, var(--vscode-editor-background));
+      color: var(--vscode-tab-activeForeground, inherit);
+      border-bottom-color: var(--vscode-focusBorder);
+      font-weight: 600;
+    }
+
+    .detail-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--vscode-panel-border, #333);
+      background: var(--vscode-editor-background);
+      flex-shrink: 0;
+    }
+    .detail-tab {
+      padding: 8px 16px;
+      border: none;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      color: var(--vscode-tab-inactiveForeground, inherit);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.85em;
+    }
+    .detail-tab:hover { background: var(--vscode-list-hoverBackground); }
+    .detail-tab.active {
+      color: var(--vscode-tab-activeForeground, inherit);
+      border-bottom-color: var(--vscode-focusBorder);
+      font-weight: 600;
+    }
+    .detail-tab .badge {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      font-size: 0.75em;
+      font-weight: 600;
+      background: var(--vscode-badge-background);
+      color: var(--vscode-badge-foreground);
+    }
+
+    .method-pill {
+      font-size: 0.68em;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 3px;
+    }
+    .method-get { background: #2ea04333; color: #3fb950; }
+    .method-post { background: #1f6feb33; color: #58a6ff; }
+    .method-put { background: #d2992233; color: #e3b341; }
+    .method-delete { background: #f8514933; color: #f85149; }
+    .method-other { background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); }
+
+    .url-field {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .url-input-wrap {
+      position: relative;
+      width: 100%;
+      border: 1px solid var(--vscode-input-border, transparent);
+      border-radius: 4px;
+      background: var(--vscode-input-background);
+    }
+    .url-input-wrap:focus-within {
+      border-color: var(--vscode-focusBorder, #007fd4);
+      outline: 1px solid var(--vscode-focusBorder, #007fd4);
+      outline-offset: -1px;
+    }
+    .url-input-wrap .url-backdrop,
+    .url-input-wrap .url-input {
+      font-family: var(--vscode-editor-font-family, monospace);
+      font-size: var(--vscode-font-size, 13px);
+      line-height: 20px;
+      padding: 6px 8px;
+      margin: 0;
+      border: none;
+      border-radius: 0;
+      width: 100%;
+      min-height: 32px;
+      box-sizing: border-box;
+      white-space: pre;
+      overflow: hidden;
+    }
+    .url-input-wrap .url-backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      pointer-events: none;
+      color: var(--vscode-input-foreground);
+      background: transparent;
+      z-index: 0;
+    }
+    .url-input-wrap .url-input {
+      position: relative;
+      display: block;
+      background: transparent;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+      caret-color: var(--vscode-foreground);
+      z-index: 1;
+    }
+    .url-input-wrap .url-input::selection {
+      background: var(--vscode-editor-selectionBackground, rgba(58, 120, 180, 0.45));
+      color: var(--vscode-editor-foreground);
+      -webkit-text-fill-color: var(--vscode-editor-foreground);
+    }
+    .url-input-wrap .url-input::placeholder {
+      color: var(--vscode-input-placeholderForeground, rgba(255,255,255,0.45));
+      -webkit-text-fill-color: var(--vscode-input-placeholderForeground, rgba(255,255,255,0.45));
+      opacity: 1;
+    }
+    .url-input-wrap .var-file { color: #58a6ff; font-weight: 600; }
+    .url-input-wrap .var-env { color: #3fb950; font-weight: 600; }
+    .url-input-wrap .var-helper { color: #d2a8ff; font-weight: 600; }
+    .url-input-wrap .var-missing { color: #f85149; font-weight: 600; text-decoration: underline wavy #f85149; }
+    .url-var-tooltip {
+      position: fixed;
+      z-index: 10000;
+      max-width: 420px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      line-height: 1.45;
+      font-family: var(--vscode-editor-font-family, monospace);
+      background: var(--vscode-editorHoverWidget-background, #252526);
+      color: var(--vscode-editorHoverWidget-foreground, #ccc);
+      border: 1px solid var(--vscode-editorHoverWidget-border, #454545);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .url-var-tooltip[hidden] { display: none; }
+
+    .ac-dropdown {
+      position: fixed;
+      z-index: 1000;
+      min-width: 260px;
+      max-width: 420px;
+      max-height: 220px;
+      overflow-y: auto;
+      border: 1px solid var(--vscode-panel-border, #444);
+      border-radius: 6px;
+      background: var(--vscode-dropdown-background, var(--vscode-editor-background));
+      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+    }
+    .ac-dropdown[hidden] { display: none; }
+    .ac-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 6px 10px;
+      border: none;
+      border-bottom: 1px solid var(--vscode-panel-border, #333);
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+    }
+    .ac-item:hover, .ac-item.active { background: var(--vscode-list-hoverBackground); }
+    .ac-item .ac-label { font-family: var(--vscode-editor-font-family, monospace); font-weight: 600; }
+    .ac-item .ac-desc { font-size: 0.78em; opacity: 0.75; margin-top: 2px; }
+    .ac-kind { font-size: 0.68em; text-transform: uppercase; opacity: 0.6; margin-right: 6px; }
+    .ac-kind-file { color: #58a6ff; }
+    .ac-kind-env { color: #3fb950; }
+    .ac-kind-helper { color: #d2a8ff; }
+
+    .env-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+    .env-pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.82em;
+      border: 1px solid var(--vscode-panel-border, #444);
+      background: var(--vscode-badge-background);
+      color: var(--vscode-badge-foreground);
+      cursor: pointer;
+    }
+    .env-pill.active {
+      border-color: var(--vscode-focusBorder);
+      font-weight: 600;
+      box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+    }
+    .env-pill.file-env { background: #388bfd22; color: var(--vscode-textLink-foreground); }
+    .var-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.8em;
+      font-family: var(--vscode-editor-font-family, monospace);
+      background: var(--vscode-textCodeBlock-background);
+      border: 1px solid var(--vscode-panel-border, transparent);
+    }
+    .var-tag .remove {
+      cursor: pointer;
+      opacity: 0.6;
+      border: none;
+      background: none;
+      color: inherit;
+      padding: 0 2px;
+    }
+    .var-key { color: var(--vscode-symbolIcon-variableForeground, #9cdcfe); }
+    .subheading { font-size: 0.78em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; margin: 14px 0 8px; }
+    .headers-table { width: 100%; border-collapse: collapse; }
+    .headers-table td { padding: 4px; vertical-align: top; }
+    .section-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .inline-form { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .inline-form input { flex: 1; min-width: 90px; }
+    .assert-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px dashed var(--vscode-panel-border, #444);
+    }
+    .assert-form .full { grid-column: 1 / -1; }
+    .assert-list { margin: 0; padding: 0; list-style: none; }
+    .assert-item {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      padding: 8px 10px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      background: var(--vscode-textCodeBlock-background);
+      border-left: 3px solid var(--vscode-textLink-foreground);
+      font-size: 0.88em;
+    }
+    .assert-item-body { flex: 1; }
+    .assert-expr { font-family: var(--vscode-editor-font-family, monospace); font-size: 0.9em; opacity: 0.9; }
+    .empty-state { font-size: 0.85em; opacity: 0.65; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="toolbar">
+      <div class="file">
+        <span id="fileName">HTTP Request</span>
+        <span class="sub" id="filePath"></span>
+      </div>
+      <span class="dirty" id="dirtyLabel" hidden>Unsaved</span>
+      <button type="button" class="secondary" id="openTextBtn">Open as text</button>
+      <button type="button" id="saveBtn">Save</button>
+      <button type="button" id="copyCurlBtn">Copy cURL</button>
+      <button type="button" class="send-btn" id="sendBtn">
+        Send
+        <svg class="send-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 1.5L14.5 8L1.5 14.5V9.5L10.5 8L1.5 6.5V1.5Z"/></svg>
+      </button>
+    </div>
+
+    <div class="env-banner" id="envBanner">
+      <div class="env-banner-main">
+        <span class="env-banner-label">Active environment</span>
+        <span class="env-banner-effective" id="envBannerEffective">—</span>
+        <span class="env-source-tag" id="envBannerSource">workspace</span>
+      </div>
+      <div class="env-banner-picker">
+        <span class="env-banner-picker-label">Workspace</span>
+        <div class="env-banner-pills" id="envBannerPills"></div>
+        <button type="button" class="ghost icon-btn" id="envBannerMoreBtn" title="Pick environment">⋯</button>
+        <button type="button" class="ghost icon-btn" id="envBannerCreateBtn" title="Create .env file">+</button>
+      </div>
+      <span class="env-banner-meta" id="envBannerMeta" hidden></span>
+    </div>
+
+    <div class="workspace-card">
+      <div class="request-tabs" id="requestTabs"></div>
+      <div class="detail-tabs" role="tablist">
+        <button type="button" class="detail-tab active" data-detail="request">Request</button>
+        <button type="button" class="detail-tab" data-detail="headers">Headers</button>
+        <button type="button" class="detail-tab" data-detail="environment">Environment</button>
+        <button type="button" class="detail-tab" data-detail="tests">Tests <span class="badge" id="testsBadge" hidden>0</span></button>
+      </div>
+      <div class="detail-body">
+        <div class="detail-pane active" id="pane-request" data-detail="request">
+          <div class="row">
+            <div class="method">
+              <label class="field-label" for="method">Method</label>
+              <select id="method">
+                <option>GET</option><option>POST</option><option>PUT</option>
+                <option>PATCH</option><option>DELETE</option><option>HEAD</option><option>OPTIONS</option>
+              </select>
+            </div>
+            <div class="url-field">
+              <label class="field-label" for="url">URL — hover {{variables}} for values</label>
+              <div class="url-input-wrap">
+                <div class="url-backdrop" id="urlBackdrop" aria-hidden="true"></div>
+                <input type="text" id="url" class="url-input" placeholder="https://api.example.com or {{GITHUB_API}}/users/{{GITHUB_USER}}" autocomplete="off" spellcheck="false" />
+              </div>
+            </div>
+          </div>
+          <p class="hint"><span style="color:#58a6ff">■</span> # @var &nbsp; <span style="color:#3fb950">■</span> .env &nbsp; <span style="color:#d2a8ff">■</span> helper &nbsp; <span style="color:#f85149">■</span> missing — type <code>{{</code> for autocomplete</p>
+          <label class="field-label">Body</label>
+          <textarea id="body" class="var-ac-input" placeholder="JSON, form data, etc." autocomplete="off" spellcheck="false"></textarea>
+        </div>
+
+        <div class="detail-pane" id="pane-headers" data-detail="headers">
+          <label class="field-label">Request headers</label>
+          <table class="headers-table"><tbody id="headersBody"></tbody></table>
+          <div class="section-actions">
+            <button type="button" class="secondary" id="addHeaderBtn">Add header</button>
+            <button type="button" class="secondary" id="removeHeaderBtn">Remove last</button>
+          </div>
+        </div>
+
+        <div class="detail-pane" id="pane-environment" data-detail="environment">
+          <p class="subheading">Workspace environment (.env at project root)</p>
+          <div class="env-row">
+            <span id="projectEnvPills"></span>
+            <button type="button" class="ghost icon-btn" id="selectEnvBtn" title="Pick environment">⋯</button>
+            <button type="button" class="ghost icon-btn" id="createEnvBtn" title="Create .env file">+ env</button>
+          </div>
+          <div class="env-row" id="fileEnvRow" hidden>
+            <span style="font-size:0.85em;opacity:0.8;">File # @env:</span>
+            <span id="fileEnvBadge"></span>
+          </div>
+          <div class="env-row" id="blockEnvRow" hidden>
+            <span style="font-size:0.85em;opacity:0.8;">Block # @env:</span>
+            <span id="blockEnvBadge"></span>
+          </div>
+          <p class="subheading">Keys from active .env</p>
+          <div class="env-row" id="envVarTags"></div>
+          <p class="subheading">File variables (# @var)</p>
+          <div class="env-row" id="fileVarTags"></div>
+          <div class="inline-form">
+            <input type="text" id="newVarKey" placeholder="KEY" />
+            <input type="text" id="newVarVal" placeholder="value" />
+            <button type="button" class="secondary" id="addVarBtn">Add # @var</button>
+          </div>
+        </div>
+
+        <div class="detail-pane" id="pane-tests" data-detail="tests">
+          <div class="assert-form">
+            <input type="text" id="assertDesc" class="full" placeholder="Description (optional)" list="assertDescHints" />
+            <input type="text" id="assertExpr" placeholder="Expression e.g. res.status" list="assertExpressions" />
+            <input type="text" id="assertOp" placeholder="Operator e.g. equals" list="assertOperators" />
+            <input type="text" id="assertExpected" class="full" placeholder="Expected value (optional for isEmpty, isDefined, …)" />
+            <button type="button" class="primary full" id="addAssertBtn">Add test</button>
+          </div>
+          <datalist id="assertOperators"></datalist>
+          <datalist id="assertExpressions"></datalist>
+          <datalist id="assertDescHints">
+            <option value="Status should be 200"></option>
+            <option value="Response body is valid"></option>
+          </datalist>
+          <ul class="assert-list" id="assertionList"></ul>
+          <p class="hint">Operators with autocomplete: equals, contains, isNotEmpty, gte, …</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ac-dropdown" id="acDropdown" hidden role="listbox"></div>
+  <div class="url-var-tooltip" id="urlVarTooltip" hidden role="tooltip"></div>
+
+  <script>
+    const vscode = acquireVsCodeApi();
+    const INIT = ${safeJson};
+    const OPS_NO_VALUE = new Set(['isNull','isNotNull','isEmpty','isNotEmpty','isDefined','isUndefined','isTruthy','isFalsy','isNumber','isString','isBoolean','isArray','isJson']);
+
+    let state = {
+      blocks: INIT.blocks || [],
+      activeBlockIndex: INIT.activeBlockIndex || 0,
+      detailTab: 'request',
+      form: INIT.form || { method: 'GET', url: '', headers: [], body: '' },
+      autoSave: !!INIT.autoSave,
+      dirty: false,
+      suppressChange: false,
+      projectEnvs: INIT.projectEnvs || [],
+      activeProjectEnv: INIT.activeProjectEnv || '',
+      envVariables: INIT.envVariables || [],
+      fileVariables: INIT.fileVariables || [],
+      assertions: INIT.assertions || [],
+      resolvedPreview: INIT.resolvedPreview || { effectiveEnv: '', envSource: 'workspace', resolvedUrl: '', bindings: [] },
+      globalFileEnv: INIT.globalFileEnv,
+      blockEnv: INIT.blockEnv,
+      helperSuggestions: INIT.helperSuggestions || [],
+    };
+
+    const els = {
+      fileName: document.getElementById('fileName'),
+      filePath: document.getElementById('filePath'),
+      dirtyLabel: document.getElementById('dirtyLabel'),
+      envBannerEffective: document.getElementById('envBannerEffective'),
+      envBannerPills: document.getElementById('envBannerPills'),
+      envBannerMoreBtn: document.getElementById('envBannerMoreBtn'),
+      envBannerCreateBtn: document.getElementById('envBannerCreateBtn'),
+      envBannerSource: document.getElementById('envBannerSource'),
+      envBannerMeta: document.getElementById('envBannerMeta'),
+      requestTabs: document.getElementById('requestTabs'),
+      testsBadge: document.getElementById('testsBadge'),
+      urlBackdrop: document.getElementById('urlBackdrop'),
+      urlVarTooltip: document.getElementById('urlVarTooltip'),
+      acDropdown: document.getElementById('acDropdown'),
+      projectEnvPills: document.getElementById('projectEnvPills'),
+      fileEnvRow: document.getElementById('fileEnvRow'),
+      fileEnvBadge: document.getElementById('fileEnvBadge'),
+      blockEnvRow: document.getElementById('blockEnvRow'),
+      blockEnvBadge: document.getElementById('blockEnvBadge'),
+      envVarTags: document.getElementById('envVarTags'),
+      fileVarTags: document.getElementById('fileVarTags'),
+      newVarKey: document.getElementById('newVarKey'),
+      newVarVal: document.getElementById('newVarVal'),
+      assertionList: document.getElementById('assertionList'),
+      assertDesc: document.getElementById('assertDesc'),
+      assertExpr: document.getElementById('assertExpr'),
+      assertOp: document.getElementById('assertOp'),
+      assertExpected: document.getElementById('assertExpected'),
+      addAssertBtn: document.getElementById('addAssertBtn'),
+      assertOperatorsList: document.getElementById('assertOperators'),
+      assertExpressionsList: document.getElementById('assertExpressions'),
+      method: document.getElementById('method'),
+      url: document.getElementById('url'),
+      body: document.getElementById('body'),
+      headersBody: document.getElementById('headersBody'),
+      sendBtn: document.getElementById('sendBtn'),
+      saveBtn: document.getElementById('saveBtn'),
+      copyCurlBtn: document.getElementById('copyCurlBtn'),
+      openTextBtn: document.getElementById('openTextBtn'),
+      addHeaderBtn: document.getElementById('addHeaderBtn'),
+      removeHeaderBtn: document.getElementById('removeHeaderBtn'),
+      selectEnvBtn: document.getElementById('selectEnvBtn'),
+      createEnvBtn: document.getElementById('createEnvBtn'),
+      addVarBtn: document.getElementById('addVarBtn'),
+      detailTabButtons: document.querySelectorAll('.detail-tab'),
+      detailPanes: document.querySelectorAll('.detail-pane'),
+    };
+
+    let saveTimer = null;
+    let acTarget = null;
+    let acIndex = 0;
+
+    function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+    function escHtml(s) { return escAttr(s); }
+    function post(command, extra) { vscode.postMessage(Object.assign({ command }, extra || {})); }
+
+    function getMaps() {
+      const fileMap = {};
+      state.fileVariables.forEach((v) => { fileMap[v.key] = v.value; fileMap[v.key.toLowerCase()] = v.value; });
+      const envMap = {};
+      state.envVariables.forEach((v) => { envMap[v.key.toLowerCase()] = v.value; });
+      return { fileMap, envMap };
+    }
+
+    function lookupBinding(inner) {
+      const trimmed = inner.trim();
+      if (trimmed.startsWith('@')) {
+        const h = (state.helperSuggestions || []).find((x) => x.insert.includes(trimmed) || x.label.includes(trimmed.split('(')[0]));
+        return { source: 'helper', value: null, tooltip: h ? h.description : 'Dynamic helper (resolved at run time)', cls: 'var-helper' };
+      }
+      const { fileMap, envMap } = getMaps();
+      if (fileMap[trimmed] !== undefined) {
+        return { source: 'file', value: fileMap[trimmed], tooltip: '# @var: ' + fileMap[trimmed], cls: 'var-file', masked: false };
+      }
+      const ev = envMap[trimmed.toLowerCase()];
+      if (ev !== undefined) {
+        const masked = /token|secret|password|api_key|apikey/i.test(trimmed);
+        return { source: 'env', value: ev, tooltip: '.env: ' + (masked ? '(hidden)' : ev), cls: 'var-env', masked };
+      }
+      return { source: 'missing', value: null, tooltip: 'Not defined in # @var or .env', cls: 'var-missing' };
+    }
+
+    let measureCanvas = null;
+    let measureFont = '';
+
+    function getMeasureContext(input) {
+      if (!measureCanvas) {
+        measureCanvas = document.createElement('canvas');
+      }
+      const style = window.getComputedStyle(input);
+      const font = style.font || style.fontWeight + ' ' + style.fontSize + ' ' + style.fontFamily;
+      const ctx = measureCanvas.getContext('2d');
+      if (font !== measureFont) {
+        ctx.font = font;
+        measureFont = font;
+      }
+      return ctx;
+    }
+
+    function getCharIndexFromMouseX(input, clientX) {
+      const text = input.value;
+      if (!text) {
+        return -1;
+      }
+      const rect = input.getBoundingClientRect();
+      const style = window.getComputedStyle(input);
+      const padL = parseFloat(style.paddingLeft) || 0;
+      const x = clientX - rect.left - padL + input.scrollLeft;
+      if (x <= 0) {
+        return 0;
+      }
+      const ctx = getMeasureContext(input);
+      const totalWidth = ctx.measureText(text).width;
+      if (x >= totalWidth) {
+        return text.length - 1;
+      }
+      for (let i = 1; i <= text.length; i++) {
+        if (ctx.measureText(text.slice(0, i)).width >= x) {
+          return i - 1;
+        }
+      }
+      return text.length - 1;
+    }
+
+    function findVarTokenAt(text, index) {
+      if (index < 0 || !text) {
+        return null;
+      }
+      const regex = /\\{\\{([^}]+)\\}\\}/g;
+      let m;
+      while ((m = regex.exec(text)) !== null) {
+        const start = m.index;
+        const end = m.index + m[0].length;
+        if (index >= start && index < end) {
+          return { inner: m[1], full: m[0], start, end };
+        }
+      }
+      return null;
+    }
+
+    function formatVarTooltip(inner) {
+      const b = lookupBinding(inner);
+      const name = inner.trim();
+      if (b.source === 'file') {
+        return '# @var ' + name + '\\n→ ' + (b.value || '(empty)');
+      }
+      if (b.source === 'env') {
+        return '.env ' + name + '\\n→ ' + (b.masked ? '(hidden — token/secret)' : b.value);
+      }
+      if (b.source === 'helper') {
+        return b.tooltip;
+      }
+      return 'Not defined in # @var or .env';
+    }
+
+    let lastUrlTooltip = '';
+
+    function showUrlVarTooltip(clientX, clientY, text) {
+      if (!els.urlVarTooltip) {
+        return;
+      }
+      if (text !== lastUrlTooltip) {
+        els.urlVarTooltip.textContent = text;
+        lastUrlTooltip = text;
+      }
+      els.urlVarTooltip.hidden = false;
+      const pad = 12;
+      let left = clientX + pad;
+      let top = clientY + pad;
+      els.urlVarTooltip.style.left = left + 'px';
+      els.urlVarTooltip.style.top = top + 'px';
+      const tr = els.urlVarTooltip.getBoundingClientRect();
+      if (tr.right > window.innerWidth) {
+        left = clientX - tr.width - pad;
+      }
+      if (tr.bottom > window.innerHeight) {
+        top = clientY - tr.height - pad;
+      }
+      els.urlVarTooltip.style.left = left + 'px';
+      els.urlVarTooltip.style.top = top + 'px';
+    }
+
+    function hideUrlVarTooltip() {
+      lastUrlTooltip = '';
+      if (els.urlVarTooltip) {
+        els.urlVarTooltip.hidden = true;
+      }
+    }
+
+    function onUrlMouseMove(e) {
+      const idx = getCharIndexFromMouseX(els.url, e.clientX);
+      const token = findVarTokenAt(els.url.value, idx);
+      if (!token) {
+        hideUrlVarTooltip();
+        return;
+      }
+      showUrlVarTooltip(e.clientX, e.clientY, formatVarTooltip(token.inner));
+    }
+
+    function onUrlMouseLeave() {
+      hideUrlVarTooltip();
+    }
+
+    function renderUrlHighlight() {
+      const text = els.url.value || '';
+      const regex = /\\{\\{([^}]+)\\}\\}/g;
+      let html = '';
+      let last = 0;
+      let m;
+      while ((m = regex.exec(text)) !== null) {
+        html += escHtml(text.slice(last, m.index));
+        const b = lookupBinding(m[1]);
+        html += '<span class="' + b.cls + '">' + escHtml(m[0]) + '</span>';
+        last = m.index + m[0].length;
+      }
+      html += escHtml(text.slice(last));
+      els.urlBackdrop.innerHTML = text ? html : '';
+      syncUrlScroll();
+    }
+
+    function syncUrlScroll() {
+      if (!els.urlBackdrop || !els.url) return;
+      els.urlBackdrop.scrollLeft = els.url.scrollLeft;
+    }
+
+    function hideAc() {
+      els.acDropdown.hidden = true;
+      acTarget = null;
+      acIndex = 0;
+    }
+
+    function getSuggestions(prefix) {
+      const p = prefix.toLowerCase();
+      const items = [];
+      const showHelpers = !p || p.startsWith('@') || p.length <= 2;
+      if (showHelpers) {
+        (state.helperSuggestions || []).forEach((h) => {
+          const needle = p.replace(/^@/, '');
+          if (!needle || h.label.toLowerCase().includes(needle) || h.insert.toLowerCase().includes(p)) {
+            items.push({ insert: h.insert, label: h.label, description: h.description, kind: 'helper' });
+          }
+        });
+      }
+      state.fileVariables.forEach((v) => {
+        if (!p || p.startsWith('@') || v.key.toLowerCase().startsWith(p)) {
+          items.push({ insert: '{{' + v.key + '}}', label: v.key, description: '# @var = ' + v.value, kind: 'file' });
+        }
+      });
+      state.envVariables.forEach((v) => {
+        if (!p || p.startsWith('@') || v.key.toLowerCase().startsWith(p)) {
+          items.push({
+            insert: '{{' + v.key + '}}',
+            label: v.key,
+            description: '.env = ' + (v.masked ? '••••' : v.value),
+            kind: 'env',
+          });
+        }
+      });
+      return items.slice(0, 14);
+    }
+
+    function showAc(el, items) {
+      if (!items.length) { hideAc(); return; }
+      acTarget = el;
+      acIndex = 0;
+      els.acDropdown.innerHTML = '';
+      items.forEach((item, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ac-item' + (idx === 0 ? ' active' : '');
+        btn.dataset.insert = item.insert;
+        btn.innerHTML =
+          '<span class="ac-kind ac-kind-' + item.kind + '">' + item.kind + '</span>' +
+          '<span class="ac-label">' + escHtml(item.label) + '</span>' +
+          '<div class="ac-desc">' + escHtml(item.description) + '</div>';
+        btn.addEventListener('mousedown', (e) => { e.preventDefault(); insertSuggestion(el, item.insert); });
+        els.acDropdown.appendChild(btn);
+      });
+      const rect = el.getBoundingClientRect();
+      els.acDropdown.style.left = rect.left + 'px';
+      els.acDropdown.style.top = (rect.bottom + 4) + 'px';
+      els.acDropdown.hidden = false;
+    }
+
+    function insertSuggestion(el, insertValue) {
+      const val = el.value;
+      const pos = el.selectionStart ?? val.length;
+      const before = val.slice(0, pos);
+      const start = before.lastIndexOf('{{');
+      if (start < 0) return;
+      const after = val.slice(pos);
+      el.value = val.slice(0, start) + insertValue + after;
+      const newPos = start + insertValue.length;
+      el.setSelectionRange(newPos, newPos);
+      hideAc();
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      if (el === els.url) renderUrlHighlight();
+    }
+
+    function checkAutocomplete(el) {
+      const val = el.value;
+      const pos = el.selectionStart ?? 0;
+      const before = val.slice(0, pos);
+      const match = before.match(/\\{\\{([^}]*)$/);
+      if (!match) { hideAc(); return; }
+      showAc(el, getSuggestions(match[1]));
+    }
+
+    function attachVarAutocomplete(el) {
+      el.addEventListener('input', () => checkAutocomplete(el));
+      el.addEventListener('keydown', (e) => {
+        if (els.acDropdown.hidden || acTarget !== el) return;
+        const items = els.acDropdown.querySelectorAll('.ac-item');
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          acIndex = Math.min(acIndex + 1, items.length - 1);
+          items.forEach((it, i) => it.classList.toggle('active', i === acIndex));
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          acIndex = Math.max(acIndex - 1, 0);
+          items.forEach((it, i) => it.classList.toggle('active', i === acIndex));
+        } else if (e.key === 'Enter' || e.key === 'Tab') {
+          const active = items[acIndex];
+          if (active) {
+            e.preventDefault();
+            insertSuggestion(el, active.dataset.insert || '');
+          }
+        } else if (e.key === 'Escape') {
+          hideAc();
+        }
+      });
+      el.addEventListener('blur', () => setTimeout(hideAc, 150));
+    }
+
+    function fillDatalists() {
+      (INIT.assertOperators || []).forEach((op) => {
+        const o = document.createElement('option');
+        o.value = op;
+        els.assertOperatorsList.appendChild(o);
+      });
+      (INIT.assertExpressions || []).forEach((ex) => {
+        const o = document.createElement('option');
+        o.value = ex;
+        els.assertExpressionsList.appendChild(o);
+      });
+    }
+
+    function setDirty(d) { state.dirty = d; els.dirtyLabel.hidden = !d; }
+
+    function setDetailTab(tab) {
+      state.detailTab = tab;
+      els.detailTabButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.detail === tab));
+      els.detailPanes.forEach((pane) => pane.classList.toggle('active', pane.dataset.detail === tab));
+    }
+
+    function readForm() {
+      const headers = [];
+      els.headersBody.querySelectorAll('tr').forEach((row) => {
+        headers.push({ key: row.querySelector('.h-key')?.value ?? '', value: row.querySelector('.h-val')?.value ?? '' });
+      });
+      return { method: els.method.value, url: els.url.value, headers, body: els.body.value };
+    }
+
+    function hasWorkspaceEnvs() {
+      return state.projectEnvs.length > 0;
+    }
+
+    function renderEnvBanner() {
+      const p = state.resolvedPreview;
+      const effective = p.effectiveEnv || '';
+      els.envBannerEffective.textContent = effective || '—';
+      els.envBannerEffective.classList.toggle('empty', !effective);
+      const srcLabels = { block: 'block # @env', file: 'file # @env', workspace: 'workspace' };
+      els.envBannerSource.textContent = effective ? (srcLabels[p.envSource] || 'workspace') : 'none';
+      els.envBannerSource.hidden = !effective;
+      let meta = '';
+      if (p.envSource === 'block' && state.blockEnv) {
+        meta = 'Using .env.' + state.blockEnv + ' from block # @env (workspace picker applies when no override)';
+      } else if (p.envSource === 'file' && state.globalFileEnv) {
+        meta = 'Using .env.' + state.globalFileEnv + ' from file # @env (workspace picker applies when no override)';
+      } else if (!hasWorkspaceEnvs()) {
+        meta = 'No .env files at project root — use + to create one';
+      }
+      els.envBannerMeta.textContent = meta;
+      els.envBannerMeta.hidden = !meta;
+      if (els.envBannerMoreBtn) {
+        els.envBannerMoreBtn.hidden = !hasWorkspaceEnvs();
+      }
+    }
+
+    function fillProjectEnvPills(container) {
+      if (!container) {
+        return;
+      }
+      container.innerHTML = '';
+      if (!hasWorkspaceEnvs()) {
+        const empty = document.createElement('span');
+        empty.className = 'empty-state';
+        empty.textContent = 'No .env files';
+        container.appendChild(empty);
+        return;
+      }
+      const effective = state.resolvedPreview.effectiveEnv;
+      state.projectEnvs.forEach((name) => {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        const isActive = !!state.activeProjectEnv && name === state.activeProjectEnv;
+        const isEffective = !!effective && name === effective;
+        pill.className = 'env-pill' + (isActive ? ' active' : '') + (isEffective ? ' file-env' : '');
+        pill.textContent = name + (isEffective && !isActive ? ' ✓' : '');
+        pill.title = isEffective
+          ? 'Resolves {{var}} from .env.' + name
+          : 'Switch workspace environment to .env.' + name;
+        pill.addEventListener('click', () => post('setProjectEnv', { envName: name }));
+        container.appendChild(pill);
+      });
+    }
+
+    function renderHeaders(headers) {
+      els.headersBody.innerHTML = '';
+      (headers.length ? headers : [{ key: '', value: '' }]).forEach((h) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td><input class="h-key" placeholder="Header" value="' + escAttr(h.key) + '" /></td>' +
+          '<td><input class="h-val var-ac-input" placeholder="Value" value="' + escAttr(h.value) + '" autocomplete="off" spellcheck="false" /></td>';
+        els.headersBody.appendChild(tr);
+        const inp = tr.querySelector('.h-val');
+        if (inp) attachVarAutocomplete(inp);
+      });
+    }
+
+    function applyForm(form, skipFocused) {
+      state.suppressChange = true;
+      if (!skipFocused || document.activeElement !== els.method) {
+        els.method.value = (form.method || 'GET').toUpperCase();
+      }
+      if (!skipFocused || document.activeElement !== els.url) {
+        els.url.value = form.url || '';
+        renderUrlHighlight();
+      }
+      if (!skipFocused || document.activeElement !== els.body) {
+        els.body.value = form.body || '';
+      }
+      if (!skipFocused || !els.headersBody.contains(document.activeElement)) {
+        renderHeaders(form.headers || []);
+      }
+      state.suppressChange = false;
+      renderEnvBanner();
+    }
+
+    function renderRequestTabs() {
+      const multi = state.blocks.length > 1;
+      els.requestTabs.hidden = !multi;
+      els.requestTabs.innerHTML = '';
+      if (!multi) return;
+      state.blocks.forEach((b) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'request-tab' + (b.index === state.activeBlockIndex ? ' active' : '');
+        btn.title = (b.method ? b.method + ' ' : '') + (b.url || b.label);
+        btn.innerHTML = '<span class="method-pill ' + escAttr(b.methodClass || 'method-other') + '">' + escHtml(b.method || 'REQ') + '</span><span>' + escHtml(b.label) + '</span>';
+        btn.addEventListener('click', () => { if (b.index !== state.activeBlockIndex) post('selectBlock', { blockIndex: b.index }); });
+        els.requestTabs.appendChild(btn);
+      });
+    }
+
+    function renderEnvPills() {
+      fillProjectEnvPills(els.projectEnvPills);
+      fillProjectEnvPills(els.envBannerPills);
+      if (state.globalFileEnv) {
+        els.fileEnvRow.hidden = false;
+        els.fileEnvBadge.innerHTML = '<span class="env-pill file-env">#' + escHtml(state.globalFileEnv) + '</span>';
+      } else els.fileEnvRow.hidden = true;
+      if (state.blockEnv && state.blockEnv !== state.globalFileEnv) {
+        els.blockEnvRow.hidden = false;
+        els.blockEnvBadge.innerHTML = '<span class="env-pill file-env">' + escHtml(state.blockEnv) + '</span>';
+      } else els.blockEnvRow.hidden = true;
+      if (els.selectEnvBtn) {
+        els.selectEnvBtn.hidden = !hasWorkspaceEnvs();
+      }
+    }
+
+    function renderEnvVarTags() {
+      els.envVarTags.innerHTML = '';
+      if (!state.envVariables.length) {
+        const effective = state.resolvedPreview.effectiveEnv;
+        const msg = effective
+          ? 'No keys in .env.' + escHtml(effective)
+          : 'No workspace .env file selected';
+        els.envVarTags.innerHTML = '<span class="empty-state">' + msg + '</span>';
+        return;
+      }
+      state.envVariables.forEach((v) => {
+        const span = document.createElement('span');
+        span.className = 'var-tag';
+        span.title = v.masked ? v.key + '=(hidden)' : v.key + '=' + v.value;
+        span.innerHTML = '<span class="var-key">{{' + escHtml(v.key) + '}}</span> ' + (v.masked ? '••••' : escHtml(v.value));
+        els.envVarTags.appendChild(span);
+      });
+    }
+
+    function renderFileVarTags() {
+      els.fileVarTags.innerHTML = '';
+      if (!state.fileVariables.length) {
+        els.fileVarTags.innerHTML = '<span class="empty-state">No # @var in file header</span>';
+        return;
+      }
+      state.fileVariables.forEach((v) => {
+        const span = document.createElement('span');
+        span.className = 'var-tag';
+        span.title = v.key + '=' + v.value;
+        span.innerHTML = '<span class="var-key">' + escHtml(v.key) + '</span>=<span>' + escHtml(v.value) + '</span><button type="button" class="remove">×</button>';
+        span.querySelector('.remove').addEventListener('click', (e) => { e.stopPropagation(); post('removeFileVar', { key: v.key }); });
+        els.fileVarTags.appendChild(span);
+      });
+    }
+
+    function saveAssertionsToFile() {
+      post('saveAssertions', { blockIndex: state.activeBlockIndex, assertions: state.assertions, silent: true });
+    }
+
+    function renderAssertions() {
+      const count = state.assertions.length;
+      els.testsBadge.hidden = count === 0;
+      els.testsBadge.textContent = String(count);
+      els.assertionList.innerHTML = '';
+      if (!count) {
+        els.assertionList.innerHTML = '<li class="empty-state">No tests yet — add one above</li>';
+        return;
+      }
+      state.assertions.forEach((a, idx) => {
+        const li = document.createElement('li');
+        li.className = 'assert-item';
+        li.innerHTML = '<div class="assert-item-body"><strong>' + escHtml(a.description || a.expression) + '</strong><div class="assert-expr">' + escHtml(a.expression) + ' <em>' + escHtml(a.operator) + '</em> ' + escHtml(a.expected || '') + '</div></div><button type="button" class="danger icon-btn">Remove</button>';
+        li.querySelector('button').addEventListener('click', () => {
+          state.assertions = state.assertions.filter((_, i) => i !== idx);
+          saveAssertionsToFile();
+        });
+        els.assertionList.appendChild(li);
+      });
+    }
+
+    function applyInit(msg) {
+      state.blocks = msg.blocks || [];
+      state.activeBlockIndex = msg.activeBlockIndex || 0;
+      state.autoSave = !!msg.autoSave;
+      state.projectEnvs = msg.projectEnvs || [];
+      state.activeProjectEnv = msg.activeProjectEnv || '';
+      state.envVariables = msg.envVariables || [];
+      state.fileVariables = msg.fileVariables || [];
+      state.helperSuggestions = msg.helperSuggestions || state.helperSuggestions;
+      state.assertions = msg.assertions || [];
+      state.resolvedPreview = msg.resolvedPreview || state.resolvedPreview;
+      state.globalFileEnv = msg.globalFileEnv;
+      state.blockEnv = msg.blockEnv;
+      els.fileName.textContent = msg.fileName || 'HTTP Request';
+      if (msg.filePath) {
+        const parts = msg.filePath.split(/[/\\\\]/);
+        els.filePath.textContent = parts.length > 2 ? parts.slice(-3).join('/') : msg.filePath;
+      }
+      renderRequestTabs();
+      renderEnvPills();
+      renderEnvVarTags();
+      renderFileVarTags();
+      renderAssertions();
+      applyForm(msg.form, true);
+      renderUrlHighlight();
+      renderEnvBanner();
+      setDetailTab(state.detailTab);
+      if (msg.dirty === false) setDirty(false);
+    }
+
+    function onFormChange() {
+      if (state.suppressChange) return;
+      state.form = readForm();
+      renderUrlHighlight();
+      renderEnvBanner();
+      setDirty(true);
+      if (state.autoSave) {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(
+          () => post('save', { form: state.form, blockIndex: state.activeBlockIndex, silent: true }),
+          600
+        );
+      } else {
+        post('change', { form: state.form, blockIndex: state.activeBlockIndex });
+      }
+    }
+
+    function bind() {
+      els.detailTabButtons.forEach((btn) => btn.addEventListener('click', () => setDetailTab(btn.dataset.detail)));
+      els.method.addEventListener('change', onFormChange);
+      els.url.addEventListener('input', onFormChange);
+      els.url.addEventListener('scroll', syncUrlScroll);
+      els.url.addEventListener('mousemove', onUrlMouseMove);
+      els.url.addEventListener('mouseleave', onUrlMouseLeave);
+      attachVarAutocomplete(els.url);
+      attachVarAutocomplete(els.body);
+      els.body.addEventListener('input', onFormChange);
+      els.headersBody.addEventListener('input', onFormChange);
+      els.sendBtn.addEventListener('click', () => post('send', { form: readForm(), blockIndex: state.activeBlockIndex }));
+      els.saveBtn.addEventListener('click', () => post('save', { form: readForm(), blockIndex: state.activeBlockIndex }));
+      els.copyCurlBtn.addEventListener('click', () => post('copyCurl', { blockIndex: state.activeBlockIndex }));
+      els.openTextBtn.addEventListener('click', () => post('openAsText'));
+      els.selectEnvBtn.addEventListener('click', () => post('selectEnvironment'));
+      els.createEnvBtn.addEventListener('click', () => post('createEnvironment'));
+      els.envBannerMoreBtn.addEventListener('click', () => post('selectEnvironment'));
+      els.envBannerCreateBtn.addEventListener('click', () => post('createEnvironment'));
+      els.addHeaderBtn.addEventListener('click', () => {
+        const f = readForm();
+        f.headers.push({ key: '', value: '' });
+        applyForm(f);
+        setDetailTab('headers');
+        onFormChange();
+      });
+      els.removeHeaderBtn.addEventListener('click', () => { const f = readForm(); if (f.headers.length > 1) f.headers.pop(); else f.headers = [{ key: '', value: '' }]; applyForm(f); onFormChange(); });
+      els.addVarBtn.addEventListener('click', () => { const k = els.newVarKey.value.trim(); const v = els.newVarVal.value.trim(); if (!k) return; post('addFileVar', { key: k, value: v }); els.newVarKey.value = ''; els.newVarVal.value = ''; });
+      els.addAssertBtn.addEventListener('click', () => {
+        const expression = els.assertExpr.value.trim();
+        const operator = els.assertOp.value.trim();
+        if (!expression || !operator) return;
+        const expected = els.assertExpected.value.trim();
+        if (!expected && !OPS_NO_VALUE.has(operator)) {
+          alert('This operator requires an expected value.');
+          return;
+        }
+        const description = els.assertDesc.value.trim() || expression;
+        state.assertions.push({ description, expression, operator, expected, raw: '' });
+        els.assertDesc.value = ''; els.assertExpr.value = ''; els.assertOp.value = ''; els.assertExpected.value = '';
+        renderAssertions();
+        saveAssertionsToFile();
+      });
+    }
+
+    window.addEventListener('message', (e) => { if (e.data?.type === 'init') applyInit(e.data); });
+    fillDatalists();
+    applyInit(INIT);
+    bind();
+    vscode.postMessage({ command: 'ready' });
+  </script>
+</body>
+</html>`;
+}

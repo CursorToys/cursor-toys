@@ -1,14 +1,14 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
-/** Activation commands from the DeepFlow skill (`.cursor/skills/deep-flow/SKILL.md`). */
-export const DEEPFLOW_CMD_INITIALIZE = 'Initialize DeepFlow';
-export const DEEPFLOW_CMD_CREATE_TASK_PREFIX = 'Create task';
+/** Activation commands from the DeepSpec skill (`.cursor/skills/deep-spec/SKILL.md`). */
+export const DEEPSPEC_CMD_INITIALIZE = 'Initialize DeepSpec';
+export const DEEPSPEC_CMD_CREATE_TASK_PREFIX = 'Create task';
 
-/** Spec types when creating a new draft via the DeepFlow panel. */
-export type DeepFlowSpecType = 'bug' | 'feature' | 'refactor' | 'chore' | 'docs' | 'spike';
+/** Spec types when creating a new draft via the DeepSpec panel. */
+export type DeepSpecType = 'bug' | 'feature' | 'refactor' | 'chore' | 'docs' | 'spike';
 
-export const DEEPFLOW_SPEC_TYPES: readonly { id: DeepFlowSpecType; label: string }[] = [
+export const DEEPSPEC_SPEC_TYPES: readonly { id: DeepSpecType; label: string }[] = [
   { id: 'feature', label: 'Feature' },
   { id: 'chore', label: 'Chore' },
   { id: 'bug', label: 'Bug' },
@@ -16,11 +16,11 @@ export const DEEPFLOW_SPEC_TYPES: readonly { id: DeepFlowSpecType; label: string
   { id: 'refactor', label: 'Refactor' },
   { id: 'spike', label: 'Spike' },
 ] as const;
-export const DEEPFLOW_CMD_APPROVE_TASK = 'Approve task';
-export const DEEPFLOW_CMD_COMPLETE_TASK = 'Complete task';
-export const DEEPFLOW_CMD_DISCARD_TASK = 'Discard task';
+export const DEEPSPEC_CMD_APPROVE_TASK = 'Approve task';
+export const DEEPSPEC_CMD_COMPLETE_TASK = 'Complete task';
+export const DEEPSPEC_CMD_DISCARD_TASK = 'Discard task';
 
-const DEEPFLOW_ROOT_RELATIVE = '.deepflow';
+const DEEPSPEC_ROOT_RELATIVE = '.deepspec';
 
 /**
  * Workspace-relative @ reference to a task folder (not individual spec files).
@@ -34,14 +34,14 @@ export function buildTaskFolderRef(
 }
 
 /**
- * Bootstrap DeepFlow: `.deepflow/` folder ref + Initialize DeepFlow.
+ * Bootstrap DeepSpec: `.deepspec/` folder ref + Initialize DeepSpec.
  */
 export function buildInitializeChatMessage(): string {
-  return `@${DEEPFLOW_ROOT_RELATIVE}\n\n${DEEPFLOW_CMD_INITIALIZE}`;
+  return `@${DEEPSPEC_ROOT_RELATIVE}\n\n${DEEPSPEC_CMD_INITIALIZE}`;
 }
 
 /** Label pasted with the draft task @ ref; user adds planning notes on the following lines. */
-export const DEEPFLOW_PLAN_LABEL = 'Plan';
+export const DEEPSPEC_PLAN_LABEL = 'Plan';
 
 /**
  * Draft task folder ref + Plan label (planning stage — paste only, no auto-submit).
@@ -52,7 +52,7 @@ export function buildPlanChatMessage(
   taskFolderUri: vscode.Uri
 ): string {
   const ref = buildTaskFolderRef(workspaceFsPath, taskFolderUri);
-  return `${ref}\n\n${DEEPFLOW_PLAN_LABEL}:\n`;
+  return `${ref}\n\n${DEEPSPEC_PLAN_LABEL}:\n`;
 }
 
 /**
@@ -62,7 +62,7 @@ export function buildApproveChatMessage(
   workspaceFsPath: string,
   taskFolderUri: vscode.Uri
 ): string {
-  return `${buildTaskFolderRef(workspaceFsPath, taskFolderUri)}\n\n${DEEPFLOW_CMD_APPROVE_TASK}`;
+  return `${buildTaskFolderRef(workspaceFsPath, taskFolderUri)}\n\n${DEEPSPEC_CMD_APPROVE_TASK}`;
 }
 
 /**
@@ -82,7 +82,7 @@ export function buildCompleteChatMessage(
   workspaceFsPath: string,
   taskFolderUri: vscode.Uri
 ): string {
-  return `${buildTaskFolderRef(workspaceFsPath, taskFolderUri)}\n\n${DEEPFLOW_CMD_COMPLETE_TASK}`;
+  return `${buildTaskFolderRef(workspaceFsPath, taskFolderUri)}\n\n${DEEPSPEC_CMD_COMPLETE_TASK}`;
 }
 
 /**
@@ -95,14 +95,14 @@ export function buildDiscardChatMessage(
 ): string {
   const trimmedReason = reason?.trim();
   const reasonBlock = trimmedReason ? `\n\nReason: ${trimmedReason}` : '';
-  return `${buildTaskFolderRef(workspaceFsPath, taskFolderUri)}\n\n${DEEPFLOW_CMD_DISCARD_TASK}${reasonBlock}`;
+  return `${buildTaskFolderRef(workspaceFsPath, taskFolderUri)}\n\n${DEEPSPEC_CMD_DISCARD_TASK}${reasonBlock}`;
 }
 
 /**
  * Chat message to create a new draft task (skill: Create task [name]).
  */
 export function buildCreateTaskChatMessage(
-  specType: DeepFlowSpecType,
+  specType: DeepSpecType,
   taskSlug: string,
   description: string
 ): string {
@@ -110,13 +110,13 @@ export function buildCreateTaskChatMessage(
   const body = trimmedDesc
     ? `\n\n**Type:** ${specType}\n\n${trimmedDesc}`
     : `\n\n**Type:** ${specType}`;
-  return `@${DEEPFLOW_ROOT_RELATIVE}/specs/drafts\n\n${DEEPFLOW_CMD_CREATE_TASK_PREFIX} ${taskSlug}${body}`;
+  return `@${DEEPSPEC_ROOT_RELATIVE}/specs/drafts\n\n${DEEPSPEC_CMD_CREATE_TASK_PREFIX} ${taskSlug}${body}`;
 }
 
 /**
  * Converts a title to a kebab-case task slug for folder names.
  */
-export function slugifyDeepflowTaskName(title: string): string {
+export function slugifyDeepspecTaskName(title: string): string {
   return title
     .trim()
     .toLowerCase()

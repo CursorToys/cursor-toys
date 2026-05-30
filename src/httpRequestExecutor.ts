@@ -9,19 +9,18 @@ import {
   HttpResponsePanel,
 } from './httpResponsePanel';
 import type { AssertionResult } from './assertionTypes';
+import {
+  type HttpRequestConfig,
+  isRestClientFormat,
+  parseHttpRequest,
+  parseRestClientFormat,
+} from './httpRequestParse';
+
+export { parseHttpRequest } from './httpRequestParse';
+export type { HttpRequestConfig } from './httpRequestParse';
 
 // Store execution times for response files
 const executionTimes: Map<string, string> = new Map();
-
-/**
- * Interface for structured HTTP request format
- */
-interface HttpRequestConfig {
-  method?: string;
-  url: string;
-  headers?: Record<string, string>;
-  body?: string | object;
-}
 
 /**
  * Result of HTTP request execution
@@ -32,299 +31,6 @@ export interface HttpRequestResult {
   headers: Record<string, string>;
   body: string;
   error?: string;
-}
-
-/**
- * Parses REST Client format (HTTP Request File format)
- * Format: METHOD URL\nHeader: Value\n\nBody
- * Standard separator: ### (three hashes) for multiple requests
- * Stops at: ###, /*, ##, or next HTTP method line
- * Only the first request is parsed
- * @param content The file content
- * @returns The parsed HTTP request configuration or null if parsing fails
- */
-function parseRestClientFormat(content: string): HttpRequestConfig | null {
-  const trimmed = content.trim();
-  
-  // Split by ### separator (REST Client standard) first
-  const beforeSeparator = trimmed.split('###')[0].trim();
-  if (!beforeSeparator) {
-    return null;
-  }
-  
-  // Find where the request ends (stop at /*, ##, or next HTTP method)
-  const allLines = beforeSeparator.split('\n');
-  let requestEndIndex = allLines.length;
-  let foundFirstMethod = false;
-  
-  for (let i = 0; i < allLines.length; i++) {
-    const line = allLines[i].trim();
-    
-    // Skip comments and variable declarations
-    if (line.startsWith('#')) {
-      continue;
-    }
-    
-    // Check if this is an HTTP method line
-    const isHttpMethod = /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+/i.test(line);
-    
-    if (isHttpMethod) {
-      if (foundFirstMethod) {
-        // Found a second HTTP method, stop here
-        requestEndIndex = i;
-        break;
-      }
-      foundFirstMethod = true;
-      continue;
-    }
-    
-    // Stop at assertion comments or ## headers (after finding first method)
-    if (foundFirstMethod) {
-      if (line.startsWith('/*') || line.startsWith('##')) {
-        requestEndIndex = i;
-        break;
-      }
-    }
-  }
-  
-  // Extract only the lines for this request
-  const requestLines = allLines.slice(0, requestEndIndex);
-  const firstRequest = requestLines.join('\n').trim();
-  if (!firstRequest) {
-    return null;
-  }
-  
-  // Split lines but preserve original content for body
-  const rawLines = firstRequest.split('\n');
-  const lines = rawLines.map(line => line.trim());
-  
-  if (lines.length === 0) {
-    return null;
-  }
-  
-  // Find the first line that is an HTTP method (skip comments and empty lines)
-  let methodLineIndex = -1;
-  let method: string | null = null;
-  let url: string | null = null;
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    // Skip empty lines and comments
-    if (line && !line.startsWith('#')) {
-      const methodUrlMatch = line.match(/^(\w+)\s+(.+)$/);
-      if (methodUrlMatch) {
-        const potentialMethod = methodUrlMatch[1].toUpperCase();
-        const potentialUrl = methodUrlMatch[2].trim().replace(/^["']|["']$/g, '');
-        
-        // Check if it's a valid HTTP method and URL
-        if (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'].includes(potentialMethod) &&
-            (potentialUrl.match(/^https?:\/\//i) || potentialUrl.match(/\{\{/))) {
-          methodLineIndex = i;
-          method = potentialMethod;
-          url = potentialUrl;
-          break;
-        }
-      }
-    }
-  }
-  
-  if (!method || !url || methodLineIndex === -1) {
-    return null;
-  }
-  
-  const headers: Record<string, string> = {};
-  let bodyStartIndex = -1;
-  
-  // Parse headers (lines with Header: Value format, starting after the method line)
-  for (let i = methodLineIndex + 1; i < lines.length; i++) {
-    const line = lines[i];
-    
-    // Empty line indicates end of headers and start of body
-    if (line === '') {
-      bodyStartIndex = i + 1;
-      break;
-    }
-    
-    // Check if line is a header (format: Header: Value)
-    const colonIndex = line.indexOf(':');
-    if (colonIndex > 0) {
-      const headerKey = line.substring(0, colonIndex).trim();
-      const headerValue = line.substring(colonIndex + 1).trim();
-      if (headerKey && headerValue) {
-        headers[headerKey] = headerValue;
-      }
-    } else {
-      // If line doesn't have colon and is not empty, it might be start of body
-      // But only if it's not a valid HTTP method line (which would be a new request)
-      if (!line.match(/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+https?:\/\/.+$/i)) {
-        bodyStartIndex = i;
-        break;
-      }
-    }
-  }
-  
-  // Parse body if present (use raw lines to preserve formatting)
-  let body: string | undefined;
-  if (bodyStartIndex >= 0 && bodyStartIndex < rawLines.length) {
-    const bodyLines = rawLines.slice(bodyStartIndex);
-    body = bodyLines.join('\n').trim();
-    if (body === '') {
-      body = undefined;
-    }
-  }
-  
-  return {
-    method,
-    url,
-    headers,
-    body
-  };
-}
-
-/**
- * Detects if content is in REST Client format
- * @param content The file content
- * @returns true if content appears to be REST Client format
- */
-function isRestClientFormat(content: string): boolean {
-  const trimmed = content.trim();
-  const lines = trimmed.split('\n');
-  
-  // Find the first non-comment, non-empty line that matches METHOD URL pattern
-  // Accept URLs starting with http:// or https://, or containing variables like {{BASE_URL}}
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-    // Skip empty lines and comments
-    if (trimmedLine && !trimmedLine.startsWith('#')) {
-      const methodUrlMatch = trimmedLine.match(/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(https?:\/\/|\{\{).+$/i);
-      if (methodUrlMatch) {
-        return true;
-      }
-    }
-  }
-  
-  return false;
-}
-
-/**
- * Parses the content of an HTTP request file
- * Supports structured JSON format, REST Client format, and raw curl commands
- * @param content The file content
- * @returns The parsed HTTP request configuration or null if parsing fails
- */
-export function parseHttpRequest(content: string): HttpRequestConfig | null {
-  const trimmed = content.trim();
-  
-  // Try to parse as JSON (structured format)
-  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (parsed.url) {
-        return {
-          method: parsed.method || 'GET',
-          url: parsed.url,
-          headers: parsed.headers || {},
-          body: parsed.body
-        };
-      }
-    } catch {
-      // Not valid JSON, continue to other formats
-    }
-  }
-  
-  // Try to parse as REST Client format (HTTP Request File)
-  if (isRestClientFormat(trimmed)) {
-    const restClientConfig = parseRestClientFormat(trimmed);
-    if (restClientConfig) {
-      return restClientConfig;
-    }
-  }
-  
-  // Try to parse as curl command
-  return parseCurlCommand(trimmed);
-}
-
-/**
- * Parses a curl command string and extracts HTTP request parameters
- * @param curlCommand The curl command string
- * @returns The parsed HTTP request configuration or null if parsing fails
- */
-function parseCurlCommand(curlCommand: string): HttpRequestConfig | null {
-  // Normalize: remove line breaks and extra spaces, but preserve quoted strings
-  let command = curlCommand.trim();
-  
-  // Remove 'curl' prefix if present
-  if (command.toLowerCase().startsWith('curl')) {
-    command = command.substring(4).trim();
-  }
-  
-  // Replace line breaks with spaces, but preserve content within quotes
-  command = command.replace(/\s+/g, ' ').trim();
-  
-  // Extract URL (usually the last argument or after -X)
-  // Try to match URLs with or without quotes
-  const urlPatterns = [
-    /['"]https?:\/\/[^'"]+['"]/i,
-    /https?:\/\/[^\s"']+/i
-  ];
-  
-  let url: string | null = null;
-  for (const pattern of urlPatterns) {
-    const urlMatch = command.match(pattern);
-    if (urlMatch) {
-      url = urlMatch[0].replace(/['"]/g, '');
-      break;
-    }
-  }
-  
-  if (!url) {
-    return null;
-  }
-  
-  // Extract method (-X GET, -X POST, etc.)
-  const methodMatch = command.match(/-X\s+(\w+)/i);
-  const method = methodMatch ? methodMatch[1].toUpperCase() : 'GET';
-  
-  // Extract headers (-H "Header: Value" or --header "Header: Value")
-  const headers: Record<string, string> = {};
-  // Match -H or --header with quoted or unquoted values
-  // Handle both single and double quotes, and escaped quotes
-  const headerRegex = /(?:-H|--header)\s+(["'])((?:(?:\\.|(?!\1)[^\\])*))\1/gi;
-  let headerMatch;
-  while ((headerMatch = headerRegex.exec(command)) !== null) {
-    const headerLine = headerMatch[2];
-    const colonIndex = headerLine.indexOf(':');
-    if (colonIndex > 0) {
-      const key = headerLine.substring(0, colonIndex).trim();
-      const value = headerLine.substring(colonIndex + 1).trim();
-      headers[key] = value;
-    }
-  }
-  
-  // Extract body (-d, --data, --data-raw, or --data-binary)
-  // Try to match with quotes first, then without
-  let body: string | undefined;
-  const bodyPatterns = [
-    /(?:--data-raw|--data-binary)\s+(["'])((?:(?:\\.|(?!\1)[^\\])*))\1/i,
-    /(?:-d|--data)\s+(["'])((?:(?:\\.|(?!\1)[^\\])*))\1/i,
-    /(?:--data-raw|--data-binary)\s+([^\s]+)/i,
-    /(?:-d|--data)\s+([^\s]+)/i
-  ];
-  
-  for (const pattern of bodyPatterns) {
-    const bodyMatch = command.match(pattern);
-    if (bodyMatch) {
-      body = bodyMatch[2] || bodyMatch[1];
-      break;
-    }
-  }
-  
-  return {
-    method,
-    url,
-    headers,
-    body
-  };
 }
 
 /**
@@ -1099,7 +805,7 @@ function findGlobalEnvironment(
  * @param startLine Start line of the section (0-based)
  * @returns Environment name or null if not found
  */
-function getEnvironmentForSection(
+export function getEnvironmentForSection(
   document: vscode.TextDocument,
   startLine: number
 ): string | null {

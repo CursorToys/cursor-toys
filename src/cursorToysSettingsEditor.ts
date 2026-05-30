@@ -370,7 +370,7 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       await pickString(settingKey, '.min', 'Minified file suffix (e.g. .min)');
       return;
 
-    case 'cursorToys.experimental.deepflow':
+    case 'cursorToys.experimental.deepspec':
       await pickBoolean(settingKey, false);
       return;
 

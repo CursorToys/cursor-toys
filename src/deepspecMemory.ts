@@ -1,23 +1,23 @@
 import * as vscode from 'vscode';
-import { getDeepflowMemoryUri, getDeepflowRootUri } from './deepflowPaths';
+import { getDeepspecMemoryUri, getDeepspecRootUri } from './deepspecPaths';
 import {
-  DeepflowMemoryDoc,
-  DeepflowMemoryEntry,
+  DeepspecMemoryDoc,
+  DeepspecMemoryEntry,
   parseMemoryMarkdown,
-} from './deepflowMemoryParser';
+} from './deepspecMemoryParser';
 
 /**
- * Reads and parses `.deepflow/memory.md` when DeepFlow is initialized.
+ * Reads and parses `.deepspec/memory.md` when DeepSpec is initialized.
  */
-export async function readDeepflowMemoryDoc(
+export async function readDeepspecMemoryDoc(
   root?: vscode.Uri
-): Promise<DeepflowMemoryDoc | undefined> {
-  const deepflowRoot = root ?? getDeepflowRootUri();
-  if (!deepflowRoot) {
+): Promise<DeepspecMemoryDoc | undefined> {
+  const deepspecRoot = root ?? getDeepspecRootUri();
+  if (!deepspecRoot) {
     return undefined;
   }
 
-  const memoryUri = getDeepflowMemoryUri(deepflowRoot);
+  const memoryUri = getDeepspecMemoryUri(deepspecRoot);
   try {
     const data = await vscode.workspace.fs.readFile(memoryUri);
     const content = Buffer.from(data).toString('utf8');
@@ -41,7 +41,7 @@ export function resolveArchiveTaskUri(
  * Opens the best spec file for a memory entry (archive ref → completion report).
  */
 export async function openMemoryEntryTarget(
-  entry: DeepflowMemoryEntry,
+  entry: DeepspecMemoryEntry,
   root: vscode.Uri
 ): Promise<void> {
   if (entry.kind === 'archived' && entry.archiveFolderName) {
@@ -63,25 +63,25 @@ export async function openMemoryEntryTarget(
     }
   }
 
-  await openDeepflowMemoryFile(root);
+  await openDeepspecMemoryFile(root);
 }
 
 /**
- * Opens `.deepflow/memory.md` in the editor.
+ * Opens `.deepspec/memory.md` in the editor.
  */
-export async function openDeepflowMemoryFile(root?: vscode.Uri): Promise<void> {
-  const deepflowRoot = root ?? getDeepflowRootUri();
-  if (!deepflowRoot) {
-    vscode.window.showErrorMessage('Open a workspace folder to view DeepFlow memory.');
+export async function openDeepspecMemoryFile(root?: vscode.Uri): Promise<void> {
+  const deepspecRoot = root ?? getDeepspecRootUri();
+  if (!deepspecRoot) {
+    vscode.window.showErrorMessage('Open a workspace folder to view DeepSpec memory.');
     return;
   }
-  const memoryUri = getDeepflowMemoryUri(deepflowRoot);
+  const memoryUri = getDeepspecMemoryUri(deepspecRoot);
   try {
     const doc = await vscode.workspace.openTextDocument(memoryUri);
     await vscode.window.showTextDocument(doc, { preview: false });
   } catch {
     vscode.window.showWarningMessage(
-      'DeepFlow memory file not found. Complete a task or initialize DeepFlow first.'
+      'DeepSpec memory file not found. Complete a task or initialize DeepSpec first.'
     );
   }
 }

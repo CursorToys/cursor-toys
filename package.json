@@ -1,8 +1,8 @@
 {
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
-  "description": "🚀 Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.5.29",
+  "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
+  "version": "2026.5.30",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -68,7 +68,7 @@
     "onView:cursor-toys.userSkills",
     "onView:cursor-toys.userHttp",
     "onView:cursor-toys.settings",
-    "onView:cursor-toys.deepflow",
+    "onView:cursor-toys.deepspec",
     "onView:cursor-toys.utils",
     "onCommand:cursor-toys.sendToChat",
     "onCommand:cursor-toys.sendSelectionToChat",
@@ -265,6 +265,15 @@
         "icon": "$(file)"
       },
       {
+        "command": "cursor-toys.newHttpRequest",
+        "title": "CursorToys: New HTTP Request",
+        "icon": "$(add)"
+      },
+      {
+        "command": "cursor-toys.openHttpRequestAsText",
+        "title": "CursorToys: Open HTTP Request as Text"
+      },
+      {
         "command": "cursor-toys.refreshUserHttp",
         "title": "CursorToys: Refresh HTTP",
         "icon": "$(refresh)"
@@ -378,8 +387,8 @@
         "title": "CursorToys: Focus View"
       },
       {
-        "command": "cursor-toys.focusDeepflow",
-        "title": "CursorToys: Focus DeepFlow",
+        "command": "cursor-toys.focusDeepspec",
+        "title": "CursorToys: Focus DeepSpec",
         "icon": "$(layers-active)"
       },
       {
@@ -403,73 +412,73 @@
           "icon": "$(refresh)"
         },
         {
-          "command": "cursor-toys.deepflow.refresh",
-          "title": "CursorToys: Refresh DeepFlow",
+          "command": "cursor-toys.deepspec.refresh",
+          "title": "CursorToys: Refresh DeepSpec",
           "icon": "$(refresh)"
         },
       {
-        "command": "cursor-toys.deepflow.initialize",
-        "title": "CursorToys: Initialize DeepFlow",
+        "command": "cursor-toys.deepspec.initialize",
+        "title": "CursorToys: Initialize DeepSpec",
         "icon": "$(sparkle)"
       },
       {
-        "command": "cursor-toys.deepflow.createTask",
-        "title": "CursorToys: New DeepFlow Spec",
+        "command": "cursor-toys.deepspec.createTask",
+        "title": "CursorToys: New DeepSpec",
         "icon": "$(add)"
       },
       {
-        "command": "cursor-toys.deepflow.openReview",
-        "title": "CursorToys: Review DeepFlow Spec",
+        "command": "cursor-toys.deepspec.openReview",
+        "title": "CursorToys: Review DeepSpec",
         "icon": "$(comment-discussion)"
       },
       {
-        "command": "cursor-toys.deepflow.openAbcFile",
-        "title": "CursorToys: Review DeepFlow Spec",
+        "command": "cursor-toys.deepspec.openAbcFile",
+        "title": "CursorToys: Review DeepSpec",
         "icon": "$(comment-discussion)"
       },
       {
-        "command": "cursor-toys.deepflow.openAbcFileInEditor",
-        "title": "CursorToys: Open DeepFlow Spec in Editor",
+        "command": "cursor-toys.deepspec.openAbcFileInEditor",
+        "title": "CursorToys: Open DeepSpec in Editor",
         "icon": "$(file-text)"
       },
       {
-        "command": "cursor-toys.deepflow.openMemory",
-        "title": "CursorToys: Open DeepFlow Memory",
+        "command": "cursor-toys.deepspec.openMemory",
+        "title": "CursorToys: Open DeepSpec Memory",
         "icon": "$(notebook)"
       },
       {
-        "command": "cursor-toys.deepflow.openMemoryEntry",
-        "title": "CursorToys: Open DeepFlow Memory Entry",
+        "command": "cursor-toys.deepspec.openMemoryEntry",
+        "title": "CursorToys: Open DeepSpec Memory Entry",
         "icon": "$(link-external)"
       },
       {
-        "command": "cursor-toys.deepflow.approveTask",
-        "title": "CursorToys: DeepFlow Send to Chat (Approve)",
+        "command": "cursor-toys.deepspec.approveTask",
+        "title": "CursorToys: DeepSpec Send to Chat (Approve)",
         "icon": "$(check)"
       },
       {
-        "command": "cursor-toys.deepflow.completeTask",
-        "title": "CursorToys: DeepFlow Send to Chat (Complete)",
+        "command": "cursor-toys.deepspec.completeTask",
+        "title": "CursorToys: DeepSpec Send to Chat (Complete)",
         "icon": "$(archive)"
       },
       {
-        "command": "cursor-toys.deepflow.discardTask",
-        "title": "CursorToys: Discard DeepFlow Draft",
+        "command": "cursor-toys.deepspec.discardTask",
+        "title": "CursorToys: Discard DeepSpec Draft",
         "icon": "$(close)"
       },
       {
-        "command": "cursor-toys.deepflow.sendToChatDiscard",
-        "title": "CursorToys: DeepFlow Send to Chat (Discard)",
+        "command": "cursor-toys.deepspec.sendToChatDiscard",
+        "title": "CursorToys: DeepSpec Send to Chat (Discard)",
         "icon": "$(comment-discussion)"
       },
       {
-        "command": "cursor-toys.deepflow.sendToChatExecute",
-        "title": "CursorToys: DeepFlow Send to Chat (Execute)",
+        "command": "cursor-toys.deepspec.sendToChatExecute",
+        "title": "CursorToys: DeepSpec Send to Chat (Execute)",
         "icon": "$(run)"
       },
       {
-        "command": "cursor-toys.deepflow.sendToChatPlan",
-        "title": "CursorToys: DeepFlow Send to Chat (Plan)",
+        "command": "cursor-toys.deepspec.sendToChatPlan",
+        "title": "CursorToys: DeepSpec Send to Chat (Plan)",
         "icon": "$(comment-discussion)"
       },
       {
@@ -786,9 +795,9 @@
           "visibility": "collapsed"
         },
         {
-          "id": "cursor-toys.deepflow",
-          "name": "DeepFlow",
-          "when": "cursorToys.deepflow.panelEnabled",
+          "id": "cursor-toys.deepspec",
+          "name": "DeepSpec",
+          "when": "cursorToys.deepspec.panelEnabled",
           "visibility": "collapsed"
         },
         {
@@ -865,7 +874,7 @@
           "group": "navigation@1"
         },
         {
-          "command": "cursor-toys.focusDeepflow",
+          "command": "cursor-toys.focusDeepspec",
           "when": "view == cursor-toys.settings",
           "group": "navigation@2"
         },
@@ -925,18 +934,18 @@
           "group": "navigation"
         },
         {
-          "command": "cursor-toys.deepflow.refresh",
-          "when": "view == cursor-toys.deepflow",
+          "command": "cursor-toys.deepspec.refresh",
+          "when": "view == cursor-toys.deepspec",
           "group": "navigation"
         },
         {
-          "command": "cursor-toys.deepflow.createTask",
-          "when": "view == cursor-toys.deepflow",
+          "command": "cursor-toys.deepspec.createTask",
+          "when": "view == cursor-toys.deepspec",
           "group": "navigation@1"
         },
         {
-          "command": "cursor-toys.deepflow.initialize",
-          "when": "view == cursor-toys.deepflow && cursorToys.deepflow.needsInit",
+          "command": "cursor-toys.deepspec.initialize",
+          "when": "view == cursor-toys.deepspec && cursorToys.deepspec.needsInit",
           "group": "navigation@2"
         },
         {
@@ -1067,6 +1076,11 @@
           "group": "inline"
         },
         {
+          "command": "cursor-toys.newHttpRequest",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userHttp/",
+          "group": "1_http@2"
+        },
+        {
           "command": "cursor-toys.runHttpTestsFile",
           "when": "view =~ /cursor-toys\\.(explorer\\.)?userHttp/ && viewItem == httpFile",
           "group": "inline@1"
@@ -1127,58 +1141,58 @@
           "group": "2_actions"
         },
         {
-          "command": "cursor-toys.deepflow.initialize",
-          "when": "view == cursor-toys.deepflow && viewItem == deepflowEmptyNeedInit",
+          "command": "cursor-toys.deepspec.initialize",
+          "when": "view == cursor-toys.deepspec && viewItem == deepspecEmptyNeedInit",
           "group": "inline"
         },
         {
-          "command": "cursor-toys.deepflow.approveTask",
-          "when": "view == cursor-toys.deepflow && viewItem == deepflowTaskDraft",
+          "command": "cursor-toys.deepspec.approveTask",
+          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskDraft",
           "group": "1_actions"
         },
         {
-          "command": "cursor-toys.deepflow.sendToChatPlan",
-          "when": "view == cursor-toys.deepflow && viewItem == deepflowTaskDraft",
+          "command": "cursor-toys.deepspec.sendToChatPlan",
+          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskDraft",
           "group": "1_actions"
         },
         {
-          "command": "cursor-toys.deepflow.discardTask",
-          "when": "view == cursor-toys.deepflow && viewItem == deepflowTaskDraft",
+          "command": "cursor-toys.deepspec.discardTask",
+          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskDraft",
           "group": "2_actions"
         },
         {
-          "command": "cursor-toys.deepflow.sendToChatDiscard",
-          "when": "view == cursor-toys.deepflow && viewItem == deepflowTaskDraft",
+          "command": "cursor-toys.deepspec.sendToChatDiscard",
+          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskDraft",
           "group": "2_actions"
         },
         {
-          "command": "cursor-toys.deepflow.sendToChatExecute",
-          "when": "view == cursor-toys.deepflow && viewItem == deepflowTaskActive",
+          "command": "cursor-toys.deepspec.sendToChatExecute",
+          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskActive",
           "group": "1_actions"
         },
         {
-          "command": "cursor-toys.deepflow.completeTask",
-          "when": "view == cursor-toys.deepflow && viewItem == deepflowTaskActive",
+          "command": "cursor-toys.deepspec.completeTask",
+          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskActive",
           "group": "1_actions"
         },
         {
-          "command": "cursor-toys.deepflow.openReview",
-          "when": "view == cursor-toys.deepflow && viewItem == deepflowAbcFile",
+          "command": "cursor-toys.deepspec.openReview",
+          "when": "view == cursor-toys.deepspec && viewItem == deepspecAbcFile",
           "group": "inline"
         },
         {
-          "command": "cursor-toys.deepflow.openAbcFileInEditor",
-          "when": "view == cursor-toys.deepflow && viewItem == deepflowAbcFile",
+          "command": "cursor-toys.deepspec.openAbcFileInEditor",
+          "when": "view == cursor-toys.deepspec && viewItem == deepspecAbcFile",
           "group": "1_actions"
         },
         {
-          "command": "cursor-toys.deepflow.openMemory",
-          "when": "view == cursor-toys.deepflow && viewItem == deepflowMemoryFile",
+          "command": "cursor-toys.deepspec.openMemory",
+          "when": "view == cursor-toys.deepspec && viewItem == deepspecMemoryFile",
           "group": "inline"
         },
         {
-          "command": "cursor-toys.deepflow.openMemoryEntry",
-          "when": "view == cursor-toys.deepflow && viewItem == deepflowMemoryEntry",
+          "command": "cursor-toys.deepspec.openMemoryEntry",
+          "when": "view == cursor-toys.deepspec && viewItem == deepspecMemoryEntry",
           "group": "inline"
         },
         {
@@ -1656,6 +1670,16 @@
           "default": "panel",
           "description": "Where to display HTTP responses after Send Request."
         },
+        "cursorToys.httpRequestEditor.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open .req/.request files from the HTTP folder in the visual request editor (Postman-style) instead of plain text."
+        },
+        "cursorToys.httpRequestEditor.autoSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically save changes from the HTTP request editor while you edit."
+        },
         "cursorToys.httpAssertionsEnabled": {
           "type": "boolean",
           "default": true,
@@ -1774,13 +1798,13 @@
     {
       "title": "Cursor Toys › Experimental",
         "properties": {
-          "cursorToys.experimental.deepflow": {
+          "cursorToys.experimental.deepspec": {
             "type": "boolean",
             "default": false,
             "order": 1,
-            "markdownDescription": "Show the **DeepFlow** section in the CursorToys activity bar sidebar: spec-driven tasks (drafts → in development → archive). Off by default; reload the window after changing."
+            "markdownDescription": "Show the **DeepSpec** section in the CursorToys activity bar sidebar: spec-driven tasks (drafts → in development → archive). Off by default; reload the window after changing."
           },
-          "cursorToys.deepflow.reviewPanelColumn": {
+          "cursorToys.deepspec.reviewPanelColumn": {
             "type": "string",
             "default": "active",
             "enum": [
@@ -1792,9 +1816,34 @@
               "Open the review panel beside the current editor (split view)."
             ],
             "order": 2,
-            "markdownDescription": "Where to open the **DeepFlow Spec Review** webview when you click an A-B-C file."
+            "markdownDescription": "Where to open the **DeepSpec Review** webview when you click an A-B-C file."
           }
         }
+      }
+    ],
+    "configurationDefaults": {
+      "workbench.editorAssociations": {
+        "**/.cursor/http/**/*.req": "cursorToys.httpRequest",
+        "**/.cursor/http/**/*.request": "cursorToys.httpRequest",
+        "**/.vscode/http/**/*.req": "cursorToys.httpRequest",
+        "**/.vscode/http/**/*.request": "cursorToys.httpRequest",
+        "**/.ai/http/**/*.req": "cursorToys.httpRequest",
+        "**/.ai/http/**/*.request": "cursorToys.httpRequest"
+      }
+    },
+    "customEditors": [
+      {
+        "viewType": "cursorToys.httpRequest",
+        "displayName": "HTTP Request",
+        "selector": [
+          {
+            "filenamePattern": "*.req"
+          },
+          {
+            "filenamePattern": "*.request"
+          }
+        ],
+        "priority": "default"
       }
     ],
     "languages": [
@@ -1866,6 +1915,7 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
+    "test:serializer": "npm run compile && node out/httpRequestEditorSerializer.test.js",
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
     "publish": "vsce publish"

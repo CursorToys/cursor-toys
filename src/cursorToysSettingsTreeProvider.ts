@@ -337,32 +337,32 @@ const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
     ],
   },
   {
-    id: 'deepflow',
-    label: 'DeepFlow',
+    id: 'deepspec',
+    label: 'DeepSpec',
     kind: 'category',
     iconId: 'layers-active',
     children: [
       {
-        id: 'deepflow-enable',
-        label: 'Toggle DeepFlow Panel',
+        id: 'deepspec-enable',
+        label: 'Toggle DeepSpec Panel',
         kind: 'action',
         iconId: 'checklist',
-        commandId: 'cursor-toys.settings.toggleDeepflow',
+        commandId: 'cursor-toys.settings.toggleDeepspec',
         description: 'Experimental spec-driven tasks',
       },
       {
-        id: 'deepflow-setting',
-        label: 'DeepFlow Setting',
+        id: 'deepspec-setting',
+        label: 'DeepSpec Setting',
         kind: 'setting',
         iconId: 'settings',
-        settingKey: 'cursorToys.experimental.deepflow',
+        settingKey: 'cursorToys.experimental.deepspec',
       },
       {
-        id: 'deepflow-initialize',
-        label: 'Initialize DeepFlow',
+        id: 'deepspec-initialize',
+        label: 'Initialize DeepSpec',
         kind: 'action',
         iconId: 'rocket',
-        commandId: 'cursor-toys.deepflow.initialize',
+        commandId: 'cursor-toys.deepspec.initialize',
       },
     ],
   },
@@ -477,12 +477,12 @@ export class CursorToysSettingsTreeProvider implements vscode.TreeDataProvider<C
 }
 
 /**
- * Toggles experimental DeepFlow panel visibility.
+ * Toggles experimental DeepSpec panel visibility.
  */
-export async function toggleDeepflowPanelSetting(): Promise<void> {
+export async function toggleDeepspecPanelSetting(): Promise<void> {
   const config = vscode.workspace.getConfiguration('cursorToys');
-  const current = config.get<boolean>('experimental.deepflow', false);
-  await config.update('experimental.deepflow', !current, vscode.ConfigurationTarget.Global);
+  const current = config.get<boolean>('experimental.deepspec', false);
+  await config.update('experimental.deepspec', !current, vscode.ConfigurationTarget.Global);
   const label = !current ? 'enabled' : 'disabled';
-  void vscode.window.showInformationMessage(`DeepFlow panel ${label}. Reload the window if the view does not update.`);
+  void vscode.window.showInformationMessage(`DeepSpec panel ${label}. Reload the window if the view does not update.`);
 }

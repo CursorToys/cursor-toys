@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import type { AbcFileKind, DeepFlowStage } from './deepflowPaths';
-import { ABC_FILE_NAMES } from './deepflowPaths';
-import { openDeepflowSpecFile } from './deepflowFileOps';
+import type { AbcFileKind, DeepSpecStage } from './deepspecPaths';
+import { ABC_FILE_NAMES } from './deepspecPaths';
+import { openDeepspecSpecFile } from './deepspecFileOps';
 import {
   addComment,
   excerptFromLineNumbers,
@@ -13,14 +13,14 @@ import {
   linesForComment,
   listForTask,
   removeComment,
-  type DeepflowReviewComment,
-} from './deepflowReviewSession';
+  type DeepspecReviewComment,
+} from './deepspecReviewSession';
 import {
   buildApproveChatMessage,
   buildTaskFolderRef,
-  DEEPFLOW_CMD_APPROVE_TASK,
-} from './deepflowChatPrompts';
-import { sendDeepflowToChat } from './deepflowSendToChat';
+  DEEPSPEC_CMD_APPROVE_TASK,
+} from './deepspecChatPrompts';
+import { sendDeepspecToChat } from './deepspecSendToChat';
 import {
   parseMarkdownBlocks,
   renderFencedCodeBlock,
@@ -32,22 +32,22 @@ import { escapeHtml, renderMarkdownLine } from './markdownLite';
 const MAX_FILE_BYTES = 500 * 1024;
 
 /** How the spec review webview is placed in the editor area (`active` = full column, `beside` = split). */
-export type DeepflowReviewPanelColumn = 'active' | 'beside';
+export type DeepspecReviewPanelColumn = 'active' | 'beside';
 
 /**
- * Resolves the editor column for the DeepFlow review webview from workspace settings.
+ * Resolves the editor column for the DeepSpec review webview from workspace settings.
  */
-export function getDeepflowReviewViewColumn(): vscode.ViewColumn {
+export function getDeepspecReviewViewColumn(): vscode.ViewColumn {
   const mode = vscode.workspace
     .getConfiguration('cursorToys')
-    .get<DeepflowReviewPanelColumn>('deepflow.reviewPanelColumn', 'active');
+    .get<DeepspecReviewPanelColumn>('deepspec.reviewPanelColumn', 'active');
   return mode === 'beside' ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active;
 }
 
-export interface DeepflowReviewPanelContext {
+export interface DeepspecReviewPanelContext {
   fileUri: vscode.Uri;
   taskFolderUri: vscode.Uri;
-  stage: DeepFlowStage;
+  stage: DeepSpecStage;
   abcKind?: AbcFileKind;
   taskId?: string;
 }
@@ -62,10 +62,10 @@ const COMMENT_MARKER_ICON_SVG = `<svg class="comment-marker-icon" viewBox="0 0 1
 </svg>`;
 
 /**
- * Webview panel for DeepFlow spec review (rendered markdown, line comments, send to chat, approve).
+ * Webview panel for DeepSpec spec review (rendered markdown, line comments, send to chat, approve).
  */
-export class DeepflowReviewPanel {
-  private static currentPanel: DeepflowReviewPanel | undefined;
+export class DeepspecReviewPanel {
+  private static currentPanel: DeepspecReviewPanel | undefined;
 
   private readonly disposables: vscode.Disposable[] = [];
   private sourceLines: string[] = [];
@@ -73,11 +73,11 @@ export class DeepflowReviewPanel {
 
   private constructor(
     private readonly panel: vscode.WebviewPanel,
-    private context: DeepflowReviewPanelContext,
+    private context: DeepspecReviewPanelContext,
     private readonly extensionUri: vscode.Uri
   ) {
     this.fileName = path.basename(context.fileUri.fsPath);
-    this.panel.iconPath = vscode.Uri.joinPath(extensionUri, 'resources', 'deepflow.svg');
+    this.panel.iconPath = vscode.Uri.joinPath(extensionUri, 'resources', 'deepspec.svg');
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
     void this.reloadAndRender();
     this.panel.webview.onDidReceiveMessage(
@@ -89,19 +89,19 @@ export class DeepflowReviewPanel {
 
   static async createOrShow(
     extensionUri: vscode.Uri,
-    ctx: DeepflowReviewPanelContext
+    ctx: DeepspecReviewPanelContext
   ): Promise<void> {
-    const column = getDeepflowReviewViewColumn();
-    if (DeepflowReviewPanel.currentPanel) {
-      DeepflowReviewPanel.currentPanel.context = ctx;
-      DeepflowReviewPanel.currentPanel.panel.reveal(column);
-      await DeepflowReviewPanel.currentPanel.reloadAndRender();
+    const column = getDeepspecReviewViewColumn();
+    if (DeepspecReviewPanel.currentPanel) {
+      DeepspecReviewPanel.currentPanel.context = ctx;
+      DeepspecReviewPanel.currentPanel.panel.reveal(column);
+      await DeepspecReviewPanel.currentPanel.reloadAndRender();
       return;
     }
 
     const panel = vscode.window.createWebviewPanel(
-      'cursorToysDeepflowReview',
-      'DeepFlow Spec Review',
+      'cursorToysDeepspecReview',
+      'DeepSpec Review',
       column,
       {
         enableScripts: true,
@@ -110,11 +110,11 @@ export class DeepflowReviewPanel {
       }
     );
 
-    DeepflowReviewPanel.currentPanel = new DeepflowReviewPanel(panel, ctx, extensionUri);
+    DeepspecReviewPanel.currentPanel = new DeepspecReviewPanel(panel, ctx, extensionUri);
   }
 
   private dispose(): void {
-    DeepflowReviewPanel.currentPanel = undefined;
+    DeepspecReviewPanel.currentPanel = undefined;
     this.panel.dispose();
     while (this.disposables.length) {
       this.disposables.pop()?.dispose();
@@ -175,7 +175,7 @@ export class DeepflowReviewPanel {
         await this.handleApprove();
         break;
       case 'openInEditor':
-        await openDeepflowSpecFile(this.context.fileUri);
+        await openDeepspecSpecFile(this.context.fileUri);
         break;
       default:
         break;
@@ -230,13 +230,21 @@ export class DeepflowReviewPanel {
       this.context.taskFolderUri,
       this.context.stage
     );
-    const sent = await sendDeepflowToChat(payload);
+    const sent = await sendDeepspecToChat(payload);
     if (sent) {
+      this.postClearSelection();
       void vscode.window.showInformationMessage(
-        `DeepFlow: sent ${comments.length} review comment(s) to chat.`
+        `DeepSpec: sent ${comments.length} review comment(s) to chat.`
       );
     } else {
-      vscode.window.showErrorMessage('DeepFlow: could not send review to chat.');
+      vscode.window.showErrorMessage('DeepSpec: could not send review to chat.');
+    }
+  }
+
+  /** Resets line selection and inline draft composer in the webview after chat send. */
+  private postClearSelection(): void {
+    if (this.panel.visible) {
+      void this.panel.webview.postMessage({ command: 'clearSelection' });
     }
   }
 
@@ -280,12 +288,17 @@ export class DeepflowReviewPanel {
 
     if (stage === 'drafts') {
       const payload = includeComments
-        ? `${formatReviewForChat(workspacePath, taskFolderUri, stage)}\n\n---\n\n${DEEPFLOW_CMD_APPROVE_TASK}`
+        ? `${formatReviewForChat(workspacePath, taskFolderUri, stage)}\n\n---\n\n${DEEPSPEC_CMD_APPROVE_TASK}`
         : buildApproveChatMessage(workspacePath, taskFolderUri);
-      await sendDeepflowToChat(payload);
-      if (includeComments) {
+      const sent = await sendDeepspecToChat(payload);
+      if (sent) {
+        if (includeComments) {
+          this.postClearSelection();
+        }
         void vscode.window.showInformationMessage(
-          'DeepFlow: approval sent to chat with review comments.'
+          includeComments
+            ? 'DeepSpec: approval sent to chat with review comments.'
+            : 'DeepSpec: approval sent to chat.'
         );
       }
       return;
@@ -294,23 +307,28 @@ export class DeepflowReviewPanel {
     if (stage === 'active') {
       if (includeComments) {
         const payload = `${formatReviewForChat(workspacePath, taskFolderUri, stage)}\n\n---\n\nSpec review approved (LGTM). No folder move; no code changes requested.`;
-        await sendDeepflowToChat(payload);
-        void vscode.window.showInformationMessage(
-          'DeepFlow: LGTM sent to chat with review comments.'
-        );
+        const sent = await sendDeepspecToChat(payload);
+        if (sent) {
+          this.postClearSelection();
+          void vscode.window.showInformationMessage(
+            'DeepSpec: LGTM sent to chat with review comments.'
+          );
+        }
       } else {
         void vscode.window.showInformationMessage('Spec review approved (LGTM).');
         const lgtm = `${buildTaskFolderRef(workspacePath, taskFolderUri)}\n\nSpec review approved (LGTM). No folder move; no code changes requested.`;
-        await sendDeepflowToChat(lgtm, { submit: false });
+        await sendDeepspecToChat(lgtm, { submit: false });
       }
     }
   }
 
   private buildLineRowsHtml(
-    comments: DeepflowReviewComment[],
+    comments: DeepspecReviewComment[],
     fileKey: string
   ): string {
     const commentByLine = commentOnLineMap(comments, fileKey);
+    const fileComments = comments.filter((c) => c.fileUri === fileKey);
+    const renderedCommentIds = new Set<string>();
     const blocks = parseMarkdownBlocks(this.sourceLines);
     const rows: string[] = [];
 
@@ -327,6 +345,12 @@ export class DeepflowReviewPanel {
               'block-table'
             )
           );
+          this.appendCommentBubblesAfterRow(
+            rows,
+            block.endLine,
+            fileComments,
+            renderedCommentIds
+          );
           break;
         case 'mermaid':
           rows.push(
@@ -338,6 +362,12 @@ export class DeepflowReviewPanel {
               fileKey,
               'block-mermaid'
             )
+          );
+          this.appendCommentBubblesAfterRow(
+            rows,
+            block.endLine,
+            fileComments,
+            renderedCommentIds
           );
           break;
         case 'fenced':
@@ -351,10 +381,17 @@ export class DeepflowReviewPanel {
               'block-fenced in-code'
             )
           );
+          this.appendCommentBubblesAfterRow(
+            rows,
+            block.endLine,
+            fileComments,
+            renderedCommentIds
+          );
           break;
         case 'lines':
           for (let num = block.startLine; num <= block.endLine; num++) {
             rows.push(this.buildSingleLineRowHtml(num, commentByLine));
+            this.appendCommentBubblesAfterRow(rows, num, fileComments, renderedCommentIds);
           }
           break;
       }
@@ -363,8 +400,42 @@ export class DeepflowReviewPanel {
     return rows.join('');
   }
 
+  /** Inserts saved-comment bubbles below the anchor line for comments not yet rendered. */
+  private appendCommentBubblesAfterRow(
+    rows: string[],
+    rowEndLine: number,
+    fileComments: DeepspecReviewComment[],
+    renderedCommentIds: Set<string>
+  ): void {
+    for (const comment of fileComments) {
+      if (renderedCommentIds.has(comment.id)) {
+        continue;
+      }
+      const anchorLine = Math.max(...linesForComment(comment));
+      if (anchorLine === rowEndLine) {
+        rows.push(this.buildSavedCommentBubbleHtml(comment));
+        renderedCommentIds.add(comment.id);
+      }
+    }
+  }
+
+  private buildSavedCommentBubbleHtml(comment: DeepspecReviewComment): string {
+    const range = formatCommentLineLabel(comment);
+    const linesJson = escapeHtml(JSON.stringify(linesForComment(comment)));
+    return `<div class="saved-comment-row" data-comment-id="${escapeHtml(comment.id)}" data-lines="${linesJson}" data-start="${comment.startLine}" data-end="${comment.endLine}">
+  <div class="inline-comment-gutter"></div>
+  <div class="saved-comment-bubble">
+    <div class="saved-comment-header">
+      <span class="saved-comment-range">${escapeHtml(range)}</span>
+      <button type="button" class="comment-remove" data-remove="${escapeHtml(comment.id)}" title="Remove comment" aria-label="Remove comment on ${escapeHtml(range)}">×</button>
+    </div>
+    <div class="saved-comment-body">${escapeHtml(comment.body)}</div>
+  </div>
+</div>`;
+  }
+
   private buildMarkerHtml(
-    onLine: DeepflowReviewComment | undefined
+    onLine: DeepspecReviewComment | undefined
   ): string {
     if (!onLine) {
       return '<span class="comment-marker-slot"></span>';
@@ -379,8 +450,8 @@ export class DeepflowReviewPanel {
   private findCommentInRange(
     startLine: number,
     endLine: number,
-    commentByLine: Map<number, DeepflowReviewComment>
-  ): DeepflowReviewComment | undefined {
+    commentByLine: Map<number, DeepspecReviewComment>
+  ): DeepspecReviewComment | undefined {
     for (let n = startLine; n <= endLine; n++) {
       const c = commentByLine.get(n);
       if (c) {
@@ -392,7 +463,7 @@ export class DeepflowReviewPanel {
 
   private buildSingleLineRowHtml(
     num: number,
-    commentByLine: Map<number, DeepflowReviewComment>
+    commentByLine: Map<number, DeepspecReviewComment>
   ): string {
     const line = this.sourceLines[num - 1] ?? '';
     const onLine = commentByLine.get(num);
@@ -415,7 +486,7 @@ export class DeepflowReviewPanel {
     startLine: number,
     endLine: number,
     contentHtml: string,
-    commentByLine: Map<number, DeepflowReviewComment>,
+    commentByLine: Map<number, DeepspecReviewComment>,
     _fileKey: string,
     extraClass: string
   ): string {
@@ -441,27 +512,11 @@ export class DeepflowReviewPanel {
 </div>`;
   }
 
-  private buildHtml(comments: DeepflowReviewComment[], stage: DeepFlowStage): string {
+  private buildHtml(comments: DeepspecReviewComment[], stage: DeepSpecStage): string {
     const nonce = getNonce();
     const webview = this.panel.webview;
     const fileKey = this.context.fileUri.toString();
-    const fileComments = comments.filter((c) => c.fileUri === fileKey);
     const linesHtml = this.buildLineRowsHtml(comments, fileKey);
-
-    const commentsHtml =
-      fileComments.length === 0
-        ? '<p class="muted">No comments on this file yet. Use the chat icon beside a line to comment.</p>'
-        : fileComments
-            .map((c) => {
-              const range = formatCommentLineLabel(c);
-              const linesJson = escapeHtml(JSON.stringify(linesForComment(c)));
-              return `<div class="comment-card" data-comment-id="${escapeHtml(c.id)}" data-lines="${linesJson}" data-goto-start="${c.startLine}" data-goto-end="${c.endLine}">
-  <div class="comment-meta"><strong>${escapeHtml(c.fileName)}</strong> ${escapeHtml(range)}</div>
-  <div class="comment-body">${escapeHtml(c.body)}</div>
-  <button type="button" class="link-btn" data-remove="${escapeHtml(c.id)}">Remove</button>
-</div>`;
-            })
-            .join('');
 
     const abcLabel = this.context.abcKind
       ? ABC_FILE_NAMES[this.context.abcKind]
@@ -480,7 +535,7 @@ export class DeepflowReviewPanel {
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource} 'nonce-${nonce}' https://cdn.jsdelivr.net;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DeepFlow Spec Review</title>
+  <title>DeepSpec Review</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -537,11 +592,10 @@ export class DeepflowReviewPanel {
     .doc-wrap {
       flex: 1;
       overflow: auto;
-      border-right: 1px solid var(--vscode-panel-border);
     }
     .doc {
-      padding: 12px 0 24px;
-      max-width: 920px;
+      padding: 12px 16px 24px;
+      max-width: 100%;
     }
     .line-row {
       display: flex;
@@ -775,21 +829,88 @@ export class DeepflowReviewPanel {
       font-size: 10px;
       white-space: nowrap;
     }
-    .sidebar {
-      width: 320px;
-      min-width: 260px;
-      overflow: auto;
-      padding: 12px;
-      background: var(--vscode-sideBar-background);
+    .inline-comment-row,
+    .saved-comment-row {
+      display: flex;
+      align-items: flex-start;
     }
-    .sidebar h2 { margin: 0 0 8px; font-size: 0.95em; }
-    .muted { color: var(--vscode-descriptionForeground); font-size: 12px; }
-    .comment-form {
-      margin: 12px 0;
-      padding-top: 12px;
-      border-top: 1px solid var(--vscode-panel-border);
+    .inline-comment-row {
+      border-left: 3px solid var(--vscode-focusBorder);
+      background: var(--vscode-editor-inactiveSelectionBackground);
     }
-    .comment-form label { display: block; font-size: 12px; margin-bottom: 4px; }
+    .saved-comment-row {
+      border-left: 3px solid var(--vscode-charts-blue, var(--vscode-textLink-foreground));
+    }
+    .saved-comment-row.active .saved-comment-bubble {
+      border-color: var(--vscode-focusBorder);
+      outline: 1px solid var(--vscode-focusBorder);
+    }
+    .inline-comment-gutter {
+      flex: 0 0 68px;
+    }
+    .inline-comment-inner {
+      flex: 1;
+      min-width: 0;
+      margin: 6px 16px 14px 0;
+      padding: 10px 12px;
+      border: 1px solid var(--vscode-input-border);
+      border-radius: 6px;
+      background: var(--vscode-input-background);
+    }
+    .saved-comment-bubble {
+      flex: 1;
+      min-width: 0;
+      margin: 4px 16px 12px 0;
+      padding: 8px 10px;
+      border: 1px solid var(--vscode-input-border);
+      border-radius: 6px;
+      background: var(--vscode-input-background);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    }
+    .saved-comment-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .saved-comment-range {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--vscode-descriptionForeground);
+    }
+    .comment-remove {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 22px;
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: var(--vscode-descriptionForeground);
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .comment-remove:hover {
+      background: var(--vscode-toolbar-hoverBackground);
+      color: var(--vscode-errorForeground);
+    }
+    .saved-comment-body {
+      font-size: 13px;
+      white-space: pre-wrap;
+      line-height: 1.45;
+    }
+    .inline-comment-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--vscode-foreground);
+    }
     textarea {
       width: 100%;
       min-height: 72px;
@@ -801,35 +922,19 @@ export class DeepflowReviewPanel {
       font-family: inherit;
       resize: vertical;
     }
-    .comment-card {
-      margin-bottom: 10px;
-      padding: 8px;
-      border-radius: 4px;
-      background: var(--vscode-input-background);
-      border: 1px solid var(--vscode-input-border);
-      cursor: pointer;
+    .inline-comment-body {
+      width: 100%;
+      min-height: 72px;
+      margin-bottom: 8px;
     }
-    .comment-card:hover,
-    .comment-card.active {
-      border-color: var(--vscode-focusBorder);
-      outline: 1px solid var(--vscode-focusBorder);
-    }
-    .comment-meta { font-size: 11px; margin-bottom: 4px; }
-    .comment-body { font-size: 13px; white-space: pre-wrap; }
-    .selection-hint {
-      font-size: 12px;
-      margin: 8px 0;
-      color: var(--vscode-descriptionForeground);
-    }
-    .range-actions {
+    .inline-comment-actions {
       display: flex;
-      gap: 6px;
-      margin-top: 6px;
-      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
     }
-    .range-actions button {
+    .inline-comment-actions button {
       font-size: 12px;
-      padding: 4px 8px;
+      padding: 4px 12px;
     }
   </style>
 </head>
@@ -850,24 +955,12 @@ export class DeepflowReviewPanel {
     <div class="doc-wrap">
       <div class="doc" id="doc">${linesHtml}</div>
     </div>
-    <aside class="sidebar">
-      <h2>Comments</h2>
-      <p class="selection-hint" id="selection-hint">Click two line numbers for a range, Shift+click to extend, Ctrl/Cmd+click to pick separate lines. Hover for +.</p>
-      <div class="range-actions" id="range-actions" hidden>
-        <button type="button" class="secondary" id="btn-clear-range">Clear selection</button>
-      </div>
-      <div id="comments-list">${commentsHtml}</div>
-      <div class="comment-form">
-        <label for="comment-body" id="comment-label">Comment on selection</label>
-        <textarea id="comment-body" placeholder="Review note for the agent…"></textarea>
-        <button type="button" id="btn-add" style="margin-top:8px">Add comment</button>
-      </div>
-    </aside>
   </div>
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     let selectedLines = [];
     let rangeAnchor = null;
+    let draftComposer = null;
 
     function isMeta(e) {
       return e.ctrlKey || e.metaKey;
@@ -908,23 +1001,10 @@ export class DeepflowReviewPanel {
       return sorted.map((n) => 'L' + n).join(', ');
     }
 
-    function updateHint() {
-      const el = document.getElementById('selection-hint');
-      const rangeActions = document.getElementById('range-actions');
-      const label = document.getElementById('comment-label');
-      const sel = getSelection();
-      if (!sel) {
-        el.textContent = 'Click two line numbers for a range, Shift+click to extend, Ctrl/Cmd+click to pick separate lines. Hover for +.';
-        rangeActions.hidden = true;
-        label.textContent = 'Comment on selection';
-        return;
-      }
-      const contiguous = linesContiguous(sel.lines);
-      el.textContent = contiguous && sel.lines.length > 1
-        ? 'Selected: ' + formatLinesLabel(sel.lines) + ' (one comment for the block)'
-        : 'Selected: ' + formatLinesLabel(sel.lines);
-      label.textContent = 'Comment on ' + formatLinesLabelShort(sel.lines);
-      rangeActions.hidden = false;
+    function setSelectedLines(lines) {
+      selectedLines = [...new Set(lines)].sort((a, b) => a - b);
+      rangeAnchor = selectedLines.length === 1 ? selectedLines[0] : null;
+      applySelectionHighlight();
     }
 
     function applySelectionHighlight() {
@@ -943,9 +1023,9 @@ export class DeepflowReviewPanel {
       });
     }
 
-    function highlightCommentCard(commentId) {
-      document.querySelectorAll('.comment-card').forEach((card) => {
-        card.classList.toggle('active', card.getAttribute('data-comment-id') === commentId);
+    function highlightCommentBubble(commentId) {
+      document.querySelectorAll('.saved-comment-row').forEach((row) => {
+        row.classList.toggle('active', row.getAttribute('data-comment-id') === commentId);
       });
     }
 
@@ -965,19 +1045,123 @@ export class DeepflowReviewPanel {
     function highlightCommentLines(lines, commentId) {
       const set = new Set(lines);
       document.querySelectorAll('.line-row').forEach((row) => {
-        const n = parseInt(row.getAttribute('data-line'), 10);
-        row.classList.toggle('comment-highlight', set.has(n));
+        let nums = [];
+        if (row.hasAttribute('data-line-start')) {
+          const start = parseInt(row.getAttribute('data-line-start'), 10);
+          const end = parseInt(row.getAttribute('data-line-end'), 10);
+          nums = fillRange(start, end);
+        } else if (row.hasAttribute('data-line')) {
+          nums = [parseInt(row.getAttribute('data-line'), 10)];
+        }
+        const hit = nums.some((n) => set.has(n));
+        row.classList.toggle('comment-highlight', hit);
       });
-      highlightCommentCard(commentId);
-      const card = document.querySelector('.comment-card[data-comment-id="' + commentId + '"]');
-      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      highlightCommentBubble(commentId);
+      const bubble = document.querySelector('.saved-comment-row[data-comment-id="' + commentId + '"]');
+      if (bubble) bubble.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    function setSelectedLines(lines) {
-      selectedLines = [...new Set(lines)].sort((a, b) => a - b);
-      rangeAnchor = selectedLines.length === 1 ? selectedLines[0] : null;
-      updateHint();
+    function clearSelectionState() {
+      closeInlineComposer({ confirmIfDirty: false });
+      selectedLines = [];
+      rangeAnchor = null;
       applySelectionHighlight();
+      document.querySelectorAll('.line-row').forEach((r) => r.classList.remove('comment-highlight'));
+      document.querySelectorAll('.saved-comment-row').forEach((r) => r.classList.remove('active'));
+    }
+
+    function findAnchorRowForLines(lines) {
+      const sorted = [...lines].sort((a, b) => a - b);
+      const lastLine = sorted[sorted.length - 1];
+      let blockRow = null;
+      document.querySelectorAll('.line-row[data-line-start]').forEach((row) => {
+        const start = parseInt(row.getAttribute('data-line-start'), 10);
+        const end = parseInt(row.getAttribute('data-line-end'), 10);
+        if (lastLine >= start && lastLine <= end) {
+          blockRow = row;
+        }
+      });
+      if (blockRow) return blockRow;
+      return document.querySelector('.line-row[data-line="' + lastLine + '"]');
+    }
+
+    function closeInlineComposer({ confirmIfDirty = false, clearSelection = false } = {}) {
+      const row = document.querySelector('.inline-comment-row');
+      if (!row) {
+        draftComposer = null;
+        if (clearSelection) {
+          selectedLines = [];
+          rangeAnchor = null;
+          applySelectionHighlight();
+          document.querySelectorAll('.line-row').forEach((r) => r.classList.remove('comment-highlight'));
+          document.querySelectorAll('.saved-comment-row').forEach((r) => r.classList.remove('active'));
+        }
+        return true;
+      }
+      const ta = row.querySelector('.inline-comment-body');
+      if (confirmIfDirty && ta && ta.value.trim()) {
+        if (!confirm('Discard unsaved comment?')) return false;
+      }
+      row.remove();
+      draftComposer = null;
+      if (clearSelection) {
+        selectedLines = [];
+        rangeAnchor = null;
+        applySelectionHighlight();
+        document.querySelectorAll('.line-row').forEach((r) => r.classList.remove('comment-highlight'));
+        document.querySelectorAll('.saved-comment-row').forEach((r) => r.classList.remove('active'));
+      }
+      return true;
+    }
+
+    function openInlineComposer(lines) {
+      if (!lines || !lines.length) return;
+      const canClose = closeInlineComposer({ confirmIfDirty: true });
+      if (canClose === false) return;
+
+      setSelectedLines(lines);
+      const sel = getSelection();
+      if (!sel) return;
+
+      const anchorRow = findAnchorRowForLines(sel.lines);
+      if (!anchorRow) return;
+
+      const label = 'Comment on ' + formatLinesLabelShort(sel.lines);
+      const composer = document.createElement('div');
+      composer.className = 'inline-comment-row';
+      composer.setAttribute('data-composer', 'true');
+      composer.innerHTML =
+        '<div class="inline-comment-gutter"></div>' +
+        '<div class="inline-comment-inner">' +
+        '<label class="inline-comment-label">' + label + '</label>' +
+        '<textarea class="inline-comment-body" placeholder="Review note for the agent…" aria-label="' + label + '"></textarea>' +
+        '<div class="inline-comment-actions">' +
+        '<button type="button" class="secondary inline-comment-cancel" aria-label="Cancel comment">Cancel</button>' +
+        '<button type="button" class="inline-comment-add" aria-label="Add comment">Add comment</button>' +
+        '</div></div>';
+
+      anchorRow.insertAdjacentElement('afterend', composer);
+      draftComposer = { lines: sel.lines };
+
+      const ta = composer.querySelector('.inline-comment-body');
+      ta.focus();
+
+      composer.querySelector('.inline-comment-cancel').addEventListener('click', () => {
+        closeInlineComposer({ confirmIfDirty: true, clearSelection: true });
+      });
+
+      composer.querySelector('.inline-comment-add').addEventListener('click', () => {
+        const body = ta.value.trim();
+        if (!body) return;
+        const payload = {
+          command: 'addComment',
+          startLine: sel.start,
+          endLine: sel.end,
+          body
+        };
+        if (sel.lines.length > 1) payload.lineNumbers = sel.lines;
+        vscode.postMessage(payload);
+      });
     }
 
     function toggleLine(line) {
@@ -986,7 +1170,6 @@ export class DeepflowReviewPanel {
       else selectedLines.push(line);
       selectedLines.sort((a, b) => a - b);
       rangeAnchor = null;
-      updateHint();
       applySelectionHighlight();
     }
 
@@ -1005,7 +1188,6 @@ export class DeepflowReviewPanel {
       if (selectedLines.includes(line)) {
         selectedLines = selectedLines.filter((n) => n !== line);
         rangeAnchor = selectedLines.length === 1 ? selectedLines[0] : null;
-        updateHint();
         applySelectionHighlight();
         return;
       }
@@ -1016,7 +1198,6 @@ export class DeepflowReviewPanel {
       }
       selectedLines = [line];
       rangeAnchor = line;
-      updateHint();
       applySelectionHighlight();
     }
 
@@ -1045,7 +1226,6 @@ export class DeepflowReviewPanel {
         });
         selectedLines.sort((a, b) => a - b);
         rangeAnchor = null;
-        updateHint();
         applySelectionHighlight();
         return;
       }
@@ -1061,7 +1241,6 @@ export class DeepflowReviewPanel {
         if (!e.shiftKey && allBlockSelected) {
           selectedLines = selectedLines.filter((l) => !ctx.lines.includes(l));
           rangeAnchor = null;
-          updateHint();
           applySelectionHighlight();
           return;
         }
@@ -1077,12 +1256,12 @@ export class DeepflowReviewPanel {
       if (markerBtn) {
         e.preventDefault();
         e.stopPropagation();
+        closeInlineComposer({ confirmIfDirty: true });
         const lines = parseLinesAttribute(markerBtn);
         const commentId = markerBtn.getAttribute('data-comment-id');
         setSelectedLines(lines);
         highlightCommentLines(lines, commentId);
         scrollToLine(lines[0]);
-        document.getElementById('comment-body').focus();
         return;
       }
 
@@ -1092,8 +1271,17 @@ export class DeepflowReviewPanel {
         e.stopPropagation();
         handleLineOrBlockClick(chatBtn, e);
         document.querySelectorAll('.line-row').forEach((r) => r.classList.remove('comment-highlight'));
-        document.querySelectorAll('.comment-card').forEach((c) => c.classList.remove('active'));
-        document.getElementById('comment-body').focus();
+        document.querySelectorAll('.saved-comment-row').forEach((r) => r.classList.remove('active'));
+        const sel = getSelection();
+        if (sel) openInlineComposer(sel.lines);
+        return;
+      }
+
+      const removeBtn = e.target.closest('.comment-remove');
+      if (removeBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        vscode.postMessage({ command: 'removeComment', commentId: removeBtn.getAttribute('data-remove') });
         return;
       }
 
@@ -1102,54 +1290,8 @@ export class DeepflowReviewPanel {
         e.preventDefault();
         handleLineOrBlockClick(numEl, e);
         document.querySelectorAll('.line-row').forEach((r) => r.classList.remove('comment-highlight'));
-        document.querySelectorAll('.comment-card').forEach((c) => c.classList.remove('active'));
-        document.getElementById('comment-body').focus();
+        document.querySelectorAll('.saved-comment-row').forEach((r) => r.classList.remove('active'));
         return;
-      }
-    });
-
-    document.getElementById('btn-clear-range').addEventListener('click', () => {
-      selectedLines = [];
-      rangeAnchor = null;
-      updateHint();
-      applySelectionHighlight();
-      document.querySelectorAll('.line-row').forEach((r) => r.classList.remove('comment-highlight'));
-      document.querySelectorAll('.comment-card').forEach((c) => c.classList.remove('active'));
-    });
-
-    document.getElementById('btn-add').addEventListener('click', () => {
-      const body = document.getElementById('comment-body').value.trim();
-      const sel = getSelection();
-      if (!sel || !body) return;
-      const payload = {
-        command: 'addComment',
-        startLine: sel.start,
-        endLine: sel.end,
-        body
-      };
-      if (sel.lines.length > 1) payload.lineNumbers = sel.lines;
-      vscode.postMessage(payload);
-      document.getElementById('comment-body').value = '';
-      selectedLines = [];
-      rangeAnchor = null;
-      updateHint();
-      applySelectionHighlight();
-    });
-
-    document.getElementById('comments-list').addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-remove]');
-      if (btn) {
-        e.stopPropagation();
-        vscode.postMessage({ command: 'removeComment', commentId: btn.getAttribute('data-remove') });
-        return;
-      }
-      const card = e.target.closest('.comment-card[data-goto-start]');
-      if (card) {
-        const lines = parseLinesAttribute(card);
-        const commentId = card.getAttribute('data-comment-id');
-        setSelectedLines(lines);
-        highlightCommentLines(lines, commentId);
-        scrollToLine(lines[0]);
       }
     });
 
@@ -1163,6 +1305,13 @@ export class DeepflowReviewPanel {
     if (approveBtn) {
       approveBtn.addEventListener('click', () => vscode.postMessage({ command: 'approve' }));
     }
+
+    window.addEventListener('message', (event) => {
+      const msg = event.data;
+      if (msg && msg.command === 'clearSelection') {
+        clearSelectionState();
+      }
+    });
 
   </script>
   <script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/mermaid@10.9.3/dist/mermaid.min.js"></script>
@@ -1191,10 +1340,10 @@ export class DeepflowReviewPanel {
 
 /** Maps each line number to the comment that covers it (for gutter markers). */
 function commentOnLineMap(
-  comments: DeepflowReviewComment[],
+  comments: DeepspecReviewComment[],
   fileUri: string
-): Map<number, DeepflowReviewComment> {
-  const map = new Map<number, DeepflowReviewComment>();
+): Map<number, DeepspecReviewComment> {
+  const map = new Map<number, DeepspecReviewComment>();
   for (const c of comments) {
     if (c.fileUri !== fileUri) {
       continue;

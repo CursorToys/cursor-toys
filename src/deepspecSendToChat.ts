@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { injectTextToChat, notifyPasteWithoutSubmit } from './chatInjection';
 import { sendToChat } from './sendToChat';
 
-export interface SendDeepflowToChatOptions {
+export interface SendDeepspecToChatOptions {
   /** When false, paste in the composer without auto-submit (draft Plan). Default: true. */
   submit?: boolean;
 }
@@ -11,9 +11,9 @@ export interface SendDeepflowToChatOptions {
  * Sends text to Cursor chat using paste-and-submit injection
  * (cursorInject.send → paste/submit → workbench chat → deeplink fallback).
  */
-export async function sendDeepflowToChat(
+export async function sendDeepspecToChat(
   text: string,
-  options?: SendDeepflowToChatOptions
+  options?: SendDeepspecToChatOptions
 ): Promise<boolean> {
   const payload = (text || '').trim();
   if (!payload) {
@@ -36,7 +36,7 @@ export async function sendDeepflowToChat(
   const injected = await injectTextToChat(payload, { submit: shouldSubmit });
   if (injected.pasted) {
     if (shouldSubmit && !injected.submitted) {
-      notifyPasteWithoutSubmit('DeepFlow');
+      notifyPasteWithoutSubmit('DeepSpec');
     }
     return true;
   }
@@ -48,7 +48,7 @@ export async function sendDeepflowToChat(
   const fallback = await sendToChat(payload);
   if (fallback) {
     void vscode.window.showInformationMessage(
-      'DeepFlow: opened chat with your message (auto-paste was unavailable). Submit manually if needed.'
+      'DeepSpec: opened chat with your message (auto-paste was unavailable). Submit manually if needed.'
     );
   }
   return fallback;

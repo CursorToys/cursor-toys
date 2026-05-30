@@ -2,26 +2,26 @@ import * as vscode from 'vscode';
 import {
   AbcFileKind,
   ABC_FILE_NAMES,
-  deepflowSpecsExist,
-  DEEPFLOW_STAGES,
-  DeepFlowStage,
-  getDeepflowMemoryUri,
-  getDeepflowRootUri,
-  getDeepflowSpecsUri,
+  deepspecSpecsExist,
+  DEEPSPEC_STAGES,
+  DeepSpecStage,
+  getDeepspecMemoryUri,
+  getDeepspecRootUri,
+  getDeepspecSpecsUri,
   getStageLabel,
   getWorkspaceFolderUri,
   listExistingAbcFiles,
   listTasksInStage,
-} from './deepflowPaths';
-import { deepflowFileTreeItemId } from './deepflowFileOps';
+} from './deepspecPaths';
+import { deepspecFileTreeItemId } from './deepspecFileOps';
 import {
-  DeepflowMemoryEntry,
-  DeepflowMemoryTopic,
-  DeepflowMemoryTopicId,
+  DeepspecMemoryEntry,
+  DeepspecMemoryTopic,
+  DeepspecMemoryTopicId,
   formatMemoryEntryDescription,
   formatMemoryEntryLabel,
-} from './deepflowMemoryParser';
-import { readDeepflowMemoryDoc } from './deepflowMemory';
+} from './deepspecMemoryParser';
+import { readDeepspecMemoryDoc } from './deepspecMemory';
 import {
   isTreeLoadingPlaceholder,
   renderLoadingTreeItem,
@@ -29,9 +29,9 @@ import {
   TreeLoadingPlaceholder,
 } from './treeLoading';
 
-export type DeepFlowEmptyReason = 'noWorkspace' | 'needsInit';
+export type DeepSpecEmptyReason = 'noWorkspace' | 'needsInit';
 
-export type DeepFlowItemType =
+export type DeepSpecItemType =
   | 'empty'
   | 'memoryRoot'
   | 'memoryTopic'
@@ -43,17 +43,17 @@ export type DeepFlowItemType =
   | 'task'
   | 'abcFile';
 
-export type DeepFlowTreeElement = DeepFlowTreeItem | TreeLoadingPlaceholder;
+export type DeepSpecTreeElement = DeepSpecTreeItem | TreeLoadingPlaceholder;
 
-export interface DeepFlowTreeItem {
-  type: DeepFlowItemType;
+export interface DeepSpecTreeItem {
+  type: DeepSpecItemType;
   label: string;
-  emptyReason?: DeepFlowEmptyReason;
-  deepflowRootUri?: vscode.Uri;
-  memoryTopicId?: DeepflowMemoryTopicId;
-  memoryEntry?: DeepflowMemoryEntry;
-  memoryTopic?: DeepflowMemoryTopic;
-  stage?: DeepFlowStage;
+  emptyReason?: DeepSpecEmptyReason;
+  deepspecRootUri?: vscode.Uri;
+  memoryTopicId?: DeepspecMemoryTopicId;
+  memoryEntry?: DeepspecMemoryEntry;
+  memoryTopic?: DeepspecMemoryTopic;
+  stage?: DeepSpecStage;
   /** Number of tasks in this stage (set on stage nodes). */
   taskCount?: number;
   taskId?: string;
@@ -63,20 +63,20 @@ export interface DeepFlowTreeItem {
 }
 
 /**
- * Tree data provider for DeepFlow specs under `.deepflow/specs`.
+ * Tree data provider for DeepSpec specs under `.deepspec/specs`.
  */
-export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTreeElement> {
-  private _onDidChangeTreeData = new vscode.EventEmitter<DeepFlowTreeElement | undefined | void>();
+export class DeepSpecTreeProvider implements vscode.TreeDataProvider<DeepSpecTreeElement> {
+  private _onDidChangeTreeData = new vscode.EventEmitter<DeepSpecTreeElement | undefined | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  private readonly nodeLoader = new TreeLoadCoordinator<DeepFlowTreeItem, DeepFlowTreeItem>(
+  private readonly nodeLoader = new TreeLoadCoordinator<DeepSpecTreeItem, DeepSpecTreeItem>(
     (parent) => this._onDidChangeTreeData.fire(parent),
     (parent) => {
       if (!parent) {
-        return '__deepflow_root__';
+        return '__deepspec_root__';
       }
-      if (parent.type === 'memoryRoot' && parent.deepflowRootUri) {
-        return `memory:${parent.deepflowRootUri.fsPath}`;
+      if (parent.type === 'memoryRoot' && parent.deepspecRootUri) {
+        return `memory:${parent.deepspecRootUri.fsPath}`;
       }
       if (parent.type === 'stage' && parent.stage) {
         return `stage:${parent.stage}`;
@@ -84,7 +84,7 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
       if (parent.type === 'task' && parent.taskFolderUri) {
         return `task:${parent.taskFolderUri.fsPath}`;
       }
-      return `deepflow:${parent.type}:${parent.label}`;
+      return `deepspec:${parent.type}:${parent.label}`;
     }
   );
 
@@ -93,32 +93,32 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
     this._onDidChangeTreeData.fire();
   }
 
-  getTreeItem(element: DeepFlowTreeElement): vscode.TreeItem {
+  getTreeItem(element: DeepSpecTreeElement): vscode.TreeItem {
     if (isTreeLoadingPlaceholder(element)) {
       return renderLoadingTreeItem(element);
     }
     if (element.type === 'empty') {
       const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
       if (element.emptyReason === 'needsInit') {
-        item.description = 'Install skill if needed, then /deepflow initialize';
+        item.description = 'Install skill if needed, then /deepspec initialize';
         item.iconPath = new vscode.ThemeIcon('sparkle');
-        item.contextValue = 'deepflowEmptyNeedInit';
+        item.contextValue = 'deepspecEmptyNeedInit';
         item.command = {
-          command: 'cursor-toys.deepflow.initialize',
-          title: 'Initialize DeepFlow',
+          command: 'cursor-toys.deepspec.initialize',
+          title: 'Initialize DeepSpec',
           arguments: [element],
         };
       } else {
         item.description = 'Open a folder in the workspace';
         item.iconPath = new vscode.ThemeIcon('info');
-        item.contextValue = 'deepflowEmptyNoWorkspace';
+        item.contextValue = 'deepspecEmptyNoWorkspace';
       }
       return item;
     }
 
     if (element.type === 'memoryRoot') {
       const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
-      item.contextValue = 'deepflowMemoryRoot';
+      item.contextValue = 'deepspecMemoryRoot';
       item.iconPath = new vscode.ThemeIcon('database');
       item.description = 'Topics & sessions';
       return item;
@@ -126,7 +126,7 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
 
     if (element.type === 'memoryTopic') {
       const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
-      item.contextValue = 'deepflowMemoryTopic';
+      item.contextValue = 'deepspecMemoryTopic';
       item.iconPath = memoryTopicIcon(element.memoryTopicId!);
       const count = element.memoryTopic?.entries.length ?? 0;
       item.description = count > 0 ? `${count}` : undefined;
@@ -136,7 +136,7 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
     if (element.type === 'memoryTopicEmpty') {
       const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
       item.iconPath = new vscode.ThemeIcon('info');
-      item.contextValue = 'deepflowMemoryTopicEmpty';
+      item.contextValue = 'deepspecMemoryTopicEmpty';
       return item;
     }
 
@@ -147,13 +147,13 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
         vscode.TreeItemCollapsibleState.None
       );
       item.description = formatMemoryEntryDescription(entry);
-      item.contextValue = 'deepflowMemoryEntry';
+      item.contextValue = 'deepspecMemoryEntry';
       item.iconPath =
         entry.kind === 'archived'
           ? new vscode.ThemeIcon('history')
           : new vscode.ThemeIcon('lightbulb-autofix');
       item.command = {
-        command: 'cursor-toys.deepflow.openMemoryEntry',
+        command: 'cursor-toys.deepspec.openMemoryEntry',
         title: 'Open',
         arguments: [element],
       };
@@ -163,10 +163,10 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
     if (element.type === 'memoryFile' && element.fileUri) {
       const item = new vscode.TreeItem('memory.md', vscode.TreeItemCollapsibleState.None);
       item.resourceUri = element.fileUri;
-      item.contextValue = 'deepflowMemoryFile';
+      item.contextValue = 'deepspecMemoryFile';
       item.iconPath = new vscode.ThemeIcon('notebook');
       item.command = {
-        command: 'cursor-toys.deepflow.openMemory',
+        command: 'cursor-toys.deepspec.openMemory',
         title: 'Open memory.md',
         arguments: [element.fileUri.toString()],
       };
@@ -175,7 +175,7 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
 
     if (element.type === 'stage') {
       const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
-      item.contextValue = `deepflowStage${capitalizeStage(element.stage!)}`;
+      item.contextValue = `deepspecStage${capitalizeStage(element.stage!)}`;
       const count = element.taskCount ?? 0;
       item.iconPath = stageIcon(element.stage!, count);
       if (count > 0) {
@@ -190,7 +190,7 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
       const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
       item.description = 'No tasks in this stage';
       item.iconPath = new vscode.ThemeIcon('info');
-      item.contextValue = 'deepflowStageEmpty';
+      item.contextValue = 'deepspecStageEmpty';
       return item;
     }
 
@@ -206,51 +206,51 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
     const item = new vscode.TreeItem(fileName, vscode.TreeItemCollapsibleState.None);
     if (element.fileUri) {
       item.resourceUri = element.fileUri;
-      item.id = deepflowFileTreeItemId(element.fileUri);
+      item.id = deepspecFileTreeItemId(element.fileUri);
       item.command = {
-        command: 'cursor-toys.deepflow.openReview',
+        command: 'cursor-toys.deepspec.openReview',
         title: 'Review',
         arguments: [element],
       };
     }
-    item.contextValue = 'deepflowAbcFile';
+    item.contextValue = 'deepspecAbcFile';
     item.iconPath = abcIcon(element.abcKind!);
     return item;
   }
 
-  async getChildren(element?: DeepFlowTreeElement): Promise<DeepFlowTreeElement[]> {
+  async getChildren(element?: DeepSpecTreeElement): Promise<DeepSpecTreeElement[]> {
     if (isTreeLoadingPlaceholder(element)) {
       return [];
     }
 
-    const root = getDeepflowRootUri();
+    const root = getDeepspecRootUri();
     if (!root) {
       return [
         {
           type: 'empty',
-          label: 'Open a workspace folder to use DeepFlow',
+          label: 'Open a workspace folder to use DeepSpec',
           emptyReason: 'noWorkspace',
         },
       ];
     }
 
-    const specsUri = getDeepflowSpecsUri(root);
+    const specsUri = getDeepspecSpecsUri(root);
 
     if (!element) {
       return this.nodeLoader.resolveChildren(undefined, async () => {
-        const hasSpecs = await deepflowSpecsExist(root);
+        const hasSpecs = await deepspecSpecsExist(root);
         if (!hasSpecs) {
           return [
             {
               type: 'empty' as const,
-              label: 'Initialize DeepFlow',
+              label: 'Initialize DeepSpec',
               emptyReason: 'needsInit' as const,
             },
           ];
         }
 
-        const stages: DeepFlowTreeItem[] = [];
-        for (const stage of DEEPFLOW_STAGES) {
+        const stages: DeepSpecTreeItem[] = [];
+        for (const stage of DEEPSPEC_STAGES) {
           const tasks = await listTasksInStage(specsUri, stage);
           stages.push({
             type: 'stage',
@@ -263,16 +263,16 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
           {
             type: 'memoryRoot' as const,
             label: 'Memory',
-            deepflowRootUri: root,
+            deepspecRootUri: root,
           },
           ...stages,
         ];
       });
     }
 
-    if (element.type === 'memoryRoot' && element.deepflowRootUri) {
+    if (element.type === 'memoryRoot' && element.deepspecRootUri) {
       return this.nodeLoader.resolveChildren(element, () =>
-        buildMemoryChildren(element.deepflowRootUri!)
+        buildMemoryChildren(element.deepspecRootUri!)
       );
     }
 
@@ -283,7 +283,7 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
           {
             type: 'memoryTopicEmpty' as const,
             label: getMemoryTopicEmptyLabel(topic.id),
-            deepflowRootUri: element.deepflowRootUri,
+            deepspecRootUri: element.deepspecRootUri,
             memoryTopicId: topic.id,
             memoryTopic: topic,
           },
@@ -292,7 +292,7 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
       return topic.entries.map((entry, index) => ({
         type: 'memoryEntry' as const,
         label: formatMemoryEntryLabel(entry),
-        deepflowRootUri: element.deepflowRootUri,
+        deepspecRootUri: element.deepspecRootUri,
         memoryTopicId: topic.id,
         memoryTopic: topic,
         memoryEntry: entry,
@@ -360,7 +360,7 @@ export class DeepFlowTreeProvider implements vscode.TreeDataProvider<DeepFlowTre
   }
 }
 
-function getStageEmptyLabel(stage: DeepFlowStage): string {
+function getStageEmptyLabel(stage: DeepSpecStage): string {
   switch (stage) {
     case 'drafts':
       return 'No draft tasks';
@@ -371,25 +371,25 @@ function getStageEmptyLabel(stage: DeepFlowStage): string {
   }
 }
 
-function capitalizeStage(stage: DeepFlowStage): string {
+function capitalizeStage(stage: DeepSpecStage): string {
   if (stage === 'active') {
     return 'Active';
   }
   return stage.charAt(0).toUpperCase() + stage.slice(1);
 }
 
-function taskContextValue(stage: DeepFlowStage): string {
+function taskContextValue(stage: DeepSpecStage): string {
   switch (stage) {
     case 'drafts':
-      return 'deepflowTaskDraft';
+      return 'deepspecTaskDraft';
     case 'active':
-      return 'deepflowTaskActive';
+      return 'deepspecTaskActive';
     case 'archive':
-      return 'deepflowTaskArchive';
+      return 'deepspecTaskArchive';
   }
 }
 
-function stageIcon(stage: DeepFlowStage, taskCount: number): vscode.ThemeIcon {
+function stageIcon(stage: DeepSpecStage, taskCount: number): vscode.ThemeIcon {
   switch (stage) {
     case 'drafts':
       return new vscode.ThemeIcon('layers');
@@ -402,7 +402,7 @@ function stageIcon(stage: DeepFlowStage, taskCount: number): vscode.ThemeIcon {
   }
 }
 
-function taskIcon(stage: DeepFlowStage): vscode.ThemeIcon {
+function taskIcon(stage: DeepSpecStage): vscode.ThemeIcon {
   switch (stage) {
     case 'drafts':
       return new vscode.ThemeIcon('lightbulb');
@@ -428,7 +428,7 @@ function abcIcon(kind: AbcFileKind): vscode.ThemeIcon {
  * Resolves a task folder URI from a command argument.
  */
 export function getTaskFolderUriFromArg(
-  arg?: DeepFlowTreeItem | vscode.Uri
+  arg?: DeepSpecTreeItem | vscode.Uri
 ): vscode.Uri | undefined {
   if (!arg) {
     return undefined;
@@ -440,25 +440,25 @@ export function getTaskFolderUriFromArg(
 }
 
 /**
- * Creates a RelativePattern for DeepFlow specs watcher in the workspace.
+ * Creates a RelativePattern for DeepSpec specs watcher in the workspace.
  */
-export function createDeepflowWatcherPattern(): vscode.RelativePattern | undefined {
+export function createDeepspecWatcherPattern(): vscode.RelativePattern | undefined {
   const folder = getWorkspaceFolderUri();
-  const root = getDeepflowRootUri(folder);
+  const root = getDeepspecRootUri(folder);
   if (!root) {
     return undefined;
   }
   return new vscode.RelativePattern(root, '{specs/**,memory.md,AGENTS.md}');
 }
 
-async function buildMemoryChildren(root: vscode.Uri): Promise<DeepFlowTreeItem[]> {
-  const memoryUri = getDeepflowMemoryUri(root);
-  const doc = await readDeepflowMemoryDoc(root);
+async function buildMemoryChildren(root: vscode.Uri): Promise<DeepSpecTreeItem[]> {
+  const memoryUri = getDeepspecMemoryUri(root);
+  const doc = await readDeepspecMemoryDoc(root);
 
-  let topicItems: DeepFlowTreeItem[] = (doc?.topics ?? []).map((topic) => ({
+  let topicItems: DeepSpecTreeItem[] = (doc?.topics ?? []).map((topic) => ({
     type: 'memoryTopic' as const,
     label: topic.title,
-    deepflowRootUri: root,
+    deepspecRootUri: root,
     memoryTopicId: topic.id,
     memoryTopic: topic,
   }));
@@ -468,31 +468,31 @@ async function buildMemoryChildren(root: vscode.Uri): Promise<DeepFlowTreeItem[]
       {
         type: 'memoryTopic',
         label: 'Archived Tasks',
-        deepflowRootUri: root,
+        deepspecRootUri: root,
         memoryTopicId: 'archived',
         memoryTopic: { id: 'archived', title: 'Archived Tasks', entries: [] },
       },
       {
         type: 'memoryTopic',
         label: 'Lessons',
-        deepflowRootUri: root,
+        deepspecRootUri: root,
         memoryTopicId: 'lessons',
         memoryTopic: { id: 'lessons', title: 'Lessons', entries: [] },
       },
     ];
   }
 
-  const memoryFile: DeepFlowTreeItem = {
+  const memoryFile: DeepSpecTreeItem = {
     type: 'memoryFile',
     label: 'memory.md',
-    deepflowRootUri: root,
+    deepspecRootUri: root,
     fileUri: memoryUri,
   };
 
   return [...topicItems, memoryFile];
 }
 
-function getMemoryTopicEmptyLabel(topicId: DeepflowMemoryTopicId): string {
+function getMemoryTopicEmptyLabel(topicId: DeepspecMemoryTopicId): string {
   switch (topicId) {
     case 'archived':
       return 'No archived tasks indexed yet';
@@ -503,7 +503,7 @@ function getMemoryTopicEmptyLabel(topicId: DeepflowMemoryTopicId): string {
   }
 }
 
-function memoryTopicIcon(topicId: DeepflowMemoryTopicId): vscode.ThemeIcon {
+function memoryTopicIcon(topicId: DeepspecMemoryTopicId): vscode.ThemeIcon {
   switch (topicId) {
     case 'archived':
       return new vscode.ThemeIcon('archive');
