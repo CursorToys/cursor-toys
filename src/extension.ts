@@ -14,31 +14,8 @@ import { UserPromptsTreeProvider, PromptFileItem } from './userPromptsTreeProvid
 import { UserHttpTreeProvider, HttpTreeItem } from './userHttpTreeProvider';
 import { UserNotepadsTreeProvider, NotepadFileItem } from './userNotepadsTreeProvider';
 import { UserPlansTreeProvider, PlanFileItem } from './userPlansTreeProvider';
-import {
-  DeepSpecTreeProvider,
-  DeepSpecTreeItem,
-  createDeepspecWatcherPatterns,
-  getTaskFolderUriFromArg,
-  resolveWorkspaceFolderFromTreeItem,
-} from './deepspecTreeProvider';
-import {
-  buildApproveChatMessage,
-  buildCompleteChatMessage,
-  buildDiscardChatMessage,
-  buildExecuteChatMessage,
-  buildInitializeChatMessage,
-  buildPlanChatMessage,
-  buildReviseChatMessage,
-} from './deepspecChatPrompts';
-import { discardTask } from './deepspecTaskOps';
-import { syncDeepspecNeedsInit, syncDeepspecPanelEnabled } from './deepspecContext';
-import { getDeepspecRootUri, isTaskInReviewGate } from './deepspecPaths';
-import { DeepspecCreateTaskPanel } from './deepspecCreateTaskPanel';
-import { openDeepspecSpecFile, openDeepspecSpecReview } from './deepspecFileOps';
-import { openDeepspecMemoryFile, openMemoryEntryTarget } from './deepspecMemory';
-import { sendDeepspecToChat } from './deepspecSendToChat';
-import { ensureDeepspecSkillOrPromptDownload } from './deepspecSkillInstaller';
-import { CursorToysSettingsTreeProvider, toggleDeepspecPanelSetting } from './cursorToysSettingsTreeProvider';
+import { CursorToysSettingsTreeProvider } from './cursorToysSettingsTreeProvider';
+import { installDeepSpecExtension } from './installDeepSpecExtension';
 import { editCursorToysSetting } from './cursorToysSettingsEditor';
 import { openUserSettingsJson } from './openSettingsUri';
 import { isExtensionPausedForSettingsUi } from './settingsUiGuard';
@@ -207,7 +184,6 @@ async function generateShareableWithPathValidation(
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   await syncSidebarViewVisibility();
   await syncExplorerViewVisibility();
-  await syncDeepspecPanelEnabled();
 
   // Register URI Handler early so cursor:// or vscode:// links open the panel as soon as the extension activates
   const uriHandler = vscode.window.registerUriHandler({
@@ -2015,11 +1991,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     dragAndDropController: userPlansTreeProvider
   });
 
-  const deepspecTreeProvider = new DeepSpecTreeProvider();
-  const deepspecTreeView = vscode.window.createTreeView('cursor-toys.deepspec', {
-    treeDataProvider: deepspecTreeProvider,
-    showCollapseAll: true,
-  });
   const cursorToysSettingsTreeProvider = new CursorToysSettingsTreeProvider();
   const cursorToysSettingsTreeView = vscode.window.createTreeView('cursor-toys.settings', {
     treeDataProvider: cursorToysSettingsTreeProvider,
@@ -2031,14 +2002,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     treeDataProvider: cursorToysUtilsTreeProvider,
     showCollapseAll: true,
   });
-
-  const refreshDeepspecState = async (): Promise<void> => {
-    await syncDeepspecNeedsInit();
-    deepspecTreeProvider.refresh();
-  };
-
-  void syncDeepspecNeedsInit();
-  void syncDeepspecPanelEnabled();
 
   // Register User Hooks Tree Provider
   const userHooksTreeProvider = new UserHooksTreeProvider();
@@ -3394,13 +3357,6 @@ Detailed instructions for the agent.
     }
   );
 
-  const refreshDeepspec = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.refresh',
-    () => {
-      void refreshDeepspecState();
-    }
-  );
-
   const refreshCursorToysSettings = vscode.commands.registerCommand(
     'cursor-toys.settings.refresh',
     () => {
@@ -3421,24 +3377,12 @@ Detailed instructions for the agent.
         await syncSidebarViewVisibility();
         await syncExplorerViewVisibility();
       }
-      if (
-        settingKey === 'cursorToys.experimental.deepspec' ||
-        settingKey === 'cursorToys.experimental.deepflow' ||
-        settingKey === 'cursorToys.deepspec.enabled' ||
-        settingKey === 'cursorToys.deepflow.enabled'
-      ) {
-        await syncDeepspecPanelEnabled();
-        void refreshDeepspecState();
-      }
     }
   );
 
-  const toggleDeepspecPanel = vscode.commands.registerCommand(
-    'cursor-toys.settings.toggleDeepspec',
-    async () => {
-      await toggleDeepspecPanelSetting();
-      cursorToysSettingsTreeProvider.refresh();
-    }
+  const installDeepSpec = vscode.commands.registerCommand(
+    'cursor-toys.installDeepSpecExtension',
+    () => installDeepSpecExtension()
   );
 
   const openSettingsJson = vscode.commands.registerCommand(
@@ -3501,10 +3445,6 @@ Detailed instructions for the agent.
     }
   );
 
-  const focusDeepspecView = vscode.commands.registerCommand('cursor-toys.focusDeepspec', async () => {
-    await vscode.commands.executeCommand('cursor-toys.focusView', 'cursor-toys.deepspec');
-  });
-
   const focusHttpView = vscode.commands.registerCommand('cursor-toys.focusHttp', async () => {
     await vscode.commands.executeCommand('cursor-toys.focusView', 'cursor-toys.userHttp');
   });
@@ -3516,226 +3456,6 @@ Detailed instructions for the agent.
   const focusUtilsView = vscode.commands.registerCommand('cursor-toys.focusUtils', async () => {
     await vscode.commands.executeCommand('cursor-toys.focusView', 'cursor-toys.utils');
   });
-
-  const deepspecInitialize = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.initialize',
-    async (arg?: DeepSpecTreeItem) => {
-      let workspaceFolderUri = resolveWorkspaceFolderFromTreeItem(arg);
-      if (!workspaceFolderUri && (vscode.workspace.workspaceFolders?.length ?? 0) > 1) {
-        const picked = await vscode.window.showWorkspaceFolderPick({
-          placeHolder: 'Select workspace folder to initialize DeepSpec',
-        });
-        workspaceFolderUri = picked?.uri;
-      }
-      if (!workspaceFolderUri) {
-        vscode.window.showErrorMessage('Open a workspace folder to initialize DeepSpec.');
-        return;
-      }
-      const skillReady = await ensureDeepspecSkillOrPromptDownload(workspaceFolderUri);
-      if (!skillReady) {
-        return;
-      }
-      const deepspecRoot = getDeepspecRootUri(workspaceFolderUri);
-      await sendDeepspecToChat(
-        buildInitializeChatMessage(workspaceFolderUri.fsPath, deepspecRoot)
-      );
-    }
-  );
-
-  const openDeepspecReview = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.openReview',
-    async (arg?: unknown) => {
-      await openDeepspecSpecReview(context.extensionUri, arg);
-    }
-  );
-
-  const openDeepspecAbcFileInEditor = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.openAbcFileInEditor',
-    async (arg?: unknown) => {
-      await openDeepspecSpecFile(arg);
-    }
-  );
-
-  const openDeepspecAbcFile = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.openAbcFile',
-    async (arg?: unknown) => {
-      await openDeepspecSpecReview(context.extensionUri, arg);
-    }
-  );
-
-  const deepspecOpenMemory = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.openMemory',
-    async (arg?: DeepSpecTreeItem | string) => {
-      if (typeof arg === 'string') {
-        await openDeepspecMemoryFile();
-        return;
-      }
-      const root = arg?.deepspecRootUri ?? getDeepspecRootUri(resolveWorkspaceFolderFromTreeItem(arg));
-      await openDeepspecMemoryFile(root);
-    }
-  );
-
-  const deepspecOpenMemoryEntry = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.openMemoryEntry',
-    async (arg?: DeepSpecTreeItem) => {
-      const root = arg?.deepspecRootUri ?? getDeepspecRootUri(resolveWorkspaceFolderFromTreeItem(arg));
-      if (!root || !arg?.memoryEntry) {
-        await openDeepspecMemoryFile();
-        return;
-      }
-      await openMemoryEntryTarget(arg.memoryEntry, root);
-    }
-  );
-
-  const deepspecCreateTask = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.createTask',
-    () => {
-      DeepspecCreateTaskPanel.createOrShow();
-    }
-  );
-
-  const deepspecApproveTask = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.approveTask',
-    async (arg?: DeepSpecTreeItem) => {
-      const workspaceFolderUri = resolveWorkspaceFolderFromTreeItem(arg);
-      const taskUri = getTaskFolderUriFromArg(arg);
-      if (!workspaceFolderUri || !taskUri) {
-        vscode.window.showErrorMessage('No draft task selected');
-        return;
-      }
-      await sendDeepspecToChat(buildApproveChatMessage(workspaceFolderUri.fsPath, taskUri));
-    }
-  );
-
-  const deepspecCompleteTask = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.completeTask',
-    async (arg?: DeepSpecTreeItem) => {
-      const workspaceFolderUri = resolveWorkspaceFolderFromTreeItem(arg);
-      const taskUri = getTaskFolderUriFromArg(arg);
-      if (!workspaceFolderUri || !taskUri) {
-        vscode.window.showErrorMessage('No task in Review Gate selected');
-        return;
-      }
-      if (!(await isTaskInReviewGate(taskUri))) {
-        vscode.window.showErrorMessage(
-          'Task is not in Review Gate yet. Wait until COMPLETION_REPORT.md status is [IN REVIEW].'
-        );
-        return;
-      }
-      await sendDeepspecToChat(buildCompleteChatMessage(workspaceFolderUri.fsPath, taskUri));
-    }
-  );
-
-  const deepspecReviseTask = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.reviseTask',
-    async (arg?: DeepSpecTreeItem) => {
-      const workspaceFolderUri = resolveWorkspaceFolderFromTreeItem(arg);
-      const taskUri = getTaskFolderUriFromArg(arg);
-      if (!workspaceFolderUri || !taskUri) {
-        vscode.window.showErrorMessage('No task in Review Gate selected');
-        return;
-      }
-      if (!(await isTaskInReviewGate(taskUri))) {
-        vscode.window.showErrorMessage(
-          'Task is not in Review Gate yet. Wait until COMPLETION_REPORT.md status is [IN REVIEW].'
-        );
-        return;
-      }
-      const feedback = await vscode.window.showInputBox({
-        title: 'Request changes (Review Round)',
-        prompt: 'Describe what should change before you approve',
-        placeHolder: 'e.g. Add tests for AC-3, update APPROACH step 2…',
-        ignoreFocusOut: true,
-      });
-      if (feedback === undefined) {
-        return;
-      }
-      await sendDeepspecToChat(
-        buildReviseChatMessage(workspaceFolderUri.fsPath, taskUri, feedback)
-      );
-    }
-  );
-
-  const deepspecDiscardTask = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.discardTask',
-    async (arg?: DeepSpecTreeItem) => {
-      const taskUri = getTaskFolderUriFromArg(arg);
-      if (!taskUri) {
-        vscode.window.showErrorMessage('No draft task selected');
-        return;
-      }
-      const reason = await vscode.window.showInputBox({
-        title: 'Discard DeepSpec draft',
-        prompt: 'Optional reason (scope changed, deferred indefinitely, duplicate, etc.)',
-        placeHolder: 'Why is this draft being discarded?',
-        ignoreFocusOut: true,
-      });
-      if (reason === undefined) {
-        return;
-      }
-      await discardTask(taskUri, { reason: reason || undefined });
-    }
-  );
-
-  const deepspecSendToChatDiscard = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.sendToChatDiscard',
-    async (arg?: DeepSpecTreeItem) => {
-      const workspaceFolderUri = resolveWorkspaceFolderFromTreeItem(arg);
-      const taskUri = getTaskFolderUriFromArg(arg);
-      if (!workspaceFolderUri || !taskUri) {
-        vscode.window.showErrorMessage('No draft task selected');
-        return;
-      }
-      const reason = await vscode.window.showInputBox({
-        title: 'Discard via chat',
-        prompt: 'Optional reason to include in the chat message',
-        placeHolder: 'Why is this draft being discarded?',
-        ignoreFocusOut: true,
-      });
-      if (reason === undefined) {
-        return;
-      }
-      await sendDeepspecToChat(
-        buildDiscardChatMessage(workspaceFolderUri.fsPath, taskUri, reason || undefined)
-      );
-    }
-  );
-
-  const deepspecSendToChatExecute = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.sendToChatExecute',
-    async (arg?: DeepSpecTreeItem) => {
-      const workspaceFolderUri = resolveWorkspaceFolderFromTreeItem(arg);
-      const taskUri = getTaskFolderUriFromArg(arg);
-      if (!workspaceFolderUri || !taskUri) {
-        vscode.window.showErrorMessage('No active task selected');
-        return;
-      }
-      await sendDeepspecToChat(buildExecuteChatMessage(workspaceFolderUri.fsPath, taskUri));
-    }
-  );
-
-  const deepspecSendToChatPlan = vscode.commands.registerCommand(
-    'cursor-toys.deepspec.sendToChatPlan',
-    async (arg?: DeepSpecTreeItem) => {
-      const workspaceFolderUri = resolveWorkspaceFolderFromTreeItem(arg);
-      const taskUri = getTaskFolderUriFromArg(arg);
-      if (!workspaceFolderUri || !taskUri) {
-        vscode.window.showErrorMessage('No draft task selected');
-        return;
-      }
-      const message = buildPlanChatMessage(workspaceFolderUri.fsPath, taskUri);
-      const pasted = await sendDeepspecToChat(message, { submit: false });
-      if (pasted) {
-        void vscode.window.showInformationMessage(
-          'DeepSpec: draft task reference pasted in chat. Add your planning notes, then submit.'
-        );
-      } else {
-        vscode.window.showErrorMessage(
-          'DeepSpec: could not paste in chat. Open the chat composer and try again.'
-        );
-      }
-    }
-  );
 
   // Command to send text to chat
   const sendToChatCommand = vscode.commands.registerCommand(
@@ -4830,15 +4550,6 @@ Detailed instructions for the agent.
 
   let userPlansWatchers = createPlansWatchers();
 
-  for (const deepspecWatcherPattern of createDeepspecWatcherPatterns()) {
-    const deepspecWatcher = vscode.workspace.createFileSystemWatcher(deepspecWatcherPattern);
-    const refreshDeepspecTree = () => void refreshDeepspecState();
-    deepspecWatcher.onDidCreate(refreshDeepspecTree);
-    deepspecWatcher.onDidDelete(refreshDeepspecTree);
-    deepspecWatcher.onDidChange(refreshDeepspecTree);
-    context.subscriptions.push(deepspecWatcher);
-  }
-
   // Watch for configuration changes (debounced; skipped while Settings UI is opening)
   const handleConfigurationChange = debounce((e: vscode.ConfigurationChangeEvent) => {
     if (isExtensionPausedForSettingsUi()) {
@@ -4850,15 +4561,6 @@ Detailed instructions for the agent.
     ) {
       void syncSidebarViewVisibility();
       void syncExplorerViewVisibility();
-    }
-    if (
-      e.affectsConfiguration('cursorToys.experimental.deepspec') ||
-      e.affectsConfiguration('cursorToys.experimental.deepflow') ||
-      e.affectsConfiguration('cursorToys.deepspec.enabled') ||
-      e.affectsConfiguration('cursorToys.deepflow.enabled')
-    ) {
-      void syncDeepspecPanelEnabled();
-      void refreshDeepspecState();
     }
     if (
       e.affectsConfiguration('cursorToys.commandsFolder') ||
@@ -4972,34 +4674,17 @@ Detailed instructions for the agent.
     revealPlan,
     renamePlan,
     refreshPlans,
-    deepspecTreeView,
     cursorToysSettingsTreeView,
     cursorToysUtilsTreeView,
-    refreshDeepspec,
     refreshCursorToysSettings,
     editSetting,
-    toggleDeepspecPanel,
+    installDeepSpec,
     openSettingsJson,
     configureKeys,
     focusCursorToysView,
-    focusDeepspecView,
     focusHttpView,
     focusMcpbView,
     focusUtilsView,
-    deepspecInitialize,
-    deepspecCreateTask,
-    openDeepspecReview,
-    openDeepspecAbcFile,
-    openDeepspecAbcFileInEditor,
-    deepspecOpenMemory,
-    deepspecOpenMemoryEntry,
-    deepspecApproveTask,
-    deepspecCompleteTask,
-    deepspecReviseTask,
-    deepspecDiscardTask,
-    deepspecSendToChatDiscard,
-    deepspecSendToChatExecute,
-    deepspecSendToChatPlan,
     userSkillsTreeView,
     openSkill,
     deleteSkill,

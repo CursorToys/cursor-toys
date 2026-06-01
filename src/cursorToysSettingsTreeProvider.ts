@@ -359,26 +359,12 @@ const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
     iconId: 'layers-active',
     children: [
       {
-        id: 'deepspec-enable',
-        label: 'Toggle DeepSpec Panel',
+        id: 'deepspec-install',
+        label: 'Install DeepSpec Extension',
         kind: 'action',
-        iconId: 'checklist',
-        commandId: 'cursor-toys.settings.toggleDeepspec',
-        description: 'Experimental spec-driven tasks',
-      },
-      {
-        id: 'deepspec-setting',
-        label: 'DeepSpec Setting',
-        kind: 'setting',
-        iconId: 'settings',
-        settingKey: 'cursorToys.experimental.deepspec',
-      },
-      {
-        id: 'deepspec-initialize',
-        label: 'Initialize DeepSpec',
-        kind: 'action',
-        iconId: 'rocket',
-        commandId: 'cursor-toys.deepspec.initialize',
+        iconId: 'cloud-download',
+        commandId: 'cursor-toys.installDeepSpecExtension',
+        description: 'Spec-driven tasks moved to a dedicated extension',
       },
     ],
   },
@@ -490,16 +476,5 @@ export class CursorToysSettingsTreeProvider implements vscode.TreeDataProvider<C
     }
     return element.children ?? [];
   }
-}
-
-/**
- * Toggles experimental DeepSpec panel visibility.
- */
-export async function toggleDeepspecPanelSetting(): Promise<void> {
-  const config = vscode.workspace.getConfiguration('cursorToys');
-  const current = config.get<boolean>('experimental.deepspec', false);
-  await config.update('experimental.deepspec', !current, vscode.ConfigurationTarget.Global);
-  const label = !current ? 'enabled' : 'disabled';
-  void vscode.window.showInformationMessage(`DeepSpec panel ${label}. Reload the window if the view does not update.`);
 }
 

@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.1-1",
+  "version": "2026.6.2-1",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -68,7 +68,6 @@
     "onView:cursor-toys.userSkills",
     "onView:cursor-toys.userHttp",
     "onView:cursor-toys.settings",
-    "onView:cursor-toys.deepspec",
     "onView:cursor-toys.utils",
     "onCommand:cursor-toys.sendToChat",
     "onCommand:cursor-toys.sendSelectionToChat",
@@ -387,11 +386,6 @@
         "title": "CursorToys: Focus View"
       },
       {
-        "command": "cursor-toys.focusDeepspec",
-        "title": "CursorToys: Focus DeepSpec",
-        "icon": "$(layers-active)"
-      },
-      {
         "command": "cursor-toys.focusHttp",
         "title": "CursorToys: Focus HTTP Requests",
         "icon": "$(globe)"
@@ -406,85 +400,10 @@
         "title": "CursorToys: Focus Utils",
         "icon": "$(tools)"
       },
-        {
-          "command": "cursor-toys.settings.refresh",
-          "title": "CursorToys: Refresh Settings",
-          "icon": "$(refresh)"
-        },
-        {
-          "command": "cursor-toys.deepspec.refresh",
-          "title": "CursorToys: Refresh DeepSpec",
-          "icon": "$(refresh)"
-        },
       {
-        "command": "cursor-toys.deepspec.initialize",
-        "title": "CursorToys: Initialize DeepSpec",
-        "icon": "$(sparkle)"
-      },
-      {
-        "command": "cursor-toys.deepspec.createTask",
-        "title": "CursorToys: New DeepSpec",
-        "icon": "$(add)"
-      },
-      {
-        "command": "cursor-toys.deepspec.openReview",
-        "title": "CursorToys: Review DeepSpec",
-        "icon": "$(comment-discussion)"
-      },
-      {
-        "command": "cursor-toys.deepspec.openAbcFile",
-        "title": "CursorToys: Review DeepSpec",
-        "icon": "$(comment-discussion)"
-      },
-      {
-        "command": "cursor-toys.deepspec.openAbcFileInEditor",
-        "title": "CursorToys: Open DeepSpec in Editor",
-        "icon": "$(file-text)"
-      },
-      {
-        "command": "cursor-toys.deepspec.openMemory",
-        "title": "CursorToys: Open DeepSpec Memory",
-        "icon": "$(notebook)"
-      },
-      {
-        "command": "cursor-toys.deepspec.openMemoryEntry",
-        "title": "CursorToys: Open DeepSpec Memory Entry",
-        "icon": "$(link-external)"
-      },
-      {
-        "command": "cursor-toys.deepspec.approveTask",
-        "title": "CursorToys: DeepSpec Send to Chat (Approve)",
-        "icon": "$(check)"
-      },
-      {
-        "command": "cursor-toys.deepspec.completeTask",
-        "title": "CursorToys: DeepSpec Send to Chat (Complete)",
-        "icon": "$(archive)"
-      },
-      {
-        "command": "cursor-toys.deepspec.reviseTask",
-        "title": "CursorToys: DeepSpec Send to Chat (Revise)",
-        "icon": "$(comment-discussion)"
-      },
-      {
-        "command": "cursor-toys.deepspec.discardTask",
-        "title": "CursorToys: Discard DeepSpec Draft",
-        "icon": "$(close)"
-      },
-      {
-        "command": "cursor-toys.deepspec.sendToChatDiscard",
-        "title": "CursorToys: DeepSpec Send to Chat (Discard)",
-        "icon": "$(comment-discussion)"
-      },
-      {
-        "command": "cursor-toys.deepspec.sendToChatExecute",
-        "title": "CursorToys: DeepSpec Send to Chat (Execute)",
-        "icon": "$(run)"
-      },
-      {
-        "command": "cursor-toys.deepspec.sendToChatPlan",
-        "title": "CursorToys: DeepSpec Send to Chat (Plan)",
-        "icon": "$(comment-discussion)"
+        "command": "cursor-toys.settings.refresh",
+        "title": "CursorToys: Refresh Settings",
+        "icon": "$(refresh)"
       },
       {
         "command": "cursor-toys.shareAsCursorToysPlan",
@@ -728,6 +647,11 @@
       {
         "command": "cursorToys.command",
         "title": "CursorToys: Internal Command Router"
+      },
+      {
+        "command": "cursor-toys.installDeepSpecExtension",
+        "title": "CursorToys: Install DeepSpec Extension",
+        "icon": "$(cloud-download)"
       }
     ],
     "submenus": [
@@ -797,12 +721,6 @@
           "id": "cursor-toys.userMcpb",
           "name": "MCPB Packages",
           "when": "cursorToys.sidebar.mcpbVisible",
-          "visibility": "collapsed"
-        },
-        {
-          "id": "cursor-toys.deepspec",
-          "name": "DeepSpec",
-          "when": "cursorToys.deepspec.panelEnabled",
           "visibility": "collapsed"
         },
         {
@@ -879,11 +797,6 @@
           "group": "navigation@1"
         },
         {
-          "command": "cursor-toys.focusDeepspec",
-          "when": "view == cursor-toys.settings",
-          "group": "navigation@2"
-        },
-        {
           "command": "cursor-toys.focusHttp",
           "when": "view == cursor-toys.settings",
           "group": "navigation@3"
@@ -937,21 +850,6 @@
           "command": "cursor-toys.refreshPlans",
           "when": "view =~ /cursor-toys\\.(explorer\\.)?userPlans/",
           "group": "navigation"
-        },
-        {
-          "command": "cursor-toys.deepspec.refresh",
-          "when": "view == cursor-toys.deepspec",
-          "group": "navigation"
-        },
-        {
-          "command": "cursor-toys.deepspec.createTask",
-          "when": "view == cursor-toys.deepspec",
-          "group": "navigation@1"
-        },
-        {
-          "command": "cursor-toys.deepspec.initialize",
-          "when": "view == cursor-toys.deepspec && cursorToys.deepspec.needsInit",
-          "group": "navigation@2"
         },
         {
           "command": "cursor-toys.createHooksFile",
@@ -1144,71 +1042,6 @@
           "command": "cursor-toys.deletePlan",
           "when": "view =~ /cursor-toys\\.(explorer\\.)?userPlans/ && viewItem == userPlanFile",
           "group": "2_actions"
-        },
-        {
-          "command": "cursor-toys.deepspec.initialize",
-          "when": "view == cursor-toys.deepspec && viewItem == deepspecEmptyNeedInit",
-          "group": "inline"
-        },
-        {
-          "command": "cursor-toys.deepspec.approveTask",
-          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskDraft",
-          "group": "1_actions"
-        },
-        {
-          "command": "cursor-toys.deepspec.sendToChatPlan",
-          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskDraft",
-          "group": "1_actions"
-        },
-        {
-          "command": "cursor-toys.deepspec.discardTask",
-          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskDraft",
-          "group": "2_actions"
-        },
-        {
-          "command": "cursor-toys.deepspec.sendToChatDiscard",
-          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskDraft",
-          "group": "2_actions"
-        },
-        {
-          "command": "cursor-toys.deepspec.sendToChatExecute",
-          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskActive",
-          "group": "1_actions"
-        },
-        {
-          "command": "cursor-toys.deepspec.completeTask",
-          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskReview",
-          "group": "1_actions"
-        },
-        {
-          "command": "cursor-toys.deepspec.reviseTask",
-          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskReview",
-          "group": "1_actions"
-        },
-        {
-          "command": "cursor-toys.deepspec.openReview",
-          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskReview",
-          "group": "inline"
-        },
-        {
-          "command": "cursor-toys.deepspec.openReview",
-          "when": "view == cursor-toys.deepspec && viewItem == deepspecAbcFile",
-          "group": "inline"
-        },
-        {
-          "command": "cursor-toys.deepspec.openAbcFileInEditor",
-          "when": "view == cursor-toys.deepspec && viewItem == deepspecAbcFile",
-          "group": "1_actions"
-        },
-        {
-          "command": "cursor-toys.deepspec.openMemory",
-          "when": "view == cursor-toys.deepspec && viewItem == deepspecMemoryFile",
-          "group": "inline"
-        },
-        {
-          "command": "cursor-toys.deepspec.openMemoryEntry",
-          "when": "view == cursor-toys.deepspec && viewItem == deepspecMemoryEntry",
-          "group": "inline"
         },
         {
           "command": "cursor-toys.openSkill",
@@ -1558,290 +1391,269 @@
       {
         "title": "Cursor Toys",
         "properties": {
-        "cursorToys.linkType": {
-          "type": "string",
-          "enum": [
-            "deeplink",
-            "web",
-            "custom"
-          ],
-          "enumDescriptions": [
-            "Use cursor:// protocol (deeplink)",
-            "Use web URL https://cursor.com/link/",
-            "Use a custom base URL (configure in cursorToys.customBaseUrl)"
-          ],
-          "default": "deeplink",
-          "description": "Type of link to generate"
-        },
-        "cursorToys.customBaseUrl": {
-          "type": "string",
-          "default": "",
-          "description": "Custom base URL for deeplinks (only used when linkType is 'custom'). Example: https://example.com/link/ or custom://protocol/"
-        },
-        "cursorToys.allowedExtensions": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": [
-            "md",
-            "mdc"
-          ],
-          "description": "Allowed file extensions (without the dot, e.g., md, mdc, txt, json). For rules, .mdc is recommended to support metadata."
-        },
-        "cursorToys.baseFolder": {
-          "type": "string",
-          "default": "cursor",
-          "pattern": "^[a-zA-Z0-9_-]+$",
-          "description": "Base folder name for storing commands, rules, prompts and HTTP files (e.g., 'cursor', 'vscode', 'ai'). Note: Rules and prompts are Cursor-specific features."
-        },
-        "cursorToys.commandsFolder": {
-          "type": "string",
-          "enum": [
-            "cursor",
-            "claude"
-          ],
-          "enumDescriptions": [
-            "Use .cursor/commands folder (default)",
-            "Use .claude/commands folder"
-          ],
-          "default": "cursor",
-          "description": "Folder to save commands: 'cursor' for .cursor/commands or 'claude' for .claude/commands. Only the commands folder is configurable; rules and prompts always use .cursor"
-        },
-        "cursorToys.personalCommandsView": {
-          "type": "string",
-          "enum": [
-            "both",
-            "cursor",
-            "claude"
-          ],
-          "enumDescriptions": [
-            "Show commands from both .cursor and .claude folders",
-            "Show commands from .cursor folder only",
-            "Show commands from .claude folder only"
-          ],
-          "default": "both",
-          "description": "Which command folders to show in Personal Commands view: 'both' for .cursor and .claude, 'cursor' for .cursor only, or 'claude' for .claude only"
-        },
-        "cursorToys.sidebar.hiddenViews": {
-          "type": "array",
-          "items": {
+          "cursorToys.linkType": {
             "type": "string",
             "enum": [
-              "notepads",
-              "commands",
-              "prompts",
-              "plans",
-              "skills",
-              "hooks",
-              "mcpb",
-              "http"
-            ]
-          },
-          "default": [],
-          "markdownDescription": "Explorer sidebar sections to hide under CursorToys. Keys: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`. Empty list shows all sections. Command Palette and file actions still work for hidden resources."
-        },
-        "cursorToys.sidebar.explorerViews": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "enum": [
-              "notepads",
-              "commands",
-              "prompts",
-              "plans",
-              "skills",
-              "hooks",
-              "mcpb",
-              "http"
-            ]
-          },
-          "default": [
-            "skills",
-            "plans"
-          ],
-          "markdownDescription": "Explorer sidebar sections to also show in the Explorer (in addition to the CursorToys activity bar). Keys: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`. Default: `skills`, `plans`."
-        },
-        "cursorToys.httpRequestTimeout": {
-          "type": "number",
-          "default": 10,
-          "description": "Timeout in seconds for HTTP requests (default: 10 seconds)"
-        },
-        "cursorToys.httpRequestSaveFile": {
-          "type": "boolean",
-          "default": false,
-          "description": "Also write the HTTP response to a .res/.response file on disk. The response is always shown in the response panel (or editor, if configured)."
-        },
-        "cursorToys.httpRequestResponseView": {
-          "type": "string",
-          "enum": [
-            "panel",
-            "editor"
-          ],
-          "enumDescriptions": [
-            "Show responses in a reusable webview panel (updates in place on re-run)",
-            "Open each response in the text editor (legacy behavior; may open many tabs)"
-          ],
-          "default": "panel",
-          "description": "Where to display HTTP responses after Send Request."
-        },
-        "cursorToys.httpRequestEditor.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Open .req/.request files from the HTTP folder in the visual request editor (Postman-style) instead of plain text."
-        },
-        "cursorToys.httpRequestEditor.autoSave": {
-          "type": "boolean",
-          "default": true,
-          "description": "Automatically save changes from the HTTP request editor while you edit."
-        },
-        "cursorToys.httpAssertionsEnabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable HTTP request assertions validation (@assert annotations)"
-        },
-        "cursorToys.httpAssertionsShowInline": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show assertion results inline in .res files"
-        },
-        "cursorToys.httpAssertionsFailOnError": {
-          "type": "boolean",
-          "default": false,
-          "description": "Stop execution if assertion fails (extension only)"
-        },
-        "cursorToys.httpDefaultEnvironment": {
-          "type": "string",
-          "default": "dev",
-          "description": "Default HTTP environment name (used for reference in status bar)"
-        },
-        "cursorToys.minify.preserveComments": {
-          "type": "boolean",
-          "default": false,
-          "description": "Preserve comments when minifying code (currently not implemented)"
-        },
-        "cursorToys.minify.outputSuffix": {
-          "type": "string",
-          "default": ".min",
-          "description": "Suffix for minified files (e.g., '.min' creates 'file.min.js')"
-        },
-        "cursorToys.gistDefaultVisibility": {
-          "type": "string",
-          "enum": [
-            "public",
-            "private",
-            "ask"
-          ],
-          "enumDescriptions": [
-            "Always create public gists",
-            "Always create private gists",
-            "Ask each time before creating a gist"
-          ],
-          "default": "ask",
-          "description": "Default visibility when creating GitHub Gists"
-        },
-        "cursorToys.recommendationsEnabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable CursorToys recommendations based on project context"
-        },
-        "cursorToys.recommendationsCheckOnStartup": {
-          "type": "boolean",
-          "default": true,
-          "description": "Check for recommendations when opening a workspace"
-        },
-        "cursorToys.recommendationsSuggestInterval": {
-          "type": "number",
-          "default": 7,
-          "minimum": 1,
-          "description": "Days between recommendation suggestions (default: 7)"
-        },
-        "cursorToys.skillsRegistryUrl": {
-          "type": "string",
-          "default": "https://raw.githubusercontent.com/tech-leads-club/agent-skills/refs/heads/main/packages/skills-catalog/skills-registry.json",
-          "description": "URL to Agent Skills registry from Tech Leads Club. Contains community-driven skills catalog for AI coding assistants."
-        },
-        "cursorToys.geminiModel": {
-          "type": "string",
-          "enum": [
-            "gemini-3-flash-preview",
-            "gemini-3-pro-preview",
-            "gemini-2.5-flash-lite",
-            "gemini-2.5-flash",
-            "gemini-2.5-pro",
-            "gemini-2.0-flash"
-          ],
-          "default": "gemini-3-flash-preview",
-          "description": "Gemini AI model to use for text refinement"
-        },
-        "cursorToys.geminiRefinePrompt": {
-          "type": "string",
-          "default": "You must return ONLY the refined text, nothing else. Do not add introductions like \"Here's the refined version\" or \"Okay, here is\". Do not add markdown separators (---). Do not add explanations or notes. Just return the improved text directly.\n\nFix typos, improve clarity, and enhance the flow of the following text:",
-          "description": "Default prompt template for AI text refinement"
-        },
-        "cursorToys.geminiRequestTimeout": {
-          "type": "number",
-          "default": 30,
-          "description": "Timeout in seconds for Gemini API requests (default: 30)"
-        },
-        "cursorToys.mcpb.useOfficialCli": {
-          "type": "boolean",
-          "default": true,
-          "description": "Use the official MCPB CLI (npx @anthropic-ai/mcpb) for verify and unpack when available. Enables signature verification for signed packages and uses the same unpack logic as the official tooling. Falls back to built-in extraction if the CLI is not available."
-        },
-        "cursorToys.cli.cursortoysPackageSpec": {
-          "type": "string",
-          "default": "@latest",
-          "markdownDescription": "npm package spec for **CursorToys CLI** when the extension runs `npx cursortoys …` (HTTP tests, etc.). Examples: `@latest`, `2026.5.30`, `^2026.5.0`."
-        },
-        "cursorToys.spending.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show Cursor API usage (Auto % and API %) in the status bar. Set to false to hide the spending indicator."
-        },
-        "cursorToys.spending.autoDetectToken": {
-          "type": "boolean",
-          "default": true,
-          "description": "Build the session cookie from Cursor's local login (state.vscdb). If false or detection fails, the manual session token is used."
-        },
-        "cursorToys.spending.sessionToken": {
-          "type": "string",
-          "default": "",
-          "description": "Optional override: full WorkosCursorSessionToken cookie value or JWT from cursor.com. Used when auto-detect is disabled or fails."
-        },
-        "cursorToys.spending.refreshInterval": {
-          "type": "number",
-          "default": 20,
-          "minimum": 1,
-          "maximum": 1440,
-          "description": "Refresh interval for spending usage in minutes."
-        }
-      }
-    },
-    {
-      "title": "Cursor Toys › Experimental",
-        "properties": {
-          "cursorToys.experimental.deepspec": {
-            "type": "boolean",
-            "default": false,
-            "order": 1,
-            "markdownDescription": "Show the **DeepSpec** section in the CursorToys activity bar sidebar: spec-driven tasks (drafts → in development → archive). Off by default; reload the window after changing."
-          },
-          "cursorToys.deepspec.reviewPanelColumn": {
-            "type": "string",
-            "default": "active",
-            "enum": [
-              "active",
-              "beside"
+              "deeplink",
+              "web",
+              "custom"
             ],
             "enumDescriptions": [
-              "Open the review panel in the active editor column (full width).",
-              "Open the review panel beside the current editor (split view)."
+              "Use cursor:// protocol (deeplink)",
+              "Use web URL https://cursor.com/link/",
+              "Use a custom base URL (configure in cursorToys.customBaseUrl)"
             ],
-            "order": 2,
-            "markdownDescription": "Where to open the **DeepSpec Review** webview when you click an A-B-C file."
+            "default": "deeplink",
+            "description": "Type of link to generate"
+          },
+          "cursorToys.customBaseUrl": {
+            "type": "string",
+            "default": "",
+            "description": "Custom base URL for deeplinks (only used when linkType is 'custom'). Example: https://example.com/link/ or custom://protocol/"
+          },
+          "cursorToys.allowedExtensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "md",
+              "mdc"
+            ],
+            "description": "Allowed file extensions (without the dot, e.g., md, mdc, txt, json). For rules, .mdc is recommended to support metadata."
+          },
+          "cursorToys.baseFolder": {
+            "type": "string",
+            "default": "cursor",
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "description": "Base folder name for storing commands, rules, prompts and HTTP files (e.g., 'cursor', 'vscode', 'ai'). Note: Rules and prompts are Cursor-specific features."
+          },
+          "cursorToys.commandsFolder": {
+            "type": "string",
+            "enum": [
+              "cursor",
+              "claude"
+            ],
+            "enumDescriptions": [
+              "Use .cursor/commands folder (default)",
+              "Use .claude/commands folder"
+            ],
+            "default": "cursor",
+            "description": "Folder to save commands: 'cursor' for .cursor/commands or 'claude' for .claude/commands. Only the commands folder is configurable; rules and prompts always use .cursor"
+          },
+          "cursorToys.personalCommandsView": {
+            "type": "string",
+            "enum": [
+              "both",
+              "cursor",
+              "claude"
+            ],
+            "enumDescriptions": [
+              "Show commands from both .cursor and .claude folders",
+              "Show commands from .cursor folder only",
+              "Show commands from .claude folder only"
+            ],
+            "default": "both",
+            "description": "Which command folders to show in Personal Commands view: 'both' for .cursor and .claude, 'cursor' for .cursor only, or 'claude' for .claude only"
+          },
+          "cursorToys.sidebar.hiddenViews": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "notepads",
+                "commands",
+                "prompts",
+                "plans",
+                "skills",
+                "hooks",
+                "mcpb",
+                "http"
+              ]
+            },
+            "default": [],
+            "markdownDescription": "Explorer sidebar sections to hide under CursorToys. Keys: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`. Empty list shows all sections. Command Palette and file actions still work for hidden resources."
+          },
+          "cursorToys.sidebar.explorerViews": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "notepads",
+                "commands",
+                "prompts",
+                "plans",
+                "skills",
+                "hooks",
+                "mcpb",
+                "http"
+              ]
+            },
+            "default": [
+              "skills",
+              "plans"
+            ],
+            "markdownDescription": "Explorer sidebar sections to also show in the Explorer (in addition to the CursorToys activity bar). Keys: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`. Default: `skills`, `plans`."
+          },
+          "cursorToys.httpRequestTimeout": {
+            "type": "number",
+            "default": 10,
+            "description": "Timeout in seconds for HTTP requests (default: 10 seconds)"
+          },
+          "cursorToys.httpRequestSaveFile": {
+            "type": "boolean",
+            "default": false,
+            "description": "Also write the HTTP response to a .res/.response file on disk. The response is always shown in the response panel (or editor, if configured)."
+          },
+          "cursorToys.httpRequestResponseView": {
+            "type": "string",
+            "enum": [
+              "panel",
+              "editor"
+            ],
+            "enumDescriptions": [
+              "Show responses in a reusable webview panel (updates in place on re-run)",
+              "Open each response in the text editor (legacy behavior; may open many tabs)"
+            ],
+            "default": "panel",
+            "description": "Where to display HTTP responses after Send Request."
+          },
+          "cursorToys.httpRequestEditor.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Open .req/.request files from the HTTP folder in the visual request editor (Postman-style) instead of plain text."
+          },
+          "cursorToys.httpRequestEditor.autoSave": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically save changes from the HTTP request editor while you edit."
+          },
+          "cursorToys.httpAssertionsEnabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable HTTP request assertions validation (@assert annotations)"
+          },
+          "cursorToys.httpAssertionsShowInline": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show assertion results inline in .res files"
+          },
+          "cursorToys.httpAssertionsFailOnError": {
+            "type": "boolean",
+            "default": false,
+            "description": "Stop execution if assertion fails (extension only)"
+          },
+          "cursorToys.httpDefaultEnvironment": {
+            "type": "string",
+            "default": "dev",
+            "description": "Default HTTP environment name (used for reference in status bar)"
+          },
+          "cursorToys.minify.preserveComments": {
+            "type": "boolean",
+            "default": false,
+            "description": "Preserve comments when minifying code (currently not implemented)"
+          },
+          "cursorToys.minify.outputSuffix": {
+            "type": "string",
+            "default": ".min",
+            "description": "Suffix for minified files (e.g., '.min' creates 'file.min.js')"
+          },
+          "cursorToys.gistDefaultVisibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private",
+              "ask"
+            ],
+            "enumDescriptions": [
+              "Always create public gists",
+              "Always create private gists",
+              "Ask each time before creating a gist"
+            ],
+            "default": "ask",
+            "description": "Default visibility when creating GitHub Gists"
+          },
+          "cursorToys.recommendationsEnabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable CursorToys recommendations based on project context"
+          },
+          "cursorToys.recommendationsCheckOnStartup": {
+            "type": "boolean",
+            "default": true,
+            "description": "Check for recommendations when opening a workspace"
+          },
+          "cursorToys.recommendationsSuggestInterval": {
+            "type": "number",
+            "default": 7,
+            "minimum": 1,
+            "description": "Days between recommendation suggestions (default: 7)"
+          },
+          "cursorToys.skillsRegistryUrl": {
+            "type": "string",
+            "default": "https://raw.githubusercontent.com/tech-leads-club/agent-skills/refs/heads/main/packages/skills-catalog/skills-registry.json",
+            "description": "URL to Agent Skills registry from Tech Leads Club. Contains community-driven skills catalog for AI coding assistants."
+          },
+          "cursorToys.geminiModel": {
+            "type": "string",
+            "enum": [
+              "gemini-3-flash-preview",
+              "gemini-3-pro-preview",
+              "gemini-2.5-flash-lite",
+              "gemini-2.5-flash",
+              "gemini-2.5-pro",
+              "gemini-2.0-flash"
+            ],
+            "default": "gemini-3-flash-preview",
+            "description": "Gemini AI model to use for text refinement"
+          },
+          "cursorToys.geminiRefinePrompt": {
+            "type": "string",
+            "default": "You must return ONLY the refined text, nothing else. Do not add introductions like \"Here's the refined version\" or \"Okay, here is\". Do not add markdown separators (---). Do not add explanations or notes. Just return the improved text directly.\n\nFix typos, improve clarity, and enhance the flow of the following text:",
+            "description": "Default prompt template for AI text refinement"
+          },
+          "cursorToys.geminiRequestTimeout": {
+            "type": "number",
+            "default": 30,
+            "description": "Timeout in seconds for Gemini API requests (default: 30)"
+          },
+          "cursorToys.mcpb.useOfficialCli": {
+            "type": "boolean",
+            "default": true,
+            "description": "Use the official MCPB CLI (npx @anthropic-ai/mcpb) for verify and unpack when available. Enables signature verification for signed packages and uses the same unpack logic as the official tooling. Falls back to built-in extraction if the CLI is not available."
+          },
+          "cursorToys.cli.cursortoysPackageSpec": {
+            "type": "string",
+            "default": "@latest",
+            "markdownDescription": "npm package spec for **CursorToys CLI** when the extension runs `npx cursortoys …` (HTTP tests, etc.). Examples: `@latest`, `2026.5.30`, `^2026.5.0`."
+          },
+          "cursorToys.spending.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show Cursor API usage (Auto % and API %) in the status bar. Set to false to hide the spending indicator."
+          },
+          "cursorToys.spending.autoDetectToken": {
+            "type": "boolean",
+            "default": true,
+            "description": "Build the session cookie from Cursor's local login (state.vscdb). If false or detection fails, the manual session token is used."
+          },
+          "cursorToys.spending.sessionToken": {
+            "type": "string",
+            "default": "",
+            "description": "Optional override: full WorkosCursorSessionToken cookie value or JWT from cursor.com. Used when auto-detect is disabled or fails."
+          },
+          "cursorToys.spending.refreshInterval": {
+            "type": "number",
+            "default": 20,
+            "minimum": 1,
+            "maximum": 1440,
+            "description": "Refresh interval for spending usage in minutes."
           }
         }
+      },
+      {
+        "title": "Cursor Toys › Experimental",
+        "properties": {}
       }
     ],
     "configurationDefaults": {
@@ -1948,5 +1760,8 @@
     "@types/node": "16.x",
     "@types/vscode": "^1.74.0",
     "typescript": "^4.9.4"
-  }
+  },
+  "extensionRecommendations": [
+    "godrix.deepspec"
+  ]
 }

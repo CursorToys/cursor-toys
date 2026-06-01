@@ -6,7 +6,9 @@
 
 ### Breaking Changes
 
-- **DeepFlow renamed to DeepSpec**: Panel, commands (`cursor-toys.deepspec.*`), workspace folder (`.deepspec/`), skill path (`.cursor/skills/deep-spec/`), and setting `cursorToys.experimental.deepspec`. Legacy settings `cursorToys.experimental.deepflow` and `cursorToys.deepflow.enabled` are still read. Rename existing `.deepflow/` to `.deepspec/` and reinstall the skill if you used the old `deep-flow` skill.
+- **DeepSpec split to standalone extension**: DeepSpec UI and commands removed from CursorToys. Install **[DeepSpec](https://github.com/godrix/DeepSpec)** (`godrix.deepspec`). Use **CursorToys: Install DeepSpec Extension** or Settings → DeepSpec. Migration: `cursorToys.experimental.deepspec` → `deepspec.enabled`; `cursor-toys.deepspec.*` → `deepspec.*`; `cursorToys.deepspec.reviewPanelColumn` → `deepspec.reviewPanelColumn`.
+
+- **DeepFlow renamed to DeepSpec** (historical; superseded by split above for panel/commands): Panel, commands (`cursor-toys.deepspec.*`), workspace folder (`.deepspec/`), skill path (`.cursor/skills/deep-spec/`), and setting `cursorToys.experimental.deepspec`. Legacy settings `cursorToys.experimental.deepflow` and `cursorToys.deepflow.enabled` are still read. Rename existing `.deepflow/` to `.deepspec/` and reinstall the skill if you used the old `deep-flow` skill.
 
 ### Added
 

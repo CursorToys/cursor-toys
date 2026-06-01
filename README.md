@@ -49,7 +49,7 @@ Everything below follows that pattern: short path from intent to action, progres
 | [🌐 GitHub Gist Integration](#-github-gist-integration) | Share and import via Gist for browser-friendly links. |
 | [📦 MCPB Packages](#-mcpb-packages) | Install MCP server bundles (`.mcpb`) into Cursor with preview. |
 | [📊 Spending (API usage)](#-spending-cursor-api-usage) | See Cursor Auto/API usage % in the status bar. |
-| [🧪 DeepSpec (experimental)](#-deepspec-experimental) | Spec-driven dev panel: drafts → active → archive (opt-in). |
+| [🧪 DeepSpec](#-deepspec) | Spec-driven dev — install the separate **DeepSpec** extension (`godrix.deepspec`). |
 | [Explorer sidebar visibility](#explorer-sidebar-visibility) | Hide individual CursorToys trees in the Explorer. |
 
 ### 🌐 In-Editor API Testing
@@ -181,30 +181,13 @@ GET https://api.example.com/user/123
 - Token auto-detected from Cursor state or set via **Configure spending session token**.
 - Click opens Cursor dashboard; hide/show via commands.
 
-### 🧪 DeepSpec (experimental)
+### 🧪 DeepSpec
 
-**Spec-driven development in Cursor** — visual pipeline for [DeepSpec](https://github.com/godrix/DeepSpec) (`drafts` → `active` → `archive`).
+**Spec-driven development** moved to a dedicated extension: **[DeepSpec](https://github.com/godrix/DeepSpec)** (`godrix.deepspec` on the Marketplace).
 
-> **Opt-in:** `cursorToys.experimental.deepspec` (default `false`) → reload window.
-
-- Activity bar panel with A-B-C spec files per task (`APPROACH`, `BUSINESS_CONTEXT`, `COMPLETION_REPORT`).
-- Click a **task** or **A-B-C file** to open **spec review** with **Approach / Business / Completion** tabs for comments and approve/send-to-chat actions.
-- Create specs, send `@` folder refs to chat (`Create task`, `Approve task`, `Complete task`, etc.).
-- Spec review: **inline comment balloons** below lines (× to remove); gutter icons to add/view; full-width document (no comments sidebar).
-
-<details>
-<summary><strong>DeepSpec commands</strong></summary>
-
-| Command | Description |
-|:--------|:------------|
-| **CursorToys: New DeepSpec** | Create spec form → send to chat |
-| **CursorToys: Initialize DeepSpec** | Bootstrap `.deepspec/` |
-| **CursorToys: DeepSpec Send to Chat (Plan/Approve/Execute/Complete/Discard)** | Chat actions with folder refs |
-| **CursorToys: Refresh DeepSpec** | Refresh specs tree |
-
-Requires **deep-spec** skill in `.cursor/skills/deep-spec/` (downloaded on init if missing).
-
-</details>
+- Install via **CursorToys → Settings → DeepSpec → Install DeepSpec Extension**, or command **CursorToys: Install DeepSpec Extension**.
+- Your `.deepspec/` folder and `.cursor/skills/deep-spec/` skill are unchanged.
+- Commands are now `deepspec.*` (replacing `cursor-toys.deepspec.*`). Settings: `deepspec.enabled`, `deepspec.reviewPanelColumn`.
 
 ### Explorer sidebar visibility
 
