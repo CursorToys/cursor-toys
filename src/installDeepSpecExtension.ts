@@ -12,7 +12,13 @@ export async function installDeepSpecExtension(): Promise<void> {
     void vscode.window.showInformationMessage(
       'DeepSpec extension is already installed. Use the DeepSpec activity bar to open specs.'
     );
-    await vscode.commands.executeCommand('deepspec.focus');
+    try {
+      await installed.activate();
+      await vscode.commands.executeCommand('deepspec.focus');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      void vscode.window.showErrorMessage(`DeepSpec: ${message}`);
+    }
     return;
   }
 

@@ -1,6 +1,6 @@
 # CursorToys
 
-![](https://i.imgur.com/PD1o1q9.jpeg)
+![](https://i.imgur.com/ZLiERWl.jpeg)
 
 ## Unreleased
 
