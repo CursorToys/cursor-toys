@@ -4,9 +4,15 @@
  */
 
 import * as vscode from 'vscode';
-import { readTokenFromStateVscdb } from './cursorStateToken';
+import {
+  clearCredentialsCache,
+  fetchConsolidatedUsage,
+  resolveSessionCookieValue,
+  type PlanUsage,
+} from './cursorUsage';
 
-const API_URL = 'https://cursor.com/api/dashboard/get-current-period-usage';
+export type { PlanUsage } from './cursorUsage';
+
 const DASHBOARD_URL = 'https://cursor.com/dashboard?tab=spending';
 const PROGRESS_BAR_WIDTH = 24;
 const PROGRESS_FILL = '\u2588';
@@ -15,36 +21,22 @@ const PROGRESS_EMPTY = '\u2591';
 let statusBarItem: vscode.StatusBarItem | undefined;
 let refreshIntervalId: ReturnType<typeof setInterval> | undefined;
 
-export interface PlanUsage {
-  autoPercentUsed?: number;
-  apiPercentUsed?: number;
-  totalSpend?: number;
-  includedSpend?: number;
-  remaining?: number;
-  limit?: number;
-  bonusTooltip?: string;
-}
-
 function getConfig(): vscode.WorkspaceConfiguration {
   return vscode.workspace.getConfiguration('cursorToys');
 }
 
-async function resolveToken(): Promise<string> {
+async function resolveSessionCookie(): Promise<string | null> {
   const config = getConfig();
   const autoDetect = config.get<boolean>('spending.autoDetectToken', true);
   const manualToken = (config.get<string>('spending.sessionToken', '') || '').trim();
 
-  if (autoDetect) {
-    try {
-      const fromDb = await readTokenFromStateVscdb();
-      if (fromDb && fromDb.length > 0) {
-        return fromDb;
-      }
-    } catch {
-      // fall through to manual
-    }
+  if (manualToken) {
+    return resolveSessionCookieValue(manualToken);
   }
-  return manualToken;
+  if (autoDetect) {
+    return resolveSessionCookieValue('');
+  }
+  return null;
 }
 
 function formatCentsAsUsd(cents: number): string {
@@ -199,12 +191,18 @@ async function fetchAndUpdateStatusBar(): Promise<void> {
   if (!statusBarItem) {
     return;
   }
-  const token = await resolveToken();
-  if (!token) {
+  const config = getConfig();
+  const manualToken = (config.get<string>('spending.sessionToken', '') || '').trim();
+  const autoDetect = config.get<boolean>('spending.autoDetectToken', true);
+
+  const cookie = await resolveSessionCookie();
+  if (!cookie) {
     setStatusBarNoToken(
       statusBarItem,
       '$(cursor) Auto: —  $(cloud) API: —',
-      'Token not configured. Click to set up.'
+      autoDetect
+        ? 'Could not read Cursor login from this machine. Click to paste a session token (optional).'
+        : 'Token not configured. Click to set up.'
     );
     statusBarItem.show();
     return;
@@ -215,38 +213,8 @@ async function fetchAndUpdateStatusBar(): Promise<void> {
   statusBarItem.show();
 
   try {
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        Accept: '*/*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Cache-Control': 'no-cache',
-        'Content-Type': 'application/json',
-        Pragma: 'no-cache',
-        Origin: 'https://cursor.com',
-        Referer: DASHBOARD_URL,
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.2 Safari/605.1.15',
-        Cookie: `WorkosCursorSessionToken=${token}`
-      },
-      body: '{}'
-    });
-
-    if (!response.ok) {
-      throw new Error(`API returned ${response.status}: ${response.statusText}`);
-    }
-
-    const data = (await response.json()) as { planUsage?: PlanUsage; [key: string]: unknown };
-    let planUsage = data?.planUsage;
-
-    if (!planUsage && data && typeof data === 'object') {
-      if (
-        typeof (data as PlanUsage).autoPercentUsed === 'number' ||
-        typeof (data as PlanUsage).apiPercentUsed === 'number'
-      ) {
-        planUsage = data as PlanUsage;
-      }
-    }
+    const consolidated = await fetchConsolidatedUsage(manualToken);
+    const planUsage = consolidated?.planUsage;
 
     if (!planUsage) {
       setStatusBarUnsupported(
@@ -375,14 +343,15 @@ function getTokenSetupWebviewContent(dashboardLink: string, nonce: string): stri
   </style>
 </head>
 <body>
-  <p>Paste your <strong>WorkosCursorSessionToken</strong> cookie value below. Get it from your browser while logged into the Cursor dashboard:</p>
+  <p>Usage is read automatically from your local Cursor login (<code>state.vscdb</code>) when <strong>auto-detect</strong> is enabled. Use the field below only if auto-detect fails.</p>
+  <p>Optional override: paste the <strong>WorkosCursorSessionToken</strong> cookie from the browser:</p>
   <ol style="margin: 0.5rem 0 1rem 1.25rem;">
     <li>Open the <a href="${dashboardLink}" id="dashboard-link">Cursor dashboard</a> and log in.</li>
     <li>Open DevTools (F12 or Cmd+Option+I) → Application → Cookies → cursor.com.</li>
-    <li>Copy the value of <strong>WorkosCursorSessionToken</strong>.</li>
+    <li>Copy the value of <strong>WorkosCursorSessionToken</strong> (or paste the JWT only).</li>
   </ol>
-  <label for="token-input">Session token</label>
-  <input type="text" id="token-input" placeholder="Paste token here..." />
+  <label for="token-input">Manual session token (optional)</label>
+  <input type="text" id="token-input" placeholder="Leave empty if auto-detect works" />
   <div class="button-row">
     <button id="save-btn">Save</button>
   </div>
@@ -434,6 +403,7 @@ function openTokenSetupPanel(): void {
         trimmed,
         vscode.ConfigurationTarget.Global
       );
+      clearCredentialsCache();
       panel.dispose();
       vscode.window.showInformationMessage(
         'CursorToys: Session token saved. Fetching usage…'

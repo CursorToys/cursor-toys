@@ -40,35 +40,24 @@ export const ABC_FILE_NAMES: Record<AbcFileKind, string> = {
   COMPLETION_REPORT: 'COMPLETION_REPORT.md',
 };
 
-const TASK_FOLDER_REGEX = /^\d{2,}-[\w-]+$/;
+/** Kebab-case slug or legacy `NN-slug` folders (DeepSpec 2.x). */
+const TASK_FOLDER_REGEX = /^[\w-]+$/;
 
 export interface DeepSpecTaskInfo {
   folderName: string;
   taskId: string;
   folderUri: vscode.Uri;
   stage: DeepSpecStage;
-  sortNum: number;
-}
-
-export interface ParsedTaskFolder {
-  num: number;
-  slug: string;
 }
 
 /**
- * Parses a DeepSpec task folder name (e.g. `01-deep-spec-ui`).
+ * True when `name` is a valid DeepSpec task folder (slug, not hidden).
  */
-export function parseTaskFolderName(name: string): ParsedTaskFolder | null {
-  if (!TASK_FOLDER_REGEX.test(name)) {
-    return null;
+export function isValidTaskFolderName(name: string): boolean {
+  if (!name || name.startsWith('.')) {
+    return false;
   }
-  const dash = name.indexOf('-');
-  const numStr = name.slice(0, dash);
-  const num = parseInt(numStr, 10);
-  if (Number.isNaN(num)) {
-    return null;
-  }
-  return { num, slug: name.slice(dash + 1) };
+  return TASK_FOLDER_REGEX.test(name);
 }
 
 /**
@@ -174,7 +163,7 @@ export async function deepspecSpecsExist(root: vscode.Uri): Promise<boolean> {
 }
 
 /**
- * Lists task folders in a stage, sorted by numeric prefix.
+ * Lists task folders in a stage, sorted alphabetically by folder name.
  */
 export async function listTasksInStage(
   specsUri: vscode.Uri,
@@ -193,11 +182,7 @@ export async function listTasksInStage(
     if (type !== vscode.FileType.Directory) {
       continue;
     }
-    if (name.startsWith('.')) {
-      continue;
-    }
-    const parsed = parseTaskFolderName(name);
-    if (!parsed) {
+    if (!isValidTaskFolderName(name)) {
       continue;
     }
     tasks.push({
@@ -205,11 +190,10 @@ export async function listTasksInStage(
       taskId: name,
       folderUri: vscode.Uri.joinPath(stageUri, name),
       stage,
-      sortNum: parsed.num,
     });
   }
 
-  tasks.sort((a, b) => a.sortNum - b.sortNum || a.folderName.localeCompare(b.folderName));
+  tasks.sort((a, b) => a.folderName.localeCompare(b.folderName));
   return tasks;
 }
 

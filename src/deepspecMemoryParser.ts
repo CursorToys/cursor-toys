@@ -35,7 +35,7 @@ export interface DeepspecMemoryDoc {
 }
 
 const ARCHIVED_INDEX_REGEX =
-  /^\[(\d{4}-\d{2}-\d{2})\]\s+\[(\d+)\]:\s+(.+?)(?:\.\s+Ref:\s+(\S+))?\s*$/;
+  /^\[(\d{4}-\d{2}-\d{2})\]\s+\[([^\]]+)\]:\s+(.+?)(?:\.\s+Ref:\s+(\S+))?\s*$/;
 
 const ARCHIVE_REF_FOLDER_REGEX = /specs\/archive\/([\w-]+)\/?$/;
 

@@ -10,6 +10,14 @@
 
 ### Added
 
+- **Cursor usage module (`cursorUsage`)**: Auto-builds `WorkosCursorSessionToken` from local `state.vscdb` (pure `fs` scan, no `sql.js`), calls usage APIs, and powers the spending status bar. Manual cookie/JWT override remains optional.
+
+### Fixed
+
+- **DeepSpec task folders**: Tree and stage lists accept kebab-case slugs without a numeric prefix (DeepSpec skill 2.x). Legacy `NN-slug` folders still work. `memory.md` index lines use `[folder-name]`; parser accepts slug or legacy numeric keys in archived entries.
+
+### Added
+
 - **DeepSpec review — A-B-C tabs**: Clicking a draft task or spec file opens the review panel with **Approach**, **Business**, and **Completion** tabs to switch documents and add line comments without leaving the panel.
 
 - **CLI package spec setting** (`cursorToys.cli.cursortoysPackageSpec`, default `@latest`): HTTP test terminals run `npx cursortoys@<spec> http test …`. Editable from CursorToys Settings → **CLI**.

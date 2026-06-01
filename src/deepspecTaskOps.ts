@@ -8,7 +8,6 @@ import {
   getDeepspecSpecsUri,
   getStageFromTaskUri,
   isTaskInReviewGate,
-  parseTaskFolderName,
   readAbcFile,
 } from './deepspecPaths';
 
@@ -16,8 +15,8 @@ const MEMORY_HEADER = `# DeepSpec Memory
 
 ## Archived Tasks
 
-<!-- Entries appended on task completion: [YYYY-MM-DD] [NN]: summary. Ref: specs/archive/[NN]-[name] -->
-<!-- Discarded drafts: [YYYY-MM-DD] [NN]: [discarded] reason. Ref: specs/archive/[NN]-[name] -->
+<!-- Entries appended on task completion: [YYYY-MM-DD] [name]: summary. Ref: specs/archive/[name] -->
+<!-- Discarded drafts: [YYYY-MM-DD] [name]: [discarded] reason. Ref: specs/archive/[name] -->
 
 ## Lessons
 
@@ -28,11 +27,9 @@ const MEMORY_HEADER = `# DeepSpec Memory
  * Builds a memory.md index line per DeepSpec convention.
  */
 export function buildMemoryIndexLine(taskFolderName: string, summary: string): string {
-  const parsed = parseTaskFolderName(taskFolderName);
-  const nn = parsed ? String(parsed.num).padStart(2, '0') : taskFolderName.split('-')[0] ?? '?';
   const date = new Date().toISOString().slice(0, 10);
   const cleanSummary = summary.replace(/\s+/g, ' ').trim();
-  return `[${date}] [${nn}]: ${cleanSummary}. Ref: specs/archive/${taskFolderName}`;
+  return `[${date}] [${taskFolderName}]: ${cleanSummary}. Ref: specs/archive/${taskFolderName}`;
 }
 
 /**
@@ -42,11 +39,9 @@ export function buildMemoryDiscardedIndexLine(
   taskFolderName: string,
   summary: string
 ): string {
-  const parsed = parseTaskFolderName(taskFolderName);
-  const nn = parsed ? String(parsed.num).padStart(2, '0') : taskFolderName.split('-')[0] ?? '?';
   const date = new Date().toISOString().slice(0, 10);
   const cleanSummary = summary.replace(/\s+/g, ' ').trim();
-  return `[${date}] [${nn}]: [discarded] ${cleanSummary}. Ref: specs/archive/${taskFolderName}`;
+  return `[${date}] [${taskFolderName}]: [discarded] ${cleanSummary}. Ref: specs/archive/${taskFolderName}`;
 }
 
 /**

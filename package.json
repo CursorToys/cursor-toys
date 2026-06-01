@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.1",
+  "version": "2026.6.1-1",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -1802,12 +1802,12 @@
         "cursorToys.spending.autoDetectToken": {
           "type": "boolean",
           "default": true,
-          "description": "Try to read the session token from Cursor's local state (state.vscdb). If false or detection fails, the manual session token is used."
+          "description": "Build the session cookie from Cursor's local login (state.vscdb). If false or detection fails, the manual session token is used."
         },
         "cursorToys.spending.sessionToken": {
           "type": "string",
           "default": "",
-          "description": "WorkosCursorSessionToken cookie value from cursor.com. Get it from DevTools > Application > Cookies when logged into cursor.com/dashboard. Used when auto-detect is disabled or fails."
+          "description": "Optional override: full WorkosCursorSessionToken cookie value or JWT from cursor.com. Used when auto-detect is disabled or fails."
         },
         "cursorToys.spending.refreshInterval": {
           "type": "number",
@@ -1943,9 +1943,7 @@
     "package": "vsce package",
     "publish": "vsce publish"
   },
-  "dependencies": {
-    "sql.js": "^1.10.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "16.x",
     "@types/vscode": "^1.74.0",
