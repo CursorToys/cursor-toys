@@ -222,6 +222,11 @@ export class DeepSpecTreeProvider implements vscode.TreeDataProvider<DeepSpecTre
           : element.stage === 'active'
             ? 'in development'
             : undefined;
+      item.command = {
+        command: 'cursor-toys.deepspec.openReview',
+        title: 'Review',
+        arguments: [element],
+      };
       return item;
     }
 

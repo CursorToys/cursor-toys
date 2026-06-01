@@ -1,7 +1,14 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import type { AbcFileKind, DeepSpecStage, DeepSpecTreeStage } from './deepspecPaths';
-import { ABC_FILE_NAMES, getStageFromTaskUri, isTaskInReviewGate } from './deepspecPaths';
+import {
+  ABC_FILE_NAMES,
+  type AbcFileKind,
+  type DeepSpecStage,
+  type DeepSpecTreeStage,
+  getStageFromTaskUri,
+  isTaskInReviewGate,
+  listExistingAbcFiles,
+} from './deepspecPaths';
 import { openDeepspecSpecFile } from './deepspecFileOps';
 import {
   addComment,
@@ -76,6 +83,7 @@ export class DeepspecReviewPanel {
   private sourceLines: string[] = [];
   private fileName = '';
   private treeStage: DeepSpecTreeStage = 'drafts';
+  private availableAbc: { kind: AbcFileKind; uri: vscode.Uri }[] = [];
 
   private constructor(
     private readonly panel: vscode.WebviewPanel,
@@ -128,7 +136,18 @@ export class DeepspecReviewPanel {
   }
 
   private async reloadAndRender(): Promise<void> {
-    const { fileUri, taskFolderUri, stage, taskId } = this.context;
+    const { taskFolderUri, stage, taskId } = this.context;
+    this.availableAbc = await listExistingAbcFiles(taskFolderUri);
+    if (this.availableAbc.length > 0) {
+      const match =
+        this.context.abcKind &&
+        this.availableAbc.find((entry) => entry.kind === this.context.abcKind);
+      const entry = match ?? this.availableAbc[0]!;
+      this.context.fileUri = entry.uri;
+      this.context.abcKind = entry.kind;
+      this.fileName = path.basename(entry.uri.fsPath);
+    }
+    const { fileUri } = this.context;
     try {
       const stat = await vscode.workspace.fs.stat(fileUri);
       if (stat.size > MAX_FILE_BYTES) {
@@ -167,6 +186,7 @@ export class DeepspecReviewPanel {
     lineNumbers?: number[];
     body?: string;
     commentId?: string;
+    abcKind?: AbcFileKind;
   }): Promise<void> {
     switch (message.command) {
       case 'addComment':
@@ -195,9 +215,25 @@ export class DeepspecReviewPanel {
       case 'openInEditor':
         await openDeepspecSpecFile(this.context.fileUri);
         break;
+      case 'selectAbc':
+        if (message.abcKind) {
+          await this.handleSelectAbc(message.abcKind);
+        }
+        break;
       default:
         break;
     }
+  }
+
+  private async handleSelectAbc(kind: AbcFileKind): Promise<void> {
+    const entry = this.availableAbc.find((e) => e.kind === kind);
+    if (!entry) {
+      return;
+    }
+    this.context.fileUri = entry.uri;
+    this.context.abcKind = kind;
+    this.fileName = path.basename(entry.uri.fsPath);
+    await this.reloadAndRender();
   }
 
   private async handleAddComment(
@@ -598,15 +634,52 @@ export class DeepspecReviewPanel {
 </div>`;
   }
 
+  private buildAbcTabsHtml(): string {
+    if (this.availableAbc.length === 0) {
+      return '';
+    }
+    return this.availableAbc
+      .map((entry) => {
+        const active = entry.kind === this.context.abcKind ? ' active' : '';
+        return `<button type="button" class="abc-tab${active}" data-abc="${entry.kind}" role="tab" aria-selected="${active ? 'true' : 'false'}">${escapeHtml(abcTabLabel(entry.kind))}</button>`;
+      })
+      .join('');
+  }
+
+  private buildTabBarHtml(stage: DeepSpecTreeStage): string {
+    const tabs = this.buildAbcTabsHtml();
+    const showApprove = stage !== 'archive';
+    const approveLabel =
+      stage === 'review' ? 'Complete task' : stage === 'drafts' ? 'Approve spec' : 'LGTM';
+    const showRevise = stage === 'review';
+    const actionButtons = [
+      '<button type="button" id="btn-send">Send review</button>',
+      showApprove ? `<button type="button" id="btn-approve">${approveLabel}</button>` : '',
+      showRevise
+        ? '<button type="button" class="secondary" id="btn-revise">Request changes</button>'
+        : '',
+    ]
+      .filter(Boolean)
+      .join('\n        ');
+
+    if (!tabs && !actionButtons) {
+      return '';
+    }
+
+    return `<div class="tab-bar">
+    <div class="tab-bar-tabs" role="tablist">${tabs}</div>
+    <div class="tab-bar-actions">${actionButtons}</div>
+  </div>`;
+  }
+
   private buildHtml(comments: DeepspecReviewComment[], stage: DeepSpecTreeStage): string {
     const nonce = getNonce();
     const webview = this.panel.webview;
     const fileKey = this.context.fileUri.toString();
     const linesHtml = this.buildLineRowsHtml(comments, fileKey);
 
-    const abcLabel = this.context.abcKind
-      ? ABC_FILE_NAMES[this.context.abcKind]
-      : this.fileName;
+    const tabBarHtml = this.buildTabBarHtml(stage);
+    const taskLabel = this.context.taskId ?? path.basename(this.context.taskFolderUri.fsPath);
     const stageBadge =
       stage === 'drafts'
         ? 'Draft'
@@ -615,20 +688,6 @@ export class DeepspecReviewPanel {
           : stage === 'review'
             ? 'Review gate'
             : 'Archive';
-    const showApprove = stage !== 'archive';
-    const approveLabel =
-      stage === 'review' ? 'Complete task' : stage === 'drafts' ? 'Approve spec' : 'LGTM';
-    const showRevise = stage === 'review';
-    const actionButtons = [
-      '<button type="button" class="secondary" id="btn-editor">Open in editor</button>',
-      '<button type="button" id="btn-send">Send review to chat</button>',
-      showApprove ? `<button type="button" id="btn-approve">${approveLabel}</button>` : '',
-      showRevise
-        ? '<button type="button" class="secondary" id="btn-revise">Request changes</button>'
-        : '',
-    ]
-      .filter(Boolean)
-      .join('\n      ');
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -650,20 +709,82 @@ export class DeepspecReviewPanel {
       height: 100vh;
     }
     .topbar {
-      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 16px;
       border-bottom: 1px solid var(--vscode-panel-border);
       background: var(--vscode-sideBar-background);
+      flex-shrink: 0;
     }
-    .topbar h1 { margin: 0 0 4px; font-size: 1.1em; font-weight: 600; }
-    .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+    .topbar-task {
+      margin: 0;
+      font-size: 1.05em;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .badge {
       font-size: 11px;
       padding: 2px 8px;
       border-radius: 4px;
       background: var(--vscode-badge-background);
       color: var(--vscode-badge-foreground);
+      flex-shrink: 0;
     }
-    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tab-bar {
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--vscode-panel-border);
+      background: var(--vscode-editor-background);
+      flex-shrink: 0;
+    }
+    .tab-bar-tabs {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      overflow-x: auto;
+    }
+    .tab-bar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px;
+      flex-shrink: 0;
+      border-left: 1px solid var(--vscode-panel-border);
+    }
+    .tab-bar-actions button {
+      font-size: 12px;
+      padding: 6px 12px;
+      white-space: nowrap;
+    }
+    .abc-tab {
+      padding: 8px 16px;
+      border: none;
+      border-bottom: 2px solid transparent;
+      background: transparent;
+      color: var(--vscode-tab-inactiveForeground, inherit);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.88em;
+      flex-shrink: 0;
+    }
+    .abc-tab:hover { background: var(--vscode-list-hoverBackground); }
+    .abc-tab.active {
+      color: var(--vscode-tab-activeForeground, inherit);
+      border-bottom-color: var(--vscode-focusBorder);
+      font-weight: 600;
+    }
     button {
       background: var(--vscode-button-background);
       color: var(--vscode-button-foreground);
@@ -1041,15 +1162,13 @@ export class DeepspecReviewPanel {
 </head>
 <body>
   <div class="topbar">
-    <h1>${escapeHtml(abcLabel)}</h1>
-    <div class="badges">
+    <div class="topbar-left">
       <span class="badge">${escapeHtml(stageBadge)}</span>
-      <span class="badge">${escapeHtml(this.context.taskId ?? '')}</span>
+      <h1 class="topbar-task">${escapeHtml(taskLabel)}</h1>
     </div>
-    <div class="actions">
-      ${actionButtons}
-    </div>
+    <button type="button" class="secondary" id="btn-editor">Open in editor</button>
   </div>
+  ${tabBarHtml}
   <div class="main">
     <div class="doc-wrap">
       <div class="doc" id="doc">${linesHtml}</div>
@@ -1394,6 +1513,13 @@ export class DeepspecReviewPanel {
       }
     });
 
+    document.querySelectorAll('.abc-tab').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (btn.classList.contains('active')) return;
+        vscode.postMessage({ command: 'selectAbc', abcKind: btn.getAttribute('data-abc') });
+      });
+    });
+
     document.getElementById('btn-editor').addEventListener('click', () => {
       vscode.postMessage({ command: 'openInEditor' });
     });
@@ -1458,6 +1584,17 @@ function commentOnLineMap(
     }
   }
   return map;
+}
+
+function abcTabLabel(kind: AbcFileKind): string {
+  switch (kind) {
+    case 'APPROACH':
+      return 'Approach';
+    case 'BUSINESS_CONTEXT':
+      return 'Business';
+    case 'COMPLETION_REPORT':
+      return 'Completion';
+  }
 }
 
 function getNonce(): string {

@@ -1,7 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import type { AbcFileKind, DeepSpecStage, DeepSpecTreeStage } from './deepspecPaths';
-import { ABC_FILE_NAMES, getStageFromTaskUri, isTaskInReviewGate } from './deepspecPaths';
+import {
+  ABC_FILE_NAMES,
+  getStageFromTaskUri,
+  isTaskInReviewGate,
+  listExistingAbcFiles,
+} from './deepspecPaths';
 import { DeepspecReviewPanel } from './deepspecReviewPanel';
 import type { DeepSpecTreeItem } from './deepspecTreeProvider';
 
@@ -127,15 +132,20 @@ export async function openDeepspecSpecReview(
 ): Promise<void> {
   const treeItem = arg as DeepSpecTreeItem;
   if (treeItem?.type === 'task' && treeItem.taskFolderUri) {
-    const reportUri = vscode.Uri.joinPath(
-      treeItem.taskFolderUri,
-      ABC_FILE_NAMES.COMPLETION_REPORT
-    );
+    const existing = await listExistingAbcFiles(treeItem.taskFolderUri);
+    const pick =
+      existing.find((f) => f.kind === 'APPROACH') ??
+      existing.find((f) => f.kind === 'BUSINESS_CONTEXT') ??
+      existing[0];
+    if (!pick) {
+      vscode.window.showErrorMessage('No A-B-C spec files in this task folder');
+      return;
+    }
     arg = {
       ...treeItem,
       type: 'abcFile' as const,
-      fileUri: reportUri,
-      abcKind: 'COMPLETION_REPORT' as const,
+      fileUri: pick.uri,
+      abcKind: pick.kind,
     };
   }
 

@@ -502,3 +502,4 @@ export async function toggleDeepspecPanelSetting(): Promise<void> {
   const label = !current ? 'enabled' : 'disabled';
   void vscode.window.showInformationMessage(`DeepSpec panel ${label}. Reload the window if the view does not update.`);
 }
+

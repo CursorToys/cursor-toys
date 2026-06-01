@@ -2020,7 +2020,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     treeDataProvider: deepspecTreeProvider,
     showCollapseAll: true,
   });
-
   const cursorToysSettingsTreeProvider = new CursorToysSettingsTreeProvider();
   const cursorToysSettingsTreeView = vscode.window.createTreeView('cursor-toys.settings', {
     treeDataProvider: cursorToysSettingsTreeProvider,

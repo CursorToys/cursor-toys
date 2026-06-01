@@ -10,6 +10,8 @@
 
 ### Added
 
+- **DeepSpec review — A-B-C tabs**: Clicking a draft task or spec file opens the review panel with **Approach**, **Business**, and **Completion** tabs to switch documents and add line comments without leaving the panel.
+
 - **CLI package spec setting** (`cursorToys.cli.cursortoysPackageSpec`, default `@latest`): HTTP test terminals run `npx cursortoys@<spec> http test …`. Editable from CursorToys Settings → **CLI**.
 - **Gemini 3 models** in refine settings (`gemini-3-flash-preview` default; also `gemini-3-pro-preview`, `gemini-2.5-flash-lite`; legacy 2.5/2.0 kept).
 - **DeepSpec multi-root workspaces**: tree shows one section per workspace folder; Initialize, memory, and chat actions use the selected folder (not only the first root).

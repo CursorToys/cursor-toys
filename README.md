@@ -9,7 +9,6 @@
   Test APIs, share AI configs, and manage your Cursor workspace — without context switching.
 </p>
 
-[![GitHub Stars](https://img.shields.io/github/stars/CursorToys/cursor-toys?style=social)](https://github.com/CursorToys/cursor-toys)
 [![Open VSX Downloads](https://img.shields.io/open-vsx/dt/godrix/cursor-toys?label=Open%20VSX%20downloads)](https://open-vsx.org/extension/godrix/cursor-toys)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -189,6 +188,7 @@ GET https://api.example.com/user/123
 > **Opt-in:** `cursorToys.experimental.deepspec` (default `false`) → reload window.
 
 - Activity bar panel with A-B-C spec files per task (`APPROACH`, `BUSINESS_CONTEXT`, `COMPLETION_REPORT`).
+- Click a **task** or **A-B-C file** to open **spec review** with **Approach / Business / Completion** tabs for comments and approve/send-to-chat actions.
 - Create specs, send `@` folder refs to chat (`Create task`, `Approve task`, `Complete task`, etc.).
 - Spec review: **inline comment balloons** below lines (× to remove); gutter icons to add/view; full-width document (no comments sidebar).
 
