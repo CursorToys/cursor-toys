@@ -91,7 +91,9 @@ export type HttpRequestEditorInboundMessage =
   | { command: 'openAsText' }
   | { command: 'setProjectEnv'; envName: string }
   | { command: 'addFileVar'; key: string; value: string }
+  | { command: 'updateFileVar'; originalKey: string; key: string; value: string }
   | { command: 'removeFileVar'; key: string }
+  | { command: 'openProjectEnvFile'; envName: string }
   | { command: 'setBlockEnv'; blockIndex: number; envName: string | null }
   | { command: 'selectEnvironment' }
   | { command: 'createEnvironment' }

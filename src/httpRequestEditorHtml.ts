@@ -419,21 +419,68 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
     .ac-kind-helper { color: #d2a8ff; }
 
     .env-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+    .env-pill-wrap { display: inline-flex; align-items: center; gap: 2px; }
     .env-pill {
       padding: 4px 10px;
       border-radius: 999px;
       font-size: 0.82em;
-      border: 1px solid var(--vscode-panel-border, #444);
-      background: var(--vscode-badge-background);
-      color: var(--vscode-badge-foreground);
+      border: 1px solid var(--vscode-panel-border, #555);
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
       cursor: pointer;
     }
+    .env-pill:hover { background: var(--vscode-list-hoverBackground); }
     .env-pill.active {
       border-color: var(--vscode-focusBorder);
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
       font-weight: 600;
       box-shadow: 0 0 0 1px var(--vscode-focusBorder);
     }
-    .env-pill.file-env { background: #388bfd22; color: var(--vscode-textLink-foreground); }
+    .env-pill.effective:not(.active) {
+      border-color: var(--vscode-textLink-foreground);
+      color: var(--vscode-textLink-foreground);
+    }
+    .env-open-btn { padding: 2px 6px; font-size: 0.75em; line-height: 1; }
+    .collapsible-section { margin-bottom: 10px; }
+    .collapse-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      text-align: left;
+      padding: 6px 8px;
+      border: none;
+      border-radius: 4px;
+      background: var(--vscode-editor-inactiveSelectionBackground, rgba(128,128,128,0.08));
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.82em;
+      font-weight: 600;
+    }
+    .collapse-toggle:hover { background: var(--vscode-list-hoverBackground); }
+    .collapse-chevron {
+      display: inline-block;
+      width: 1em;
+      font-size: 0.7em;
+      opacity: 0.8;
+      transition: transform 0.15s ease;
+    }
+    .collapsible-section:not(.collapsed) .collapse-chevron { transform: rotate(90deg); }
+    .collapse-body { padding: 8px 4px 4px; }
+    .collapse-body[hidden] { display: none; }
+    .local-var-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .local-var-row input { flex: 1; min-width: 80px; max-width: 200px; font-size: 0.88em; }
+    .local-var-row .local-var-key { max-width: 140px; }
+    .assert-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .assert-actions .full { flex: 1; min-width: 120px; }
     .var-tag {
       display: inline-flex;
       align-items: center;
@@ -510,11 +557,18 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
         <span class="env-banner-effective" id="envBannerEffective">—</span>
         <span class="env-source-tag" id="envBannerSource">workspace</span>
       </div>
-      <div class="env-banner-picker">
-        <span class="env-banner-picker-label">Workspace</span>
-        <div class="env-banner-pills" id="envBannerPills"></div>
-        <button type="button" class="ghost icon-btn" id="envBannerMoreBtn" title="Pick environment">⋯</button>
-        <button type="button" class="ghost icon-btn" id="envBannerCreateBtn" title="Create .env file">+</button>
+      <div class="env-banner-picker collapsible-section collapsed" id="envBannerPickerSection">
+        <button type="button" class="collapse-toggle" id="envBannerPickerToggle" aria-expanded="false">
+          <span class="collapse-chevron" aria-hidden="true">▶</span>
+          <span>Workspace environments</span>
+        </button>
+        <div class="collapse-body" id="envBannerPickerBody" hidden>
+          <div class="env-row">
+            <div class="env-banner-pills env-row" id="envBannerPills"></div>
+            <button type="button" class="ghost icon-btn" id="envBannerMoreBtn" title="Pick environment">⋯</button>
+            <button type="button" class="ghost icon-btn" id="envBannerCreateBtn" title="Create .env file">+</button>
+          </div>
+        </div>
       </div>
       <span class="env-banner-meta" id="envBannerMeta" hidden></span>
     </div>
@@ -560,28 +614,42 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
         </div>
 
         <div class="detail-pane" id="pane-environment" data-detail="environment">
-          <p class="subheading">Workspace environment (.env at project root)</p>
-          <div class="env-row">
-            <span id="projectEnvPills"></span>
-            <button type="button" class="ghost icon-btn" id="selectEnvBtn" title="Pick environment">⋯</button>
-            <button type="button" class="ghost icon-btn" id="createEnvBtn" title="Create .env file">+ env</button>
+          <div class="collapsible-section collapsed" id="localVarsSection">
+            <button type="button" class="collapse-toggle" id="localVarsToggle" aria-expanded="false">
+              <span class="collapse-chevron" aria-hidden="true">▶</span>
+              <span>Local variables (# @var)</span>
+            </button>
+            <div class="collapse-body" id="localVarsBody" hidden>
+              <div id="fileVarTags"></div>
+              <div class="inline-form">
+                <input type="text" id="newVarKey" placeholder="KEY" />
+                <input type="text" id="newVarVal" placeholder="value" />
+                <button type="button" class="secondary" id="addVarBtn">Add # @var</button>
+              </div>
+            </div>
           </div>
-          <div class="env-row" id="fileEnvRow" hidden>
-            <span style="font-size:0.85em;opacity:0.8;">File # @env:</span>
-            <span id="fileEnvBadge"></span>
-          </div>
-          <div class="env-row" id="blockEnvRow" hidden>
-            <span style="font-size:0.85em;opacity:0.8;">Block # @env:</span>
-            <span id="blockEnvBadge"></span>
-          </div>
-          <p class="subheading">Keys from active .env</p>
-          <div class="env-row" id="envVarTags"></div>
-          <p class="subheading">File variables (# @var)</p>
-          <div class="env-row" id="fileVarTags"></div>
-          <div class="inline-form">
-            <input type="text" id="newVarKey" placeholder="KEY" />
-            <input type="text" id="newVarVal" placeholder="value" />
-            <button type="button" class="secondary" id="addVarBtn">Add # @var</button>
+          <div class="collapsible-section collapsed" id="workspaceEnvSection">
+            <button type="button" class="collapse-toggle" id="workspaceEnvToggle" aria-expanded="false">
+              <span class="collapse-chevron" aria-hidden="true">▶</span>
+              <span>Workspace / file (.env at project root)</span>
+            </button>
+            <div class="collapse-body" id="workspaceEnvBody" hidden>
+              <div class="env-row">
+                <span id="projectEnvPills"></span>
+                <button type="button" class="ghost icon-btn" id="selectEnvBtn" title="Pick environment">⋯</button>
+                <button type="button" class="ghost icon-btn" id="createEnvBtn" title="Create .env file">+ env</button>
+              </div>
+              <div class="env-row" id="fileEnvRow" hidden>
+                <span style="font-size:0.85em;opacity:0.8;">File # @env:</span>
+                <span id="fileEnvBadge"></span>
+              </div>
+              <div class="env-row" id="blockEnvRow" hidden>
+                <span style="font-size:0.85em;opacity:0.8;">Block # @env:</span>
+                <span id="blockEnvBadge"></span>
+              </div>
+              <p class="subheading" style="margin-top:8px;">Keys from active .env</p>
+              <div class="env-row" id="envVarTags"></div>
+            </div>
           </div>
         </div>
 
@@ -591,7 +659,10 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
             <input type="text" id="assertExpr" placeholder="Expression e.g. res.status" list="assertExpressions" />
             <input type="text" id="assertOp" placeholder="Operator e.g. equals" list="assertOperators" />
             <input type="text" id="assertExpected" class="full" placeholder="Expected value (optional for isEmpty, isDefined, …)" />
-            <button type="button" class="primary full" id="addAssertBtn">Add test</button>
+            <div class="assert-actions full">
+              <button type="button" class="primary" id="addAssertBtn">Add test</button>
+              <button type="button" class="secondary" id="cancelAssertBtn" hidden>Cancel</button>
+            </div>
           </div>
           <datalist id="assertOperators"></datalist>
           <datalist id="assertExpressions"></datalist>
@@ -613,6 +684,7 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
     const vscode = acquireVsCodeApi();
     const INIT = ${safeJson};
     const OPS_NO_VALUE = new Set(['isNull','isNotNull','isEmpty','isNotEmpty','isDefined','isUndefined','isTruthy','isFalsy','isNumber','isString','isBoolean','isArray','isJson']);
+    const persistedUi = (vscode.getState() && vscode.getState().collapsed) || {};
 
     let state = {
       blocks: INIT.blocks || [],
@@ -631,6 +703,12 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       globalFileEnv: INIT.globalFileEnv,
       blockEnv: INIT.blockEnv,
       helperSuggestions: INIT.helperSuggestions || [],
+      editingAssertionIndex: -1,
+      collapsed: {
+        bannerPicker: persistedUi.bannerPicker !== false,
+        localVars: persistedUi.localVars !== false,
+        workspaceEnv: persistedUi.workspaceEnv !== false,
+      },
     };
 
     const els = {
@@ -663,6 +741,16 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       assertOp: document.getElementById('assertOp'),
       assertExpected: document.getElementById('assertExpected'),
       addAssertBtn: document.getElementById('addAssertBtn'),
+      cancelAssertBtn: document.getElementById('cancelAssertBtn'),
+      envBannerPickerSection: document.getElementById('envBannerPickerSection'),
+      envBannerPickerToggle: document.getElementById('envBannerPickerToggle'),
+      envBannerPickerBody: document.getElementById('envBannerPickerBody'),
+      localVarsSection: document.getElementById('localVarsSection'),
+      localVarsToggle: document.getElementById('localVarsToggle'),
+      localVarsBody: document.getElementById('localVarsBody'),
+      workspaceEnvSection: document.getElementById('workspaceEnvSection'),
+      workspaceEnvToggle: document.getElementById('workspaceEnvToggle'),
+      workspaceEnvBody: document.getElementById('workspaceEnvBody'),
       assertOperatorsList: document.getElementById('assertOperators'),
       assertExpressionsList: document.getElementById('assertExpressions'),
       method: document.getElementById('method'),
@@ -689,6 +777,32 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
     function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
     function escHtml(s) { return escAttr(s); }
     function post(command, extra) { vscode.postMessage(Object.assign({ command }, extra || {})); }
+
+    function persistCollapsedState() {
+      vscode.setState({ collapsed: state.collapsed });
+    }
+
+    function setSectionCollapsed(sectionEl, bodyEl, toggleEl, key, collapsed) {
+      if (!sectionEl || !bodyEl || !toggleEl) return;
+      state.collapsed[key] = collapsed;
+      sectionEl.classList.toggle('collapsed', collapsed);
+      bodyEl.hidden = collapsed;
+      toggleEl.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      persistCollapsedState();
+    }
+
+    function bindCollapsible(sectionEl, bodyEl, toggleEl, key) {
+      if (!sectionEl || !bodyEl || !toggleEl) return;
+      const collapsed = !!state.collapsed[key];
+      setSectionCollapsed(sectionEl, bodyEl, toggleEl, key, collapsed);
+      toggleEl.addEventListener('click', () => {
+        setSectionCollapsed(sectionEl, bodyEl, toggleEl, key, !state.collapsed[key]);
+      });
+    }
+
+    function isSecretVarKey(key) {
+      return /token|secret|password|api_key|apikey/i.test(key);
+    }
 
     function getMaps() {
       const fileMap = {};
@@ -1038,17 +1152,32 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       }
       const effective = state.resolvedPreview.effectiveEnv;
       state.projectEnvs.forEach((name) => {
+        const wrap = document.createElement('span');
+        wrap.className = 'env-pill-wrap';
         const pill = document.createElement('button');
         pill.type = 'button';
         const isActive = !!state.activeProjectEnv && name === state.activeProjectEnv;
         const isEffective = !!effective && name === effective;
-        pill.className = 'env-pill' + (isActive ? ' active' : '') + (isEffective ? ' file-env' : '');
+        let cls = 'env-pill';
+        if (isActive) cls += ' active';
+        if (isEffective) cls += ' effective';
+        pill.className = cls;
         pill.textContent = name + (isEffective && !isActive ? ' ✓' : '');
-        pill.title = isEffective
-          ? 'Resolves {{var}} from .env.' + name
-          : 'Switch workspace environment to .env.' + name;
+        pill.title = 'Select workspace environment .env.' + name;
         pill.addEventListener('click', () => post('setProjectEnv', { envName: name }));
-        container.appendChild(pill);
+        const openBtn = document.createElement('button');
+        openBtn.type = 'button';
+        openBtn.className = 'ghost icon-btn env-open-btn';
+        openBtn.title = 'Open .env.' + name + ' in editor';
+        openBtn.textContent = '↗';
+        openBtn.setAttribute('aria-label', 'Open .env.' + name);
+        openBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          post('openProjectEnvFile', { envName: name });
+        });
+        wrap.appendChild(pill);
+        wrap.appendChild(openBtn);
+        container.appendChild(wrap);
       });
     }
 
@@ -1105,11 +1234,11 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       fillProjectEnvPills(els.envBannerPills);
       if (state.globalFileEnv) {
         els.fileEnvRow.hidden = false;
-        els.fileEnvBadge.innerHTML = '<span class="env-pill file-env">#' + escHtml(state.globalFileEnv) + '</span>';
+        els.fileEnvBadge.innerHTML = '<span class="env-pill effective">#' + escHtml(state.globalFileEnv) + '</span>';
       } else els.fileEnvRow.hidden = true;
       if (state.blockEnv && state.blockEnv !== state.globalFileEnv) {
         els.blockEnvRow.hidden = false;
-        els.blockEnvBadge.innerHTML = '<span class="env-pill file-env">' + escHtml(state.blockEnv) + '</span>';
+        els.blockEnvBadge.innerHTML = '<span class="env-pill effective">' + escHtml(state.blockEnv) + '</span>';
       } else els.blockEnvRow.hidden = true;
       if (els.selectEnvBtn) {
         els.selectEnvBtn.hidden = !hasWorkspaceEnvs();
@@ -1142,17 +1271,93 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
         return;
       }
       state.fileVariables.forEach((v) => {
-        const span = document.createElement('span');
-        span.className = 'var-tag';
-        span.title = v.key + '=' + v.value;
-        span.innerHTML = '<span class="var-key">' + escHtml(v.key) + '</span>=<span>' + escHtml(v.value) + '</span><button type="button" class="remove">×</button>';
-        span.querySelector('.remove').addEventListener('click', (e) => { e.stopPropagation(); post('removeFileVar', { key: v.key }); });
-        els.fileVarTags.appendChild(span);
+        const row = document.createElement('div');
+        row.className = 'local-var-row';
+        const keyInp = document.createElement('input');
+        keyInp.type = 'text';
+        keyInp.className = 'local-var-key';
+        keyInp.value = v.key;
+        keyInp.placeholder = 'KEY';
+        const valInp = document.createElement('input');
+        valInp.type = 'text';
+        valInp.className = 'local-var-val';
+        valInp.value = v.value;
+        valInp.placeholder = 'value';
+        if (isSecretVarKey(v.key)) {
+          valInp.type = 'password';
+          valInp.autocomplete = 'off';
+        }
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'secondary';
+        saveBtn.textContent = 'Save';
+        saveBtn.addEventListener('click', () => {
+          const key = keyInp.value.trim();
+          const value = valInp.value;
+          if (!key) return;
+          post('updateFileVar', { originalKey: v.key, key, value });
+        });
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'remove';
+        removeBtn.textContent = '×';
+        removeBtn.title = 'Remove variable';
+        removeBtn.addEventListener('click', () => post('removeFileVar', { key: v.key }));
+        row.appendChild(keyInp);
+        row.appendChild(valInp);
+        row.appendChild(saveBtn);
+        row.appendChild(removeBtn);
+        els.fileVarTags.appendChild(row);
       });
     }
 
     function saveAssertionsToFile() {
       post('saveAssertions', { blockIndex: state.activeBlockIndex, assertions: state.assertions, silent: true });
+    }
+
+    function clearAssertForm() {
+      state.editingAssertionIndex = -1;
+      els.assertDesc.value = '';
+      els.assertExpr.value = '';
+      els.assertOp.value = '';
+      els.assertExpected.value = '';
+      els.addAssertBtn.textContent = 'Add test';
+      els.cancelAssertBtn.hidden = true;
+    }
+
+    function startEditAssertion(idx) {
+      const a = state.assertions[idx];
+      if (!a) return;
+      state.editingAssertionIndex = idx;
+      els.assertDesc.value = a.description || '';
+      els.assertExpr.value = a.expression || '';
+      els.assertOp.value = a.operator || '';
+      els.assertExpected.value = a.expected || '';
+      els.addAssertBtn.textContent = 'Save test';
+      els.cancelAssertBtn.hidden = false;
+      els.assertExpr.focus();
+    }
+
+    function commitAssertionFromForm() {
+      const expression = els.assertExpr.value.trim();
+      const operator = els.assertOp.value.trim();
+      if (!expression || !operator) return false;
+      const expected = els.assertExpected.value.trim();
+      if (!expected && !OPS_NO_VALUE.has(operator)) {
+        alert('This operator requires an expected value.');
+        return false;
+      }
+      const description = els.assertDesc.value.trim() || expression;
+      const entry = { description, expression, operator, expected, raw: '' };
+      if (state.editingAssertionIndex >= 0) {
+        state.assertions[state.editingAssertionIndex] = entry;
+      } else {
+        state.assertions.push(entry);
+      }
+      clearAssertForm();
+      renderAssertions();
+      saveAssertionsToFile();
+      return true;
     }
 
     function renderAssertions() {
@@ -1167,11 +1372,33 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       state.assertions.forEach((a, idx) => {
         const li = document.createElement('li');
         li.className = 'assert-item';
-        li.innerHTML = '<div class="assert-item-body"><strong>' + escHtml(a.description || a.expression) + '</strong><div class="assert-expr">' + escHtml(a.expression) + ' <em>' + escHtml(a.operator) + '</em> ' + escHtml(a.expected || '') + '</div></div><button type="button" class="danger icon-btn">Remove</button>';
-        li.querySelector('button').addEventListener('click', () => {
+        const body = document.createElement('div');
+        body.className = 'assert-item-body';
+        body.innerHTML = '<strong>' + escHtml(a.description || a.expression) + '</strong><div class="assert-expr">' + escHtml(a.expression) + ' <em>' + escHtml(a.operator) + '</em> ' + escHtml(a.expected || '') + '</div>';
+        const actions = document.createElement('div');
+        actions.style.display = 'flex';
+        actions.style.gap = '4px';
+        actions.style.flexShrink = '0';
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'secondary icon-btn';
+        editBtn.textContent = 'Edit';
+        editBtn.addEventListener('click', () => startEditAssertion(idx));
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'danger icon-btn';
+        removeBtn.textContent = 'Remove';
+        removeBtn.addEventListener('click', () => {
+          if (state.editingAssertionIndex === idx) clearAssertForm();
+          else if (state.editingAssertionIndex > idx) state.editingAssertionIndex -= 1;
           state.assertions = state.assertions.filter((_, i) => i !== idx);
+          renderAssertions();
           saveAssertionsToFile();
         });
+        actions.appendChild(editBtn);
+        actions.appendChild(removeBtn);
+        li.appendChild(body);
+        li.appendChild(actions);
         els.assertionList.appendChild(li);
       });
     }
@@ -1251,21 +1478,11 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       });
       els.removeHeaderBtn.addEventListener('click', () => { const f = readForm(); if (f.headers.length > 1) f.headers.pop(); else f.headers = [{ key: '', value: '' }]; applyForm(f); onFormChange(); });
       els.addVarBtn.addEventListener('click', () => { const k = els.newVarKey.value.trim(); const v = els.newVarVal.value.trim(); if (!k) return; post('addFileVar', { key: k, value: v }); els.newVarKey.value = ''; els.newVarVal.value = ''; });
-      els.addAssertBtn.addEventListener('click', () => {
-        const expression = els.assertExpr.value.trim();
-        const operator = els.assertOp.value.trim();
-        if (!expression || !operator) return;
-        const expected = els.assertExpected.value.trim();
-        if (!expected && !OPS_NO_VALUE.has(operator)) {
-          alert('This operator requires an expected value.');
-          return;
-        }
-        const description = els.assertDesc.value.trim() || expression;
-        state.assertions.push({ description, expression, operator, expected, raw: '' });
-        els.assertDesc.value = ''; els.assertExpr.value = ''; els.assertOp.value = ''; els.assertExpected.value = '';
-        renderAssertions();
-        saveAssertionsToFile();
-      });
+      els.addAssertBtn.addEventListener('click', () => commitAssertionFromForm());
+      els.cancelAssertBtn.addEventListener('click', () => clearAssertForm());
+      bindCollapsible(els.envBannerPickerSection, els.envBannerPickerBody, els.envBannerPickerToggle, 'bannerPicker');
+      bindCollapsible(els.localVarsSection, els.localVarsBody, els.localVarsToggle, 'localVars');
+      bindCollapsible(els.workspaceEnvSection, els.workspaceEnvBody, els.workspaceEnvToggle, 'workspaceEnv');
     }
 
     window.addEventListener('message', (e) => { if (e.data?.type === 'init') applyInit(e.data); });

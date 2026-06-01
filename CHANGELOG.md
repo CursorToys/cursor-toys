@@ -4,6 +4,10 @@
 
 ## Unreleased
 
+### Added
+
+- **HTTP request editor — environment & tests UX**: Workspace environment picker and Environment tab sections are collapsible (collapsed by default). Active `.env` pill styling is clearer; open `.env` files via ↗ next to each env. Local `# @var` variables appear first and are editable inline; workspace keys follow in a separate section. Tests can be edited in place (Edit / Save / Cancel).
+
 ### Breaking Changes
 
 - **DeepSpec split to standalone extension**: DeepSpec UI and commands removed from CursorToys. Install **[DeepSpec](https://github.com/godrix/DeepSpec)** (`godrix.deepspec`). Use **CursorToys: Install DeepSpec Extension** or Settings → DeepSpec. Migration: `cursorToys.experimental.deepspec` → `deepspec.enabled`; `cursor-toys.deepspec.*` → `deepspec.*`; `cursorToys.deepspec.reviewPanelColumn` → `deepspec.reviewPanelColumn`.

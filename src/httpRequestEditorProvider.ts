@@ -18,7 +18,7 @@ import {
   type HttpRequestFormData,
   type HttpRequestAssertionSummary,
 } from './httpRequestEditorTypes';
-import { isHttpRequestFile } from './utils';
+import { getProjectEnvFilePath, isHttpRequestFile } from './utils';
 import { EnvironmentManager } from './environmentManager';
 
 function isEditorEnabled(): boolean {
@@ -288,10 +288,42 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
             pushState();
             break;
           }
+          case 'updateFileVar': {
+            let next = document.getText();
+            if (
+              raw.originalKey.toLowerCase() !== raw.key.toLowerCase()
+            ) {
+              next = upsertFileVariable(next, raw.originalKey, null);
+            }
+            next = upsertFileVariable(next, raw.key, raw.value);
+            await replaceDocument(next);
+            pushState();
+            break;
+          }
           case 'removeFileVar': {
             const next = upsertFileVariable(document.getText(), raw.key, null);
             await replaceDocument(next);
             pushState();
+            break;
+          }
+          case 'openProjectEnvFile': {
+            const wf = vscode.workspace.getWorkspaceFolder(document.uri);
+            if (wf?.uri.fsPath && raw.envName) {
+              const envPath = getProjectEnvFilePath(
+                wf.uri.fsPath,
+                raw.envName
+              );
+              try {
+                await vscode.window.showTextDocument(
+                  vscode.Uri.file(envPath),
+                  { preview: false }
+                );
+              } catch {
+                void vscode.window.showErrorMessage(
+                  `Could not open environment file: ${envPath}`
+                );
+              }
+            }
             break;
           }
           case 'setBlockEnv': {
