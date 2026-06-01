@@ -4,8 +4,10 @@ import {
   DeepSpecStage,
   getDeepspecMemoryUri,
   getDeepspecRootUri,
+  getDeepspecRootForTaskUri,
   getDeepspecSpecsUri,
   getStageFromTaskUri,
+  isTaskInReviewGate,
   parseTaskFolderName,
   readAbcFile,
 } from './deepspecPaths';
@@ -109,7 +111,7 @@ export async function approveTask(taskFolderUri: vscode.Uri): Promise<void> {
     return;
   }
 
-  const root = getDeepspecRootUri();
+  const root = getDeepspecRootForTaskUri(taskFolderUri) ?? getDeepspecRootUri();
   if (!root) {
     vscode.window.showErrorMessage('No workspace folder open.');
     return;
@@ -207,7 +209,7 @@ export async function discardTask(
     return;
   }
 
-  const root = getDeepspecRootUri();
+  const root = getDeepspecRootForTaskUri(taskFolderUri) ?? getDeepspecRootUri();
   if (!root) {
     vscode.window.showErrorMessage('No workspace folder open.');
     return;
@@ -248,6 +250,14 @@ export async function completeTask(
     return;
   }
 
+  const inReview = await isTaskInReviewGate(taskFolderUri);
+  if (!inReview) {
+    vscode.window.showErrorMessage(
+      'Task is not in Review Gate yet. Wait until COMPLETION_REPORT.md status is [IN REVIEW].'
+    );
+    return;
+  }
+
   const folderName = path.basename(taskFolderUri.fsPath);
   const resolvedSummary =
     summary?.trim() || (await inferTaskSummary(taskFolderUri));
@@ -261,7 +271,7 @@ export async function completeTask(
     return;
   }
 
-  const root = getDeepspecRootUri();
+  const root = getDeepspecRootForTaskUri(taskFolderUri) ?? getDeepspecRootUri();
   if (!root) {
     vscode.window.showErrorMessage('No workspace folder open.');
     return;

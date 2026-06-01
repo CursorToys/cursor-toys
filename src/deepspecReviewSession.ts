@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { DeepSpecStage } from './deepspecPaths';
+import type { DeepSpecStage, DeepSpecTreeStage } from './deepspecPaths';
 import { buildTaskFolderRef } from './deepspecChatPrompts';
 
 const MAX_EXCERPT_LENGTH = 500;
@@ -204,12 +204,22 @@ export function formatCommentsForChat(comments: DeepspecReviewComment[]): string
 export function formatReviewForChat(
   workspaceFsPath: string,
   taskFolderUri: vscode.Uri,
-  stage: DeepSpecStage
+  stage: DeepSpecStage | DeepSpecTreeStage
 ): string {
   const comments = listForTask(taskFolderUri);
   const ref = buildTaskFolderRef(workspaceFsPath, taskFolderUri);
   const body = formatCommentsForChat(comments);
   const stageLabel =
-    stage === 'drafts' ? 'draft' : stage === 'active' ? 'active' : 'archive';
-  return `${ref}\n\nReview feedback (${stageLabel} — please update the spec, no code):\n\n${body}`;
+    stage === 'drafts'
+      ? 'draft'
+      : stage === 'review'
+        ? 'review gate'
+        : stage === 'active'
+          ? 'active'
+          : 'archive';
+  const hint =
+    stage === 'review'
+      ? 'please apply as a Review Round delta (see APPROACH ## Review Rounds)'
+      : 'please update the spec, no code';
+  return `${ref}\n\nReview feedback (${stageLabel} — ${hint}):\n\n${body}`;
 }

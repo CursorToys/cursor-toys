@@ -2,6 +2,8 @@
  * Gemini API client using native fetch (no external library)
  */
 
+import { DEFAULT_GEMINI_MODEL } from './geminiModels';
+
 export interface GeminiApiOptions {
   apiKey: string;
   model?: string;
@@ -40,7 +42,7 @@ export async function callGeminiApi(
 ): Promise<string> {
   const {
     apiKey,
-    model = 'gemini-2.5-flash',
+    model = DEFAULT_GEMINI_MODEL,
     prompt = '',
     timeout = 30000
   } = options;

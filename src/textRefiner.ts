@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { callGeminiApi } from './geminiApi';
+import { DEFAULT_GEMINI_MODEL } from './geminiModels';
 import { readClipboard, writeClipboard } from './clipboardProcessor';
 import { getPromptsPath, getPersonalPromptsPaths, isAllowedExtension } from './utils';
 
@@ -74,7 +75,7 @@ function getGeminiConfig(): {
 } {
   const config = vscode.workspace.getConfiguration('cursorToys');
   return {
-    model: config.get<string>('geminiModel', 'gemini-2.5-flash'),
+    model: config.get<string>('geminiModel', DEFAULT_GEMINI_MODEL),
     prompt: config.get<string>(
       'geminiRefinePrompt',
       'You must return ONLY the refined text, nothing else. Do not add introductions like "Here\'s the refined version" or "Okay, here is". Do not add markdown separators (---). Do not add explanations or notes. Just return the improved text directly.\n\nFix typos, improve clarity, and enhance the flow of the following text:'

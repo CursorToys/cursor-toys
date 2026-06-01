@@ -5,6 +5,7 @@ import {
   DeepSpecType,
   slugifyDeepspecTaskName,
 } from './deepspecChatPrompts';
+import { getDeepspecRootUri, isMultiRootWorkspace } from './deepspecPaths';
 import { sendDeepspecToChat } from './deepspecSendToChat';
 
 interface CreateTaskFormPayload {
@@ -69,7 +70,29 @@ export class DeepspecCreateTaskPanel {
     }
     const validType = DEEPSPEC_SPEC_TYPES.some((t) => t.id === form.specType);
     const specType = validType ? form.specType : 'feature';
-    const message = buildCreateTaskChatMessage(specType, slug, form.description);
+
+    let workspaceFolderUri = vscode.workspace.workspaceFolders?.[0]?.uri;
+    if (isMultiRootWorkspace()) {
+      const picked = await vscode.window.showWorkspaceFolderPick({
+        placeHolder: 'Select workspace folder for the new DeepSpec draft',
+      });
+      if (!picked) {
+        return;
+      }
+      workspaceFolderUri = picked.uri;
+    }
+    if (!workspaceFolderUri) {
+      void vscode.window.showErrorMessage('Open a workspace folder to create a DeepSpec task.');
+      return;
+    }
+
+    const message = buildCreateTaskChatMessage(
+      specType,
+      slug,
+      form.description,
+      workspaceFolderUri.fsPath,
+      getDeepspecRootUri(workspaceFolderUri)
+    );
     const sent = await sendDeepspecToChat(message);
     if (sent) {
       void vscode.window.showInformationMessage(`Sent to chat: Create task ${slug}`);

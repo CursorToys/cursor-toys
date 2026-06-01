@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { DEFAULT_EXPLORER_SIDEBAR_VIEWS } from './sidebarVisibility';
+import { DEFAULT_GEMINI_MODEL, GEMINI_MODEL_OPTIONS } from './geminiModels';
 
 const SIDEBAR_SECTION_OPTIONS = [
   { key: 'notepads', label: 'Notepads' },
@@ -283,13 +284,12 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       return;
 
     case 'cursorToys.geminiModel': {
-      const current = config.get<string>(settingKey, 'gemini-2.5-flash');
+      const current = config.get<string>(settingKey, DEFAULT_GEMINI_MODEL);
       const picked = await vscode.window.showQuickPick(
-        [
-          { label: 'gemini-2.5-flash', description: 'Fast (default)' },
-          { label: 'gemini-2.5-pro', description: 'Higher quality' },
-          { label: 'gemini-2.0-flash', description: 'Previous generation' },
-        ],
+        GEMINI_MODEL_OPTIONS.map((option) => ({
+          label: option.id,
+          description: option.label,
+        })),
         { placeHolder: `Current: ${current}` }
       );
       if (!picked) {
@@ -298,6 +298,19 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       await updateGlobalSetting(settingKey, picked.label);
       return;
     }
+
+    case 'cursorToys.cli.cursortoysPackageSpec':
+      await pickString(settingKey, '@latest', 'CursorToys CLI npm spec (e.g. @latest, 2026.5.30)', (v) => {
+        const trimmed = v.trim();
+        if (!trimmed) {
+          return 'Value cannot be empty';
+        }
+        if (/\s/.test(trimmed)) {
+          return 'Must not contain spaces';
+        }
+        return null;
+      });
+      return;
 
     case 'cursorToys.geminiRefinePrompt':
       await pickString(

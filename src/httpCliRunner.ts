@@ -14,13 +14,33 @@ export interface RunHttpCliTestsOptions {
 }
 
 /**
- * Runs `npx cursortoys http test` in a terminal for a file, http subfolder, or entire http tree.
+ * Reads the npm package spec for `cursortoys` CLI invocations (default: `@latest`).
+ */
+export function getCursortoysPackageSpec(): string {
+  const config = vscode.workspace.getConfiguration('cursorToys');
+  const raw = config.get<string>('cli.cursortoysPackageSpec', '@latest').trim();
+  if (!raw) {
+    return 'latest';
+  }
+  return raw.startsWith('@') ? raw.slice(1) : raw;
+}
+
+/**
+ * Builds a full shell command: `npx cursortoys@<spec> <args>`.
+ */
+export function buildCursortoysNpxCommand(args: string): string {
+  const spec = getCursortoysPackageSpec();
+  return `npx cursortoys@${spec} ${args}`;
+}
+
+/**
+ * Runs `npx cursortoys@<spec> http test` in a terminal for a file, http subfolder, or entire http tree.
  */
 export function runHttpCliTests(options: RunHttpCliTestsOptions): void {
   const { workspacePath, scope, filePath, folderRelativePath } = options;
   const baseFolder = getBaseFolderName();
   const args = [
-    'npx cursortoys http test',
+    buildCursortoysNpxCommand('http test'),
     `-p "${workspacePath}"`,
     `--base-folder "${baseFolder}"`,
   ];

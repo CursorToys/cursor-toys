@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.5.30",
+  "version": "2026.6.1",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -460,6 +460,11 @@
         "command": "cursor-toys.deepspec.completeTask",
         "title": "CursorToys: DeepSpec Send to Chat (Complete)",
         "icon": "$(archive)"
+      },
+      {
+        "command": "cursor-toys.deepspec.reviseTask",
+        "title": "CursorToys: DeepSpec Send to Chat (Revise)",
+        "icon": "$(comment-discussion)"
       },
       {
         "command": "cursor-toys.deepspec.discardTask",
@@ -1172,8 +1177,18 @@
         },
         {
           "command": "cursor-toys.deepspec.completeTask",
-          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskActive",
+          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskReview",
           "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.deepspec.reviseTask",
+          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskReview",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.deepspec.openReview",
+          "when": "view == cursor-toys.deepspec && viewItem == deepspecTaskReview",
+          "group": "inline"
         },
         {
           "command": "cursor-toys.deepspec.openReview",
@@ -1749,11 +1764,14 @@
         "cursorToys.geminiModel": {
           "type": "string",
           "enum": [
+            "gemini-3-flash-preview",
+            "gemini-3-pro-preview",
+            "gemini-2.5-flash-lite",
             "gemini-2.5-flash",
             "gemini-2.5-pro",
             "gemini-2.0-flash"
           ],
-          "default": "gemini-2.5-flash",
+          "default": "gemini-3-flash-preview",
           "description": "Gemini AI model to use for text refinement"
         },
         "cursorToys.geminiRefinePrompt": {
@@ -1770,6 +1788,11 @@
           "type": "boolean",
           "default": true,
           "description": "Use the official MCPB CLI (npx @anthropic-ai/mcpb) for verify and unpack when available. Enables signature verification for signed packages and uses the same unpack logic as the official tooling. Falls back to built-in extraction if the CLI is not available."
+        },
+        "cursorToys.cli.cursortoysPackageSpec": {
+          "type": "string",
+          "default": "@latest",
+          "markdownDescription": "npm package spec for **CursorToys CLI** when the extension runs `npx cursortoys …` (HTTP tests, etc.). Examples: `@latest`, `2026.5.30`, `^2026.5.0`."
         },
         "cursorToys.spending.enabled": {
           "type": "boolean",

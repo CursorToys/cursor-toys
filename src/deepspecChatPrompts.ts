@@ -19,8 +19,20 @@ export const DEEPSPEC_SPEC_TYPES: readonly { id: DeepSpecType; label: string }[]
 export const DEEPSPEC_CMD_APPROVE_TASK = 'Approve task';
 export const DEEPSPEC_CMD_COMPLETE_TASK = 'Complete task';
 export const DEEPSPEC_CMD_DISCARD_TASK = 'Discard task';
+export const DEEPSPEC_CMD_REVISE_TASK = 'Revise task';
 
 const DEEPSPEC_ROOT_RELATIVE = '.deepspec';
+
+/**
+ * Workspace-relative @ reference to `.deepspec/`.
+ */
+export function buildDeepspecRootRef(workspaceFsPath: string, deepspecRootUri?: vscode.Uri): string {
+  if (deepspecRootUri) {
+    const rel = path.relative(workspaceFsPath, deepspecRootUri.fsPath).replace(/\\/g, '/');
+    return `@${rel}`;
+  }
+  return `@${DEEPSPEC_ROOT_RELATIVE}`;
+}
 
 /**
  * Workspace-relative @ reference to a task folder (not individual spec files).
@@ -36,8 +48,15 @@ export function buildTaskFolderRef(
 /**
  * Bootstrap DeepSpec: `.deepspec/` folder ref + Initialize DeepSpec.
  */
-export function buildInitializeChatMessage(): string {
-  return `@${DEEPSPEC_ROOT_RELATIVE}\n\n${DEEPSPEC_CMD_INITIALIZE}`;
+export function buildInitializeChatMessage(
+  workspaceFsPath?: string,
+  deepspecRootUri?: vscode.Uri
+): string {
+  const ref =
+    workspaceFsPath && deepspecRootUri
+      ? buildDeepspecRootRef(workspaceFsPath, deepspecRootUri)
+      : `@${DEEPSPEC_ROOT_RELATIVE}`;
+  return `${ref}\n\n${DEEPSPEC_CMD_INITIALIZE}`;
 }
 
 /** Label pasted with the draft task @ ref; user adds planning notes on the following lines. */
@@ -76,13 +95,26 @@ export function buildExecuteChatMessage(
 }
 
 /**
- * Active task folder ref + Complete task (active → archive).
+ * Active task folder ref + Complete task (Review Gate → archive).
  */
 export function buildCompleteChatMessage(
   workspaceFsPath: string,
   taskFolderUri: vscode.Uri
 ): string {
   return `${buildTaskFolderRef(workspaceFsPath, taskFolderUri)}\n\n${DEEPSPEC_CMD_COMPLETE_TASK}`;
+}
+
+/**
+ * Active task in Review Gate + Revise task (post-impl feedback round).
+ */
+export function buildReviseChatMessage(
+  workspaceFsPath: string,
+  taskFolderUri: vscode.Uri,
+  feedback?: string
+): string {
+  const trimmed = feedback?.trim();
+  const body = trimmed ? `\n\n${trimmed}` : '\n\n';
+  return `${buildTaskFolderRef(workspaceFsPath, taskFolderUri)}\n\n${DEEPSPEC_CMD_REVISE_TASK}${body}`;
 }
 
 /**
@@ -104,13 +136,16 @@ export function buildDiscardChatMessage(
 export function buildCreateTaskChatMessage(
   specType: DeepSpecType,
   taskSlug: string,
-  description: string
+  description: string,
+  workspaceFsPath?: string,
+  deepspecRootUri?: vscode.Uri
 ): string {
   const trimmedDesc = description.trim();
   const body = trimmedDesc
     ? `\n\n**Type:** ${specType}\n\n${trimmedDesc}`
     : `\n\n**Type:** ${specType}`;
-  return `@${DEEPSPEC_ROOT_RELATIVE}/specs/drafts\n\n${DEEPSPEC_CMD_CREATE_TASK_PREFIX} ${taskSlug}${body}`;
+  const rootRef = buildDeepspecRootRef(workspaceFsPath ?? '', deepspecRootUri);
+  return `${rootRef}/specs/drafts\n\n${DEEPSPEC_CMD_CREATE_TASK_PREFIX} ${taskSlug}${body}`;
 }
 
 /**

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { deepspecSpecsExist, getDeepspecRootUri, getWorkspaceFolderUri } from './deepspecPaths';
+import { listDeepspecWorkspaceRoots } from './deepspecPaths';
 
 export const DEEPSPEC_NEEDS_INIT_CONTEXT = 'cursorToys.deepspec.needsInit';
 export const DEEPSPEC_PANEL_ENABLED_CONTEXT = 'cursorToys.deepspec.panelEnabled';
@@ -54,11 +54,11 @@ export async function syncDeepspecNeedsInit(): Promise<void> {
     await vscode.commands.executeCommand('setContext', DEEPSPEC_NEEDS_INIT_CONTEXT, false);
     return;
   }
-  const folder = getWorkspaceFolderUri();
-  const root = getDeepspecRootUri(folder);
-  let needsInit = true;
-  if (folder && root) {
-    needsInit = !(await deepspecSpecsExist(root));
+  const folders = await listDeepspecWorkspaceRoots();
+  if (folders.length === 0) {
+    await vscode.commands.executeCommand('setContext', DEEPSPEC_NEEDS_INIT_CONTEXT, true);
+    return;
   }
+  const needsInit = folders.some((entry) => !entry.hasSpecs);
   await vscode.commands.executeCommand('setContext', DEEPSPEC_NEEDS_INIT_CONTEXT, needsInit);
 }

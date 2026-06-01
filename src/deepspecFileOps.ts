@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import type { AbcFileKind, DeepSpecStage } from './deepspecPaths';
-import { ABC_FILE_NAMES, getStageFromTaskUri } from './deepspecPaths';
+import type { AbcFileKind, DeepSpecStage, DeepSpecTreeStage } from './deepspecPaths';
+import { ABC_FILE_NAMES, getStageFromTaskUri, isTaskInReviewGate } from './deepspecPaths';
 import { DeepspecReviewPanel } from './deepspecReviewPanel';
 import type { DeepSpecTreeItem } from './deepspecTreeProvider';
 
@@ -55,7 +55,10 @@ export function coerceDeepspecFileUri(arg: unknown): vscode.Uri | undefined {
 export interface DeepspecReviewOpenContext {
   fileUri: vscode.Uri;
   taskFolderUri: vscode.Uri;
+  /** Filesystem stage (`active` for Review Gate tasks). */
   stage: DeepSpecStage;
+  /** Tree / UI stage when opened from the DeepSpec view. */
+  treeStage?: DeepSpecTreeStage;
   abcKind?: AbcFileKind;
   taskId?: string;
 }
@@ -63,7 +66,9 @@ export interface DeepspecReviewOpenContext {
 /**
  * Resolves task folder, stage, and file from a tree item or file URI.
  */
-export function resolveDeepspecReviewContext(arg: unknown): DeepspecReviewOpenContext | undefined {
+export async function resolveDeepspecReviewContext(
+  arg: unknown
+): Promise<DeepspecReviewOpenContext | undefined> {
   const fileUri = coerceDeepspecFileUri(arg);
   if (!fileUri) {
     return undefined;
@@ -71,10 +76,12 @@ export function resolveDeepspecReviewContext(arg: unknown): DeepspecReviewOpenCo
 
   const treeItem = arg as DeepSpecTreeItem;
   if (treeItem?.type === 'abcFile' && treeItem.taskFolderUri && treeItem.stage) {
+    const fsStage = getStageFromTaskUri(treeItem.taskFolderUri) ?? 'active';
     return {
       fileUri,
       taskFolderUri: treeItem.taskFolderUri,
-      stage: treeItem.stage,
+      stage: fsStage,
+      treeStage: treeItem.stage,
       abcKind: treeItem.abcKind,
       taskId: treeItem.taskId,
     };
@@ -105,7 +112,10 @@ export function resolveDeepspecReviewContext(arg: unknown): DeepspecReviewOpenCo
     }
   }
 
-  return { fileUri, taskFolderUri, stage, abcKind, taskId };
+  const treeStage: DeepSpecTreeStage =
+    stage === 'active' && (await isTaskInReviewGate(taskFolderUri)) ? 'review' : stage;
+
+  return { fileUri, taskFolderUri, stage, treeStage, abcKind, taskId };
 }
 
 /**
@@ -115,7 +125,21 @@ export async function openDeepspecSpecReview(
   extensionUri: vscode.Uri,
   arg: unknown
 ): Promise<void> {
-  const ctx = resolveDeepspecReviewContext(arg);
+  const treeItem = arg as DeepSpecTreeItem;
+  if (treeItem?.type === 'task' && treeItem.taskFolderUri) {
+    const reportUri = vscode.Uri.joinPath(
+      treeItem.taskFolderUri,
+      ABC_FILE_NAMES.COMPLETION_REPORT
+    );
+    arg = {
+      ...treeItem,
+      type: 'abcFile' as const,
+      fileUri: reportUri,
+      abcKind: 'COMPLETION_REPORT' as const,
+    };
+  }
+
+  const ctx = await resolveDeepspecReviewContext(arg);
   if (!ctx) {
     vscode.window.showErrorMessage('Could not open spec review for this file');
     return;

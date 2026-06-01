@@ -256,6 +256,22 @@ const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
     ],
   },
   {
+    id: 'cli',
+    label: 'CLI',
+    kind: 'category',
+    iconId: 'terminal',
+    children: [
+      {
+        id: 'cli-cursortoys-spec',
+        label: 'CursorToys Package Spec',
+        kind: 'setting',
+        iconId: 'package',
+        settingKey: 'cursorToys.cli.cursortoysPackageSpec',
+        description: 'npx cursortoys@… (default @latest)',
+      },
+    ],
+  },
+  {
     id: 'recommendations',
     label: 'Recommendations',
     kind: 'category',

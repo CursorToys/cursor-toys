@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import type { AbcFileKind, DeepSpecStage } from './deepspecPaths';
-import { ABC_FILE_NAMES } from './deepspecPaths';
+import type { AbcFileKind, DeepSpecStage, DeepSpecTreeStage } from './deepspecPaths';
+import { ABC_FILE_NAMES, getStageFromTaskUri, isTaskInReviewGate } from './deepspecPaths';
 import { openDeepspecSpecFile } from './deepspecFileOps';
 import {
   addComment,
@@ -17,8 +17,12 @@ import {
 } from './deepspecReviewSession';
 import {
   buildApproveChatMessage,
+  buildCompleteChatMessage,
+  buildReviseChatMessage,
   buildTaskFolderRef,
   DEEPSPEC_CMD_APPROVE_TASK,
+  DEEPSPEC_CMD_COMPLETE_TASK,
+  DEEPSPEC_CMD_REVISE_TASK,
 } from './deepspecChatPrompts';
 import { sendDeepspecToChat } from './deepspecSendToChat';
 import {
@@ -48,6 +52,7 @@ export interface DeepspecReviewPanelContext {
   fileUri: vscode.Uri;
   taskFolderUri: vscode.Uri;
   stage: DeepSpecStage;
+  treeStage?: DeepSpecTreeStage;
   abcKind?: AbcFileKind;
   taskId?: string;
 }
@@ -70,6 +75,7 @@ export class DeepspecReviewPanel {
   private readonly disposables: vscode.Disposable[] = [];
   private sourceLines: string[] = [];
   private fileName = '';
+  private treeStage: DeepSpecTreeStage = 'drafts';
 
   private constructor(
     private readonly panel: vscode.WebviewPanel,
@@ -141,8 +147,17 @@ export class DeepspecReviewPanel {
     const titleParts = [taskId ?? path.basename(taskFolderUri.fsPath), this.fileName];
     this.panel.title = `Review: ${titleParts.join(' / ')}`;
 
+    const fsStage = getStageFromTaskUri(taskFolderUri) ?? stage;
+    if (this.context.treeStage) {
+      this.treeStage = this.context.treeStage;
+    } else if (fsStage === 'active' && (await isTaskInReviewGate(taskFolderUri))) {
+      this.treeStage = 'review';
+    } else {
+      this.treeStage = fsStage;
+    }
+
     const comments = listForTask(taskFolderUri);
-    this.panel.webview.html = this.buildHtml(comments, stage);
+    this.panel.webview.html = this.buildHtml(comments, this.treeStage);
   }
 
   private async onMessage(message: {
@@ -173,6 +188,9 @@ export class DeepspecReviewPanel {
         break;
       case 'approve':
         await this.handleApprove();
+        break;
+      case 'revise':
+        await this.handleRevise();
         break;
       case 'openInEditor':
         await openDeepspecSpecFile(this.context.fileUri);
@@ -228,7 +246,7 @@ export class DeepspecReviewPanel {
     const payload = formatReviewForChat(
       workspaceFolder.uri.fsPath,
       this.context.taskFolderUri,
-      this.context.stage
+      this.treeStage
     );
     const sent = await sendDeepspecToChat(payload);
     if (sent) {
@@ -249,8 +267,8 @@ export class DeepspecReviewPanel {
   }
 
   private async handleApprove(): Promise<void> {
-    const { stage, taskFolderUri } = this.context;
-    if (stage === 'archive') {
+    const { taskFolderUri } = this.context;
+    if (this.treeStage === 'archive') {
       return;
     }
 
@@ -266,16 +284,16 @@ export class DeepspecReviewPanel {
 
     if (taskComments.length > 0) {
       const commentChoice = await vscode.window.showWarningMessage(
-        `This spec has ${taskComments.length} review comment(s). Approve without sending them to chat, or include them in the approval message?`,
+        `This spec has ${taskComments.length} review comment(s). Continue without sending them to chat, or include them in the message?`,
         { modal: true },
-        'Approve without comments',
-        'Approve with comments'
+        'Continue without comments',
+        'Include comments'
       );
       if (!commentChoice) {
         return;
       }
-      includeComments = commentChoice === 'Approve with comments';
-    } else if (stage === 'drafts') {
+      includeComments = commentChoice === 'Include comments';
+    } else if (this.treeStage === 'drafts') {
       const choice = await vscode.window.showWarningMessage(
         'Approve this spec and send Approve task to chat (draft → active)?',
         { modal: true },
@@ -284,11 +302,20 @@ export class DeepspecReviewPanel {
       if (choice !== 'Approve spec') {
         return;
       }
+    } else if (this.treeStage === 'review') {
+      const choice = await vscode.window.showWarningMessage(
+        'Send Complete task to chat and archive after agent confirmation?',
+        { modal: true },
+        'Complete task'
+      );
+      if (choice !== 'Complete task') {
+        return;
+      }
     }
 
-    if (stage === 'drafts') {
+    if (this.treeStage === 'drafts') {
       const payload = includeComments
-        ? `${formatReviewForChat(workspacePath, taskFolderUri, stage)}\n\n---\n\n${DEEPSPEC_CMD_APPROVE_TASK}`
+        ? `${formatReviewForChat(workspacePath, taskFolderUri, this.treeStage)}\n\n---\n\n${DEEPSPEC_CMD_APPROVE_TASK}`
         : buildApproveChatMessage(workspacePath, taskFolderUri);
       const sent = await sendDeepspecToChat(payload);
       if (sent) {
@@ -304,9 +331,27 @@ export class DeepspecReviewPanel {
       return;
     }
 
-    if (stage === 'active') {
+    if (this.treeStage === 'review') {
+      const payload = includeComments
+        ? `${formatReviewForChat(workspacePath, taskFolderUri, this.treeStage)}\n\n---\n\n${DEEPSPEC_CMD_COMPLETE_TASK}`
+        : buildCompleteChatMessage(workspacePath, taskFolderUri);
+      const sent = await sendDeepspecToChat(payload);
+      if (sent) {
+        if (includeComments) {
+          this.postClearSelection();
+        }
+        void vscode.window.showInformationMessage(
+          includeComments
+            ? 'DeepSpec: Complete task sent to chat with review comments.'
+            : 'DeepSpec: Complete task sent to chat.'
+        );
+      }
+      return;
+    }
+
+    if (this.treeStage === 'active') {
       if (includeComments) {
-        const payload = `${formatReviewForChat(workspacePath, taskFolderUri, stage)}\n\n---\n\nSpec review approved (LGTM). No folder move; no code changes requested.`;
+        const payload = `${formatReviewForChat(workspacePath, taskFolderUri, this.treeStage)}\n\n---\n\nSpec review approved (LGTM). No folder move; no code changes requested.`;
         const sent = await sendDeepspecToChat(payload);
         if (sent) {
           this.postClearSelection();
@@ -319,6 +364,47 @@ export class DeepspecReviewPanel {
         const lgtm = `${buildTaskFolderRef(workspacePath, taskFolderUri)}\n\nSpec review approved (LGTM). No folder move; no code changes requested.`;
         await sendDeepspecToChat(lgtm, { submit: false });
       }
+    }
+  }
+
+  private async handleRevise(): Promise<void> {
+    if (this.treeStage !== 'review') {
+      return;
+    }
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage('Open a workspace folder to request changes.');
+      return;
+    }
+
+    const workspacePath = workspaceFolder.uri.fsPath;
+    const { taskFolderUri } = this.context;
+    const taskComments = listForTask(taskFolderUri);
+
+    const feedback = await vscode.window.showInputBox({
+      title: 'Request changes (Review Round)',
+      prompt: 'Describe what should change before you approve (optional if you added line comments)',
+      placeHolder: 'e.g. Add tests for AC-3, update APPROACH step 2…',
+      ignoreFocusOut: true,
+    });
+    if (feedback === undefined) {
+      return;
+    }
+
+    let payload: string;
+    if (taskComments.length > 0) {
+      payload = `${formatReviewForChat(workspacePath, taskFolderUri, this.treeStage)}\n\n---\n\n${DEEPSPEC_CMD_REVISE_TASK}${feedback.trim() ? `\n\n${feedback.trim()}` : ''}`;
+    } else {
+      payload = buildReviseChatMessage(workspacePath, taskFolderUri, feedback);
+    }
+
+    const sent = await sendDeepspecToChat(payload);
+    if (sent) {
+      if (taskComments.length > 0) {
+        this.postClearSelection();
+      }
+      void vscode.window.showInformationMessage('DeepSpec: Revise task sent to chat.');
     }
   }
 
@@ -512,7 +598,7 @@ export class DeepspecReviewPanel {
 </div>`;
   }
 
-  private buildHtml(comments: DeepspecReviewComment[], stage: DeepSpecStage): string {
+  private buildHtml(comments: DeepspecReviewComment[], stage: DeepSpecTreeStage): string {
     const nonce = getNonce();
     const webview = this.panel.webview;
     const fileKey = this.context.fileUri.toString();
@@ -526,8 +612,23 @@ export class DeepspecReviewPanel {
         ? 'Draft'
         : stage === 'active'
           ? 'In development'
-          : 'Archive';
+          : stage === 'review'
+            ? 'Review gate'
+            : 'Archive';
     const showApprove = stage !== 'archive';
+    const approveLabel =
+      stage === 'review' ? 'Complete task' : stage === 'drafts' ? 'Approve spec' : 'LGTM';
+    const showRevise = stage === 'review';
+    const actionButtons = [
+      '<button type="button" class="secondary" id="btn-editor">Open in editor</button>',
+      '<button type="button" id="btn-send">Send review to chat</button>',
+      showApprove ? `<button type="button" id="btn-approve">${approveLabel}</button>` : '',
+      showRevise
+        ? '<button type="button" class="secondary" id="btn-revise">Request changes</button>'
+        : '',
+    ]
+      .filter(Boolean)
+      .join('\n      ');
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -946,9 +1047,7 @@ export class DeepspecReviewPanel {
       <span class="badge">${escapeHtml(this.context.taskId ?? '')}</span>
     </div>
     <div class="actions">
-      <button type="button" class="secondary" id="btn-editor">Open in editor</button>
-      <button type="button" id="btn-send">Send review to chat</button>
-      ${showApprove ? '<button type="button" id="btn-approve">Approve spec</button>' : ''}
+      ${actionButtons}
     </div>
   </div>
   <div class="main">
@@ -1304,6 +1403,10 @@ export class DeepspecReviewPanel {
     const approveBtn = document.getElementById('btn-approve');
     if (approveBtn) {
       approveBtn.addEventListener('click', () => vscode.postMessage({ command: 'approve' }));
+    }
+    const reviseBtn = document.getElementById('btn-revise');
+    if (reviseBtn) {
+      reviseBtn.addEventListener('click', () => vscode.postMessage({ command: 'revise' }));
     }
 
     window.addEventListener('message', (event) => {

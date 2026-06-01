@@ -3,15 +3,17 @@ import {
   AbcFileKind,
   ABC_FILE_NAMES,
   deepspecSpecsExist,
-  DEEPSPEC_STAGES,
-  DeepSpecStage,
+  DEEPSPEC_TREE_STAGES,
+  DeepSpecTreeStage,
+  getAllWorkspaceFolderUris,
   getDeepspecMemoryUri,
   getDeepspecRootUri,
   getDeepspecSpecsUri,
   getStageLabel,
-  getWorkspaceFolderUri,
+  getWorkspaceFolderFromDeepspecRoot,
+  isMultiRootWorkspace,
   listExistingAbcFiles,
-  listTasksInStage,
+  listTasksForTreeStage,
 } from './deepspecPaths';
 import { deepspecFileTreeItemId } from './deepspecFileOps';
 import {
@@ -33,6 +35,7 @@ export type DeepSpecEmptyReason = 'noWorkspace' | 'needsInit';
 
 export type DeepSpecItemType =
   | 'empty'
+  | 'workspaceRoot'
   | 'memoryRoot'
   | 'memoryTopic'
   | 'memoryTopicEmpty'
@@ -49,11 +52,12 @@ export interface DeepSpecTreeItem {
   type: DeepSpecItemType;
   label: string;
   emptyReason?: DeepSpecEmptyReason;
+  workspaceFolderUri?: vscode.Uri;
   deepspecRootUri?: vscode.Uri;
   memoryTopicId?: DeepspecMemoryTopicId;
   memoryEntry?: DeepspecMemoryEntry;
   memoryTopic?: DeepspecMemoryTopic;
-  stage?: DeepSpecStage;
+  stage?: DeepSpecTreeStage;
   /** Number of tasks in this stage (set on stage nodes). */
   taskCount?: number;
   taskId?: string;
@@ -75,8 +79,14 @@ export class DeepSpecTreeProvider implements vscode.TreeDataProvider<DeepSpecTre
       if (!parent) {
         return '__deepspec_root__';
       }
+      if (parent.type === 'workspaceRoot' && parent.workspaceFolderUri) {
+        return `ws:${parent.workspaceFolderUri.fsPath}`;
+      }
       if (parent.type === 'memoryRoot' && parent.deepspecRootUri) {
         return `memory:${parent.deepspecRootUri.fsPath}`;
+      }
+      if (parent.type === 'stage' && parent.stage && parent.deepspecRootUri) {
+        return `stage:${parent.deepspecRootUri.fsPath}:${parent.stage}`;
       }
       if (parent.type === 'stage' && parent.stage) {
         return `stage:${parent.stage}`;
@@ -97,6 +107,14 @@ export class DeepSpecTreeProvider implements vscode.TreeDataProvider<DeepSpecTre
     if (isTreeLoadingPlaceholder(element)) {
       return renderLoadingTreeItem(element);
     }
+    if (element.type === 'workspaceRoot') {
+      const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
+      item.contextValue = 'deepspecWorkspaceRoot';
+      item.iconPath = new vscode.ThemeIcon('root-folder');
+      item.description = 'Workspace folder';
+      return item;
+    }
+
     if (element.type === 'empty') {
       const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.None);
       if (element.emptyReason === 'needsInit') {
@@ -180,7 +198,7 @@ export class DeepSpecTreeProvider implements vscode.TreeDataProvider<DeepSpecTre
       item.iconPath = stageIcon(element.stage!, count);
       if (count > 0) {
         item.description = `${count}`;
-      } else if (element.stage === 'active') {
+      } else if (element.stage === 'active' || element.stage === 'review') {
         item.description = 'idle';
       }
       return item;
@@ -198,7 +216,12 @@ export class DeepSpecTreeProvider implements vscode.TreeDataProvider<DeepSpecTre
       const item = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
       item.contextValue = taskContextValue(element.stage!);
       item.iconPath = taskIcon(element.stage!);
-      item.description = element.stage === 'active' ? 'in development' : undefined;
+      item.description =
+        element.stage === 'review'
+          ? 'awaiting your review'
+          : element.stage === 'active'
+            ? 'in development'
+            : undefined;
       return item;
     }
 
@@ -223,8 +246,8 @@ export class DeepSpecTreeProvider implements vscode.TreeDataProvider<DeepSpecTre
       return [];
     }
 
-    const root = getDeepspecRootUri();
-    if (!root) {
+    const workspaceFolders = getAllWorkspaceFolderUris();
+    if (workspaceFolders.length === 0) {
       return [
         {
           type: 'empty',
@@ -234,41 +257,40 @@ export class DeepSpecTreeProvider implements vscode.TreeDataProvider<DeepSpecTre
       ];
     }
 
-    const specsUri = getDeepspecSpecsUri(root);
-
     if (!element) {
-      return this.nodeLoader.resolveChildren(undefined, async () => {
-        const hasSpecs = await deepspecSpecsExist(root);
-        if (!hasSpecs) {
-          return [
-            {
-              type: 'empty' as const,
-              label: 'Initialize DeepSpec',
-              emptyReason: 'needsInit' as const,
-            },
-          ];
-        }
+      if (isMultiRootWorkspace()) {
+        return this.nodeLoader.resolveChildren(undefined, async () =>
+          workspaceFolders.map((folder) => ({
+            type: 'workspaceRoot' as const,
+            label: vscode.workspace.getWorkspaceFolder(folder)?.name ?? pathBasename(folder.fsPath),
+            workspaceFolderUri: folder,
+            deepspecRootUri: getDeepspecRootUri(folder)!,
+          }))
+        );
+      }
 
-        const stages: DeepSpecTreeItem[] = [];
-        for (const stage of DEEPSPEC_STAGES) {
-          const tasks = await listTasksInStage(specsUri, stage);
-          stages.push({
-            type: 'stage',
-            label: getStageLabel(stage),
-            stage,
-            taskCount: tasks.length,
-          });
-        }
-        return [
-          {
-            type: 'memoryRoot' as const,
-            label: 'Memory',
-            deepspecRootUri: root,
-          },
-          ...stages,
-        ];
-      });
+      const folder = workspaceFolders[0];
+      const root = getDeepspecRootUri(folder);
+      if (!root) {
+        return [];
+      }
+      return this.nodeLoader.resolveChildren(undefined, () =>
+        buildDeepspecRootChildren(root, folder)
+      );
     }
+
+    if (element.type === 'workspaceRoot' && element.workspaceFolderUri && element.deepspecRootUri) {
+      return this.nodeLoader.resolveChildren(element, () =>
+        buildDeepspecRootChildren(element.deepspecRootUri!, element.workspaceFolderUri!)
+      );
+    }
+
+    const root = element.deepspecRootUri ?? getDeepspecRootUri(element.workspaceFolderUri);
+    if (!root) {
+      return [];
+    }
+
+    const specsUri = getDeepspecSpecsUri(root);
 
     if (element.type === 'memoryRoot' && element.deepspecRootUri) {
       return this.nodeLoader.resolveChildren(element, () =>
@@ -306,13 +328,16 @@ export class DeepSpecTreeProvider implements vscode.TreeDataProvider<DeepSpecTre
 
     if (element.type === 'stage' && element.stage) {
       return this.nodeLoader.resolveChildren(element, async () => {
-        const tasks = await listTasksInStage(specsUri, element.stage!);
+        const tasks = await listTasksForTreeStage(specsUri, element.stage!);
         if (tasks.length === 0) {
           return [
             {
               type: 'stageEmpty' as const,
               label: getStageEmptyLabel(element.stage!),
               stage: element.stage,
+              deepspecRootUri: root,
+              workspaceFolderUri:
+                element.workspaceFolderUri ?? getWorkspaceFolderFromDeepspecRoot(root),
             },
           ];
         }
@@ -322,6 +347,8 @@ export class DeepSpecTreeProvider implements vscode.TreeDataProvider<DeepSpecTre
           stage: element.stage,
           taskId: t.taskId,
           taskFolderUri: t.folderUri,
+          deepspecRootUri: root,
+          workspaceFolderUri: element.workspaceFolderUri ?? getWorkspaceFolderFromDeepspecRoot(root),
         }));
       });
     }
@@ -352,6 +379,8 @@ export class DeepSpecTreeProvider implements vscode.TreeDataProvider<DeepSpecTre
           taskFolderUri: element.taskFolderUri,
           abcKind: f.kind,
           fileUri: f.uri,
+          deepspecRootUri: root,
+          workspaceFolderUri: element.workspaceFolderUri ?? getWorkspaceFolderFromDeepspecRoot(root),
         }));
       });
     }
@@ -360,36 +389,46 @@ export class DeepSpecTreeProvider implements vscode.TreeDataProvider<DeepSpecTre
   }
 }
 
-function getStageEmptyLabel(stage: DeepSpecStage): string {
+function getStageEmptyLabel(stage: DeepSpecTreeStage): string {
   switch (stage) {
     case 'drafts':
       return 'No draft tasks';
     case 'active':
       return 'No tasks in development';
+    case 'review':
+      return 'No tasks awaiting review';
     case 'archive':
       return 'No archived tasks';
   }
 }
 
-function capitalizeStage(stage: DeepSpecStage): string {
-  if (stage === 'active') {
-    return 'Active';
+function capitalizeStage(stage: DeepSpecTreeStage): string {
+  switch (stage) {
+    case 'drafts':
+      return 'Drafts';
+    case 'active':
+      return 'Active';
+    case 'review':
+      return 'Review';
+    case 'archive':
+      return 'Archive';
   }
-  return stage.charAt(0).toUpperCase() + stage.slice(1);
 }
 
-function taskContextValue(stage: DeepSpecStage): string {
+function taskContextValue(stage: DeepSpecTreeStage): string {
   switch (stage) {
     case 'drafts':
       return 'deepspecTaskDraft';
     case 'active':
       return 'deepspecTaskActive';
+    case 'review':
+      return 'deepspecTaskReview';
     case 'archive':
       return 'deepspecTaskArchive';
   }
 }
 
-function stageIcon(stage: DeepSpecStage, taskCount: number): vscode.ThemeIcon {
+function stageIcon(stage: DeepSpecTreeStage, taskCount: number): vscode.ThemeIcon {
   switch (stage) {
     case 'drafts':
       return new vscode.ThemeIcon('layers');
@@ -397,17 +436,23 @@ function stageIcon(stage: DeepSpecStage, taskCount: number): vscode.ThemeIcon {
       return taskCount > 0
         ? new vscode.ThemeIcon('debug-start')
         : new vscode.ThemeIcon('circle-outline');
+    case 'review':
+      return taskCount > 0
+        ? new vscode.ThemeIcon('eye')
+        : new vscode.ThemeIcon('circle-outline');
     case 'archive':
       return new vscode.ThemeIcon('archive');
   }
 }
 
-function taskIcon(stage: DeepSpecStage): vscode.ThemeIcon {
+function taskIcon(stage: DeepSpecTreeStage): vscode.ThemeIcon {
   switch (stage) {
     case 'drafts':
       return new vscode.ThemeIcon('lightbulb');
     case 'active':
       return new vscode.ThemeIcon('debug-start');
+    case 'review':
+      return new vscode.ThemeIcon('eye');
     case 'archive':
       return new vscode.ThemeIcon('check');
   }
@@ -440,15 +485,99 @@ export function getTaskFolderUriFromArg(
 }
 
 /**
- * Creates a RelativePattern for DeepSpec specs watcher in the workspace.
+ * Resolves workspace folder URI from a tree command argument.
+ */
+export function resolveWorkspaceFolderFromTreeItem(
+  arg?: DeepSpecTreeItem | vscode.Uri
+): vscode.Uri | undefined {
+  if (!arg) {
+    return getAllWorkspaceFolderUris()[0];
+  }
+  if (arg instanceof vscode.Uri) {
+    return vscode.workspace.getWorkspaceFolder(arg)?.uri ?? getAllWorkspaceFolderUris()[0];
+  }
+  if (arg.workspaceFolderUri) {
+    return arg.workspaceFolderUri;
+  }
+  if (arg.deepspecRootUri) {
+    return getWorkspaceFolderFromDeepspecRoot(arg.deepspecRootUri);
+  }
+  if (arg.taskFolderUri) {
+    return vscode.workspace.getWorkspaceFolder(arg.taskFolderUri)?.uri;
+  }
+  if (arg.fileUri) {
+    return vscode.workspace.getWorkspaceFolder(arg.fileUri)?.uri;
+  }
+  return getAllWorkspaceFolderUris()[0];
+}
+
+/**
+ * Creates file watcher patterns for every workspace `.deepspec` root.
+ */
+export function createDeepspecWatcherPatterns(): vscode.RelativePattern[] {
+  return getAllWorkspaceFolderUris()
+    .map((folder) => {
+      const root = getDeepspecRootUri(folder);
+      if (!root) {
+        return undefined;
+      }
+      return new vscode.RelativePattern(root, '{specs/**,memory.md,AGENTS.md}');
+    })
+    .filter((pattern): pattern is vscode.RelativePattern => pattern !== undefined);
+}
+
+/**
+ * @deprecated Prefer {@link createDeepspecWatcherPatterns}.
  */
 export function createDeepspecWatcherPattern(): vscode.RelativePattern | undefined {
-  const folder = getWorkspaceFolderUri();
-  const root = getDeepspecRootUri(folder);
-  if (!root) {
-    return undefined;
+  return createDeepspecWatcherPatterns()[0];
+}
+
+async function buildDeepspecRootChildren(
+  root: vscode.Uri,
+  workspaceFolder: vscode.Uri
+): Promise<DeepSpecTreeItem[]> {
+  const hasSpecs = await deepspecSpecsExist(root);
+  if (!hasSpecs) {
+    return [
+      {
+        type: 'empty',
+        label: 'Initialize DeepSpec',
+        emptyReason: 'needsInit',
+        deepspecRootUri: root,
+        workspaceFolderUri: workspaceFolder,
+      },
+    ];
   }
-  return new vscode.RelativePattern(root, '{specs/**,memory.md,AGENTS.md}');
+
+  const specsUri = getDeepspecSpecsUri(root);
+  const stages: DeepSpecTreeItem[] = [];
+  for (const stage of DEEPSPEC_TREE_STAGES) {
+    const tasks = await listTasksForTreeStage(specsUri, stage);
+    stages.push({
+      type: 'stage',
+      label: getStageLabel(stage),
+      stage,
+      taskCount: tasks.length,
+      deepspecRootUri: root,
+      workspaceFolderUri: workspaceFolder,
+    });
+  }
+
+  return [
+    {
+      type: 'memoryRoot',
+      label: 'Memory',
+      deepspecRootUri: root,
+      workspaceFolderUri: workspaceFolder,
+    },
+    ...stages,
+  ];
+}
+
+function pathBasename(fsPath: string): string {
+  const parts = fsPath.replace(/\\/g, '/').split('/');
+  return parts[parts.length - 1] || fsPath;
 }
 
 async function buildMemoryChildren(root: vscode.Uri): Promise<DeepSpecTreeItem[]> {
