@@ -10,6 +10,12 @@
 
 ### Added
 
+- **CLI package spec setting** (`cursorToys.cli.cursortoysPackageSpec`, default `@latest`): HTTP test terminals run `npx cursortoys@<spec> http test …`. Editable from CursorToys Settings → **CLI**.
+- **Gemini 3 models** in refine settings (`gemini-3-flash-preview` default; also `gemini-3-pro-preview`, `gemini-2.5-flash-lite`; legacy 2.5/2.0 kept).
+- **DeepSpec multi-root workspaces**: tree shows one section per workspace folder; Initialize, memory, and chat actions use the selected folder (not only the first root).
+
+### Added
+
 - **HTTP request visual editor**: `.req` / `.request` files under `.{baseFolder}/http/` open in a Postman-style custom editor from the HTTP sidebar or Explorer (default editor association). Request **tags** show method + name with full URL on hover; **environment** panel (workspace `.env` pills, `# @var` add/remove, env keys as tags); **assertions** panel per block; clearer section layout. **Send**, **Copy cURL**, **New HTTP Request**, **Open as text**. Settings: `cursorToys.httpRequestEditor.enabled`, `cursorToys.httpRequestEditor.autoSave`.
 
 The Guide’s entry for version **2025.5.26** notes that the average developer, when confronted with a simple HTTP request, will usually respond by spawning *exactly seventeen* response tabs, none of which they meant to keep, all of which they will lose anyway. This release introduces a response panel that behaves more like a sensible life-form: it updates in place, politely, and without multiplying.
