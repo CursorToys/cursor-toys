@@ -4,6 +4,8 @@ import { DEFAULT_GEMINI_MODEL, GEMINI_MODEL_OPTIONS } from './geminiModels';
 
 const SIDEBAR_SECTION_OPTIONS = [
   { key: 'notepads', label: 'Notepads' },
+  { key: 'kanban', label: 'Kanban' },
+  { key: 'clipboard', label: 'Clipboard' },
   { key: 'commands', label: 'Commands' },
   { key: 'prompts', label: 'Prompts' },
   { key: 'plans', label: 'Plans' },
@@ -372,6 +374,57 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       await pickBoolean(settingKey, true, {
         on: 'Use official MCPB CLI (npx)',
         off: 'Built-in unpack only',
+      });
+      return;
+
+    case 'cursorToys.clipboard.enabled':
+      await pickBoolean(settingKey, true, {
+        on: 'Enable clipboard history',
+        off: 'Disable clipboard history',
+      });
+      return;
+
+    case 'cursorToys.clipboard.bindStandardKeys':
+      await pickBoolean(settingKey, true, {
+        on: 'Ctrl+C / Ctrl+X add to history',
+        off: 'Use palette commands only',
+      });
+      return;
+
+    case 'cursorToys.clipboard.maxEntries':
+      await pickNumber(settingKey, 30, 'Max clipboard history entries', (n) => {
+        if (n < 1) {
+          return 'Minimum 1';
+        }
+        if (n > 200) {
+          return 'Maximum 200';
+        }
+        return null;
+      });
+      return;
+
+    case 'cursorToys.clipboard.maxEntryChars':
+      await pickNumber(settingKey, 100_000, 'Max characters per history entry', (n) =>
+        n < 100 ? 'Minimum 100' : null
+      );
+      return;
+
+    case 'cursorToys.clipboard.syncWithSystem':
+      await pickBoolean(settingKey, true, {
+        on: 'Sync picks to system clipboard',
+        off: 'Do not update system clipboard on paste',
+      });
+      return;
+
+    case 'cursorToys.clipboard.previewChars':
+      await pickNumber(settingKey, 80, 'Quick Pick preview length', (n) => {
+        if (n < 20) {
+          return 'Minimum 20';
+        }
+        if (n > 500) {
+          return 'Maximum 500';
+        }
+        return null;
       });
       return;
 

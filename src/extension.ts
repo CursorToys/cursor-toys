@@ -5,7 +5,7 @@ import { importDeeplink } from './deeplinkImporter';
 import { importRemoteSkillFromGitHubFolderUrl, validateGitHubSkillFolderUrl } from './skillRemoteImporter';
 import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist, createSkillFromStructure } from './shareableImporter';
-import { getFileTypeFromPath, isAllowedExtension, isHttpRequestFile, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getProjectEnvFilePath, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, isHttpRequestFile, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getKanbanPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getProjectEnvFilePath, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { EnvCodeLensProvider } from './envCodeLensProvider';
@@ -13,6 +13,12 @@ import { UserCommandsTreeProvider, CommandFileItem } from './userCommandsTreePro
 import { UserPromptsTreeProvider, PromptFileItem } from './userPromptsTreeProvider';
 import { UserHttpTreeProvider, HttpTreeItem } from './userHttpTreeProvider';
 import { UserNotepadsTreeProvider, NotepadFileItem } from './userNotepadsTreeProvider';
+import { UserKanbanTreeProvider, KanbanFileItem } from './userKanbanTreeProvider';
+import { UserClipboardTreeProvider } from './userClipboardTreeProvider';
+import { registerClipboardFeature, syncClipboardKeybindingContext } from './clipboardRegistration';
+import { getClipboardHistoryManager } from './clipboardHistoryManager';
+import { KanbanBoardPanel } from './kanbanBoardPanel';
+import { createKanbanCardFile } from './kanbanCard';
 import { UserPlansTreeProvider, PlanFileItem } from './userPlansTreeProvider';
 import { CursorToysSettingsTreeProvider } from './cursorToysSettingsTreeProvider';
 import { installDeepSpecExtension } from './installDeepSpecExtension';
@@ -184,6 +190,7 @@ async function generateShareableWithPathValidation(
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   await syncSidebarViewVisibility();
   await syncExplorerViewVisibility();
+  await syncClipboardKeybindingContext();
 
   // Register URI Handler early so cursor:// or vscode:// links open the panel as soon as the extension activates
   const uriHandler = vscode.window.registerUriHandler({
@@ -1983,6 +1990,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     dragAndDropController: userNotepadsTreeProvider
   });
 
+  const userKanbanTreeProvider = new UserKanbanTreeProvider();
+  const refreshKanbanViews = (): void => {
+    userKanbanTreeProvider.refresh();
+  };
+  const userKanbanTreeView = vscode.window.createTreeView('cursor-toys.userKanban', {
+    treeDataProvider: userKanbanTreeProvider,
+    showCollapseAll: false,
+  });
+
+  const userClipboardTreeProvider = new UserClipboardTreeProvider();
+  const userClipboardTreeView = vscode.window.createTreeView('cursor-toys.userClipboard', {
+    treeDataProvider: userClipboardTreeProvider,
+    showCollapseAll: true,
+  });
+  void getClipboardHistoryManager().loadSlots();
+  registerClipboardFeature(context, userClipboardTreeProvider);
+
   // Register User Plans Tree Provider
   const userPlansTreeProvider = new UserPlansTreeProvider();
   const userPlansTreeView = vscode.window.createTreeView('cursor-toys.userPlans', {
@@ -2040,6 +2064,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     treeDataProvider: userNotepadsTreeProvider,
     showCollapseAll: false,
     dragAndDropController: userNotepadsTreeProvider,
+  });
+  const userKanbanExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userKanban', {
+    treeDataProvider: userKanbanTreeProvider,
+    showCollapseAll: false,
+  });
+  const userClipboardExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userClipboard', {
+    treeDataProvider: userClipboardTreeProvider,
+    showCollapseAll: true,
   });
   const userPlansExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userPlans', {
     treeDataProvider: userPlansTreeProvider,
@@ -3147,6 +3179,163 @@ Detailed instructions for the agent.
       userNotepadsTreeProvider.refresh();
     }
   );
+
+  function getKanbanUriFromArgument(arg: KanbanFileItem | vscode.Uri | undefined): vscode.Uri | null {
+    if (!arg) {
+      return null;
+    }
+    if (arg instanceof vscode.Uri) {
+      return arg;
+    }
+    if ('uri' in arg) {
+      return arg.uri;
+    }
+    return null;
+  }
+
+  function getKanbanFileNameFromArgument(arg: KanbanFileItem | vscode.Uri | undefined): string {
+    if (!arg) {
+      return 'file';
+    }
+    if (arg instanceof vscode.Uri) {
+      return path.basename(arg.fsPath);
+    }
+    return arg.fileName;
+  }
+
+  function getKanbanFilePathFromArgument(arg: KanbanFileItem | vscode.Uri | undefined): string | null {
+    if (!arg) {
+      return null;
+    }
+    if (arg instanceof vscode.Uri) {
+      return arg.fsPath;
+    }
+    return arg.filePath;
+  }
+
+  const openKanbanBoard = vscode.commands.registerCommand('cursor-toys.openKanbanBoard', async () => {
+    await KanbanBoardPanel.createOrShow(refreshKanbanViews);
+  });
+
+  const createKanbanCard = vscode.commands.registerCommand('cursor-toys.createKanbanCard', async () => {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage('No workspace open. Kanban is workspace-specific.');
+      return;
+    }
+    const title = await vscode.window.showInputBox({
+      prompt: 'Enter Kanban card title',
+      placeHolder: 'my-task',
+      validateInput: (value) => {
+        if (!value || value.trim().length === 0) {
+          return 'Title cannot be empty';
+        }
+        if (sanitizeFileName(value).length === 0) {
+          return 'Title contains invalid characters';
+        }
+        return null;
+      },
+    });
+    if (!title) {
+      return;
+    }
+    const created = await createKanbanCardFile(workspaceFolder.uri.fsPath, title.trim(), 'backlog');
+    if (created) {
+      vscode.window.showInformationMessage('Kanban card created.');
+      refreshKanbanViews();
+    }
+  });
+
+  const openKanbanCard = vscode.commands.registerCommand(
+    'cursor-toys.openKanbanCard',
+    async (arg?: KanbanFileItem | vscode.Uri) => {
+      const uri = getKanbanUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      const document = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(document);
+    }
+  );
+
+  const deleteKanbanCard = vscode.commands.registerCommand(
+    'cursor-toys.deleteKanbanCard',
+    async (arg?: KanbanFileItem | vscode.Uri) => {
+      const uri = getKanbanUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      const fileName = getKanbanFileNameFromArgument(arg);
+      const confirm = await vscode.window.showWarningMessage(
+        `Delete Kanban card "${fileName}"?`,
+        'Yes',
+        'No'
+      );
+      if (confirm === 'Yes') {
+        await vscode.workspace.fs.delete(uri);
+        vscode.window.showInformationMessage(`Kanban card "${fileName}" deleted`);
+        refreshKanbanViews();
+      }
+    }
+  );
+
+  const revealKanbanCard = vscode.commands.registerCommand(
+    'cursor-toys.revealKanbanCard',
+    async (arg?: KanbanFileItem | vscode.Uri) => {
+      const uri = getKanbanUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      await vscode.commands.executeCommand('revealFileInOS', uri);
+    }
+  );
+
+  const renameKanbanCard = vscode.commands.registerCommand(
+    'cursor-toys.renameKanbanCard',
+    async (arg?: KanbanFileItem | vscode.Uri) => {
+      const uri = getKanbanUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      const currentFileName = getKanbanFileNameFromArgument(arg);
+      const currentFilePath = getKanbanFilePathFromArgument(arg);
+      if (!currentFilePath) {
+        vscode.window.showErrorMessage('Unable to determine file path');
+        return;
+      }
+      const config = vscode.workspace.getConfiguration('cursorToys');
+      const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+      const newName = await vscode.window.showInputBox({
+        prompt: 'Enter new file name',
+        value: currentFileName,
+        validateInput: (value) => {
+          if (!value || value.trim().length === 0) {
+            return 'File name cannot be empty';
+          }
+          const ext = path.extname(value);
+          const extWithoutDot = ext.startsWith('.') ? ext.substring(1) : ext;
+          if (!allowedExtensions.includes(extWithoutDot.toLowerCase())) {
+            return `Extension must be one of: ${allowedExtensions.join(', ')}`;
+          }
+          return null;
+        },
+      });
+      if (newName && newName !== currentFileName) {
+        const newPath = path.join(path.dirname(currentFilePath), newName);
+        await vscode.workspace.fs.rename(uri, vscode.Uri.file(newPath), { overwrite: false });
+        vscode.window.showInformationMessage(`Kanban card renamed to "${newName}"`);
+        refreshKanbanViews();
+      }
+    }
+  );
+
+  const refreshKanban = vscode.commands.registerCommand('cursor-toys.refreshKanban', () => {
+    refreshKanbanViews();
+  });
 
   /**
    * Helper function to get URI from plan command argument (can be PlanFileItem or vscode.Uri)
@@ -4490,6 +4679,25 @@ Detailed instructions for the agent.
 
   let userNotepadsWatchers = createNotepadsWatchers();
 
+  const createKanbanWatchers = (): vscode.FileSystemWatcher[] => {
+    const watchers: vscode.FileSystemWatcher[] = [];
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      return watchers;
+    }
+    const kanbanPath = getKanbanPath(workspaceFolder.uri.fsPath);
+    const folderUri = vscode.Uri.file(kanbanPath);
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(folderUri, '**/*')
+    );
+    watcher.onDidCreate(() => refreshKanbanViews());
+    watcher.onDidDelete(() => refreshKanbanViews());
+    watchers.push(watcher);
+    return watchers;
+  };
+
+  let userKanbanWatchers = createKanbanWatchers();
+
   // File system watchers for plans folder
   const createPlansWatchers = (): vscode.FileSystemWatcher[] => {
     const watchers: vscode.FileSystemWatcher[] = [];
@@ -4586,6 +4794,9 @@ Detailed instructions for the agent.
   userNotepadsWatchers.forEach(watcher => {
     context.subscriptions.push(watcher);
   });
+  userKanbanWatchers.forEach(watcher => {
+    context.subscriptions.push(watcher);
+  });
   userPlansWatchers.forEach(watcher => {
     context.subscriptions.push(watcher);
   });
@@ -4660,6 +4871,16 @@ Detailed instructions for the agent.
     newHttpRequest,
     refreshUserHttp,
     userNotepadsTreeView,
+    userKanbanTreeView,
+    userClipboardTreeView,
+    userClipboardExplorerTreeView,
+    openKanbanBoard,
+    createKanbanCard,
+    openKanbanCard,
+    deleteKanbanCard,
+    revealKanbanCard,
+    renameKanbanCard,
+    refreshKanban,
     createNotepad,
     openNotepad,
     generateNotepadShareable,
@@ -4743,6 +4964,7 @@ Detailed instructions for the agent.
     userCommandsExplorerTreeView,
     userPromptsExplorerTreeView,
     userNotepadsExplorerTreeView,
+    userKanbanExplorerTreeView,
     userPlansExplorerTreeView,
     userSkillsExplorerTreeView,
     userHttpExplorerTreeView,

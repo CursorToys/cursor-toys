@@ -102,7 +102,7 @@ function parseSimpleYAML(yamlContent: string): FrontmatterMetadata {
     if (line.startsWith('-')) {
       const value = line.substring(1).trim();
       if (currentKey && value) {
-        currentArray.push(value);
+        currentArray.push(String(parseValue(value)));
       }
       continue;
     }

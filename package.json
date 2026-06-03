@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.2-2",
+  "version": "2026.6.3-1",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -65,6 +65,8 @@
     "onView:cursor-toys.userCommands",
     "onView:cursor-toys.userPrompts",
     "onView:cursor-toys.userNotepads",
+    "onView:cursor-toys.userKanban",
+    "onView:cursor-toys.userClipboard",
     "onView:cursor-toys.userSkills",
     "onView:cursor-toys.userHttp",
     "onView:cursor-toys.settings",
@@ -88,6 +90,8 @@
     "onView:cursor-toys.explorer.userCommands",
     "onView:cursor-toys.explorer.userPrompts",
     "onView:cursor-toys.explorer.userNotepads",
+    "onView:cursor-toys.explorer.userKanban",
+    "onView:cursor-toys.explorer.userClipboard",
     "onView:cursor-toys.explorer.userPlans",
     "onView:cursor-toys.explorer.userSkills",
     "onView:cursor-toys.explorer.userHttp",
@@ -338,6 +342,38 @@
       {
         "command": "cursor-toys.refreshNotepads",
         "title": "CursorToys: Refresh Notepads",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.openKanbanBoard",
+        "title": "CursorToys: Open Kanban Board",
+        "icon": "$(layout)"
+      },
+      {
+        "command": "cursor-toys.createKanbanCard",
+        "title": "CursorToys: Create Kanban Card",
+        "icon": "$(add)"
+      },
+      {
+        "command": "cursor-toys.openKanbanCard",
+        "title": "CursorToys: Open Kanban Card",
+        "icon": "$(tasklist)"
+      },
+      {
+        "command": "cursor-toys.deleteKanbanCard",
+        "title": "CursorToys: Delete Kanban Card"
+      },
+      {
+        "command": "cursor-toys.revealKanbanCard",
+        "title": "CursorToys: Reveal Kanban Card in Folder"
+      },
+      {
+        "command": "cursor-toys.renameKanbanCard",
+        "title": "CursorToys: Rename Kanban Card"
+      },
+      {
+        "command": "cursor-toys.refreshKanban",
+        "title": "CursorToys: Refresh Kanban",
         "icon": "$(refresh)"
       },
       {
@@ -652,6 +688,76 @@
         "command": "cursor-toys.installDeepSpecExtension",
         "title": "CursorToys: Install DeepSpec Extension",
         "icon": "$(cloud-download)"
+      },
+      {
+        "command": "cursor-toys.clipboard.copy",
+        "title": "CursorToys: Copy (Add to History)"
+      },
+      {
+        "command": "cursor-toys.clipboard.cut",
+        "title": "CursorToys: Cut (Add to History)"
+      },
+      {
+        "command": "cursor-toys.clipboard.pasteFromHistory",
+        "title": "CursorToys: Paste from Clipboard History"
+      },
+      {
+        "command": "cursor-toys.clipboard.clearHistory",
+        "title": "CursorToys: Clear Clipboard History"
+      },
+      {
+        "command": "cursor-toys.clipboard.assignSnippetSlot",
+        "title": "CursorToys: Save to Snippet Slot",
+        "icon": "$(add)"
+      },
+      {
+        "command": "cursor-toys.clipboard.renameSnippetSlot",
+        "title": "CursorToys: Rename Snippet Slot"
+      },
+      {
+        "command": "cursor-toys.clipboard.clearSnippetSlot",
+        "title": "CursorToys: Remove Snippet Slot"
+      },
+      {
+        "command": "cursor-toys.clipboard.pasteSnippetSlot",
+        "title": "CursorToys: Paste Snippet Slot"
+      },
+      {
+        "command": "cursor-toys.clipboard.pasteHistoryEntry",
+        "title": "CursorToys: Paste History Entry"
+      },
+      {
+        "command": "cursor-toys.commandClipboard.save",
+        "title": "CursorToys: Save Command to Clipboard"
+      },
+      {
+        "command": "cursor-toys.commandClipboard.copy",
+        "title": "CursorToys: Copy Saved Command"
+      },
+      {
+        "command": "cursor-toys.commandClipboard.run",
+        "title": "CursorToys: Run Saved Command in Terminal"
+      },
+      {
+        "command": "cursor-toys.commandClipboard.delete",
+        "title": "CursorToys: Delete Saved Command"
+      },
+      {
+        "command": "cursor-toys.commandClipboard.duplicate",
+        "title": "CursorToys: Duplicate Saved Command"
+      },
+      {
+        "command": "cursor-toys.commandClipboard.pin",
+        "title": "CursorToys: Pin Saved Command"
+      },
+      {
+        "command": "cursor-toys.commandClipboard.rename",
+        "title": "CursorToys: Rename Saved Command"
+      },
+      {
+        "command": "cursor-toys.refreshClipboard",
+        "title": "CursorToys: Refresh Clipboard View",
+        "icon": "$(refresh)"
       }
     ],
     "submenus": [
@@ -712,6 +818,18 @@
           "visibility": "collapsed"
         },
         {
+          "id": "cursor-toys.userKanban",
+          "name": "Kanban",
+          "when": "cursorToys.sidebar.kanbanVisible",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "cursor-toys.userClipboard",
+          "name": "Clipboard",
+          "when": "cursorToys.sidebar.clipboardVisible",
+          "visibility": "collapsed"
+        },
+        {
           "id": "cursor-toys.userHooks",
           "name": "Cursor Hooks",
           "when": "cursorToys.sidebar.hooksVisible",
@@ -754,6 +872,16 @@
           "id": "cursor-toys.explorer.userNotepads",
           "name": "Notepads",
           "when": "cursorToys.explorer.notepadsVisible"
+        },
+        {
+          "id": "cursor-toys.explorer.userKanban",
+          "name": "Kanban",
+          "when": "cursorToys.explorer.kanbanVisible"
+        },
+        {
+          "id": "cursor-toys.explorer.userClipboard",
+          "name": "Clipboard",
+          "when": "cursorToys.explorer.clipboardVisible"
         },
         {
           "id": "cursor-toys.explorer.userCommands",
@@ -845,6 +973,36 @@
           "command": "cursor-toys.refreshNotepads",
           "when": "view =~ /cursor-toys\\.(explorer\\.)?userNotepads/",
           "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.openKanbanBoard",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userKanban/",
+          "group": "navigation@1"
+        },
+        {
+          "command": "cursor-toys.createKanbanCard",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userKanban/",
+          "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.refreshKanban",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userKanban/",
+          "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.refreshClipboard",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userClipboard/",
+          "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.clipboard.assignSnippetSlot",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userClipboard/",
+          "group": "navigation@1"
+        },
+        {
+          "command": "cursor-toys.commandClipboard.save",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userClipboard/",
+          "group": "navigation@2"
         },
         {
           "command": "cursor-toys.refreshPlans",
@@ -1011,6 +1169,76 @@
         {
           "command": "cursor-toys.deleteNotepad",
           "when": "view =~ /cursor-toys\\.(explorer\\.)?userNotepads/ && viewItem == userNotepadFile",
+          "group": "2_actions"
+        },
+        {
+          "command": "cursor-toys.openKanbanCard",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userKanban/ && viewItem == userKanbanFile",
+          "group": "inline"
+        },
+        {
+          "command": "cursor-toys.openKanbanBoard",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userKanban/ && viewItem == userKanbanFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.renameKanbanCard",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userKanban/ && viewItem == userKanbanFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.revealKanbanCard",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userKanban/ && viewItem == userKanbanFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.deleteKanbanCard",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userKanban/ && viewItem == userKanbanFile",
+          "group": "2_actions"
+        },
+        {
+          "command": "cursor-toys.commandClipboard.run",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userClipboard/ && viewItem == clipboardCommandEntry",
+          "group": "inline"
+        },
+        {
+          "command": "cursor-toys.commandClipboard.copy",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userClipboard/ && viewItem == clipboardCommandEntry",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.commandClipboard.pin",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userClipboard/ && viewItem == clipboardCommandEntry",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.commandClipboard.rename",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userClipboard/ && viewItem == clipboardCommandEntry",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.commandClipboard.duplicate",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userClipboard/ && viewItem == clipboardCommandEntry",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.commandClipboard.delete",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userClipboard/ && viewItem == clipboardCommandEntry",
+          "group": "2_actions"
+        },
+        {
+          "command": "cursor-toys.clipboard.assignSnippetSlot",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userClipboard/ && viewItem == clipboardSlotFilled",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.clipboard.renameSnippetSlot",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userClipboard/ && viewItem == clipboardSlotFilled",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.clipboard.clearSnippetSlot",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userClipboard/ && viewItem == clipboardSlotFilled",
           "group": "2_actions"
         },
         {
@@ -1339,6 +1567,14 @@
         {
           "command": "cursor-toys.processWithPrompt",
           "when": "editorHasSelection"
+        },
+        {
+          "command": "cursor-toys.clipboard.assignSnippetSlot",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "cursor-toys.commandClipboard.save",
+          "when": "editorHasSelection"
         }
       ],
       "editor/title": [
@@ -1462,6 +1698,8 @@
               "type": "string",
               "enum": [
                 "notepads",
+                "kanban",
+                "clipboard",
                 "commands",
                 "prompts",
                 "plans",
@@ -1472,7 +1710,7 @@
               ]
             },
             "default": [],
-            "markdownDescription": "Explorer sidebar sections to hide under CursorToys. Keys: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`. Empty list shows all sections. Command Palette and file actions still work for hidden resources."
+            "markdownDescription": "Explorer sidebar sections to hide under CursorToys. Keys: `notepads`, `kanban`, `clipboard`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`. Empty list shows all sections. Command Palette and file actions still work for hidden resources."
           },
           "cursorToys.sidebar.explorerViews": {
             "type": "array",
@@ -1480,6 +1718,8 @@
               "type": "string",
               "enum": [
                 "notepads",
+                "kanban",
+                "clipboard",
                 "commands",
                 "prompts",
                 "plans",
@@ -1493,7 +1733,7 @@
               "skills",
               "plans"
             ],
-            "markdownDescription": "Explorer sidebar sections to also show in the Explorer (in addition to the CursorToys activity bar). Keys: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`. Default: `skills`, `plans`."
+            "markdownDescription": "Explorer sidebar sections to also show in the Explorer (in addition to the CursorToys activity bar). Keys: `notepads`, `kanban`, `clipboard`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`. Default: `skills`, `plans`."
           },
           "cursorToys.httpRequestTimeout": {
             "type": "number",
@@ -1547,6 +1787,41 @@
             "type": "string",
             "default": "dev",
             "description": "Default HTTP environment name (used for reference in status bar)"
+          },
+          "cursorToys.clipboard.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable in-editor clipboard history (ring buffer on copy/cut)."
+          },
+          "cursorToys.clipboard.bindStandardKeys": {
+            "type": "boolean",
+            "default": true,
+            "description": "When true, Ctrl+C / Ctrl+X in the editor are routed through clipboard history (disable if another extension conflicts)."
+          },
+          "cursorToys.clipboard.maxEntries": {
+            "type": "number",
+            "default": 30,
+            "minimum": 1,
+            "maximum": 200,
+            "description": "Maximum number of entries kept in clipboard history."
+          },
+          "cursorToys.clipboard.maxEntryChars": {
+            "type": "number",
+            "default": 100000,
+            "minimum": 100,
+            "description": "Maximum characters per history entry; larger copies are skipped."
+          },
+          "cursorToys.clipboard.syncWithSystem": {
+            "type": "boolean",
+            "default": true,
+            "description": "When pasting from history or snippet slots, also write the text to the system clipboard."
+          },
+          "cursorToys.clipboard.previewChars": {
+            "type": "number",
+            "default": 80,
+            "minimum": 20,
+            "maximum": 500,
+            "description": "Characters shown in the clipboard history Quick Pick preview."
           },
           "cursorToys.minify.preserveComments": {
             "type": "boolean",
@@ -1732,6 +2007,44 @@
         "command": "cursor-toys.refineClipboardWithAI",
         "key": "ctrl+alt+shift+r",
         "mac": "cmd+alt+shift+r"
+      },
+      {
+        "command": "cursor-toys.clipboard.pasteFromHistory",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "when": "editorTextFocus"
+      },
+      {
+        "key": "ctrl+c",
+        "command": "-editor.action.clipboardCopyAction",
+        "when": "editorTextFocus && cursorToys.clipboard.standardKeysEnabled"
+      },
+      {
+        "key": "cmd+c",
+        "command": "-editor.action.clipboardCopyAction",
+        "when": "editorTextFocus && cursorToys.clipboard.standardKeysEnabled"
+      },
+      {
+        "command": "cursor-toys.clipboard.copy",
+        "key": "ctrl+c",
+        "mac": "cmd+c",
+        "when": "editorTextFocus && !editorReadonly && cursorToys.clipboard.standardKeysEnabled"
+      },
+      {
+        "key": "ctrl+x",
+        "command": "-editor.action.clipboardCutAction",
+        "when": "editorTextFocus && cursorToys.clipboard.standardKeysEnabled"
+      },
+      {
+        "key": "cmd+x",
+        "command": "-editor.action.clipboardCutAction",
+        "when": "editorTextFocus && cursorToys.clipboard.standardKeysEnabled"
+      },
+      {
+        "command": "cursor-toys.clipboard.cut",
+        "key": "ctrl+x",
+        "mac": "cmd+x",
+        "when": "editorTextFocus && !editorReadonly && cursorToys.clipboard.standardKeysEnabled"
       }
     ],
     "uriHandlers": [

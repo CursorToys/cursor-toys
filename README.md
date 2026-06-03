@@ -43,6 +43,8 @@ Everything below follows that pattern: short path from intent to action, progres
 | [🎓 Skills Management](#-skills-management) | Browse, organize, and share Cursor Agent Skills. |
 | [🎯 Skills Marketplace](#-skills-marketplace) | Discover and install community skills from Tech Leads Club. |
 | [📓 Project Notepads](#-project-notepads) | Project-scoped markdown notes in `.cursor/notepads/`. |
+| [📋 Kanban Board](#-kanban-board) | File-backed Todo / Doing / Done board in `.cursor/kanban/`. |
+| [📎 Clipboard Manager](#-clipboard-manager) | Copy/cut history, snippet slots (`clip01`), saved terminal commands. |
 | [🪝 Cursor Hooks](#-cursor-hooks) | Manage personal and project `hooks.json` from the sidebar. |
 | [💬 Chat Integration](#-chat-integration) | Send selections and prompts to Cursor chat faster. |
 | [🗜️ File Minification](#️-file-minification) | Minify JSON, HTML, CSS, JS, and more — files or clipboard. |
@@ -138,6 +140,27 @@ GET https://api.example.com/user/123
 
 - Sidebar tree with folders and drag-and-drop.
 - Create, rename, delete; share notepads or folders via CursorToys or Gist.
+
+### 📋 Kanban Board
+
+**Lightweight task board stored as markdown** — one card per file in `.{baseFolder}/kanban/`.
+
+- Frontmatter field `status`: `backlog`, `todo`, `doing`, or `done`.
+- Optional `tags` in frontmatter (`name` or `name:#hexcolor` per tag) with colored pills on cards.
+- **CursorToys: Open Kanban Board** — three-column webview with drag-and-drop; edits persist to disk.
+- Sidebar tree: create, rename, delete, and open cards (same pattern as Notepads).
+
+### 📎 Clipboard Manager
+
+**Reuse recent copies and saved shell commands** without leaving the editor.
+
+- **Ctrl+C / Ctrl+X** in the editor add to history by default (`cursorToys.clipboard.bindStandardKeys`). Palette: **Copy (Add to History)** / **Cut (Add to History)**.
+- **Paste from Clipboard History** — `Ctrl+Shift+V` / `Cmd+Shift+V` when the editor is focused (Quick Pick preview).
+- **Snippet slots** — save with a **custom name** (sidebar shows the name + preview); stored under `~/.{baseFolder}/clipboard/slots.json`. Rename or remove from the tree context menu.
+- **Command clipboard** — save selection or clipboard text as global or workspace commands; copy, run in terminal (with confirmation), pin, duplicate, rename, delete from the **Clipboard** sidebar.
+- Settings: `cursorToys.clipboard.enabled`, `maxEntries`, `maxEntryChars`, `syncWithSystem`, `previewChars`.
+
+**Other clipboard extensions:** CursorToys does not replace the system copy key by default. Use the CursorToys copy/cut commands (or rebind them), or disable overlapping keybindings in extensions such as *Clipboard Manager* / *Multi Paste* if you prefer a single history UI.
 
 ### 🪝 Cursor Hooks
 

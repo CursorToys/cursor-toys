@@ -331,6 +331,43 @@ const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
     ],
   },
   {
+    id: 'clipboard',
+    label: 'Clipboard',
+    kind: 'category',
+    iconId: 'clippy',
+    children: [
+      {
+        id: 'clipboard-enabled',
+        label: 'History Enabled',
+        kind: 'setting',
+        iconId: 'history',
+        settingKey: 'cursorToys.clipboard.enabled',
+      },
+      {
+        id: 'clipboard-bind-keys',
+        label: 'Bind Ctrl+C / Ctrl+X',
+        kind: 'setting',
+        iconId: 'keyboard',
+        settingKey: 'cursorToys.clipboard.bindStandardKeys',
+        description: 'Capture standard copy/cut keys',
+      },
+      {
+        id: 'clipboard-max-entries',
+        label: 'Max History Entries',
+        kind: 'setting',
+        iconId: 'list-ordered',
+        settingKey: 'cursorToys.clipboard.maxEntries',
+      },
+      {
+        id: 'clipboard-sync',
+        label: 'Sync with System Clipboard',
+        kind: 'setting',
+        iconId: 'sync',
+        settingKey: 'cursorToys.clipboard.syncWithSystem',
+      },
+    ],
+  },
+  {
     id: 'minify',
     label: 'Minify',
     kind: 'category',

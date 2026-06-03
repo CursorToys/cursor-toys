@@ -3,6 +3,8 @@ import * as vscode from 'vscode';
 /** Resource keys matching `cursorToys.sidebar.hiddenViews` enum items. */
 export type SidebarResourceKey =
   | 'notepads'
+  | 'kanban'
+  | 'clipboard'
   | 'commands'
   | 'prompts'
   | 'plans'
@@ -16,6 +18,8 @@ export const DEFAULT_EXPLORER_SIDEBAR_VIEWS: readonly SidebarResourceKey[] = ['s
 
 export const ALL_SIDEBAR_RESOURCE_KEYS: readonly SidebarResourceKey[] = [
   'notepads',
+  'kanban',
+  'clipboard',
   'commands',
   'prompts',
   'plans',
@@ -30,6 +34,8 @@ const SIDEBAR_RESOURCE_KEY_SET = new Set<string>(ALL_SIDEBAR_RESOURCE_KEYS);
 /** VS Code context keys used in `package.json` view `when` clauses. */
 const VISIBILITY_CONTEXT_KEYS: Record<SidebarResourceKey, string> = {
   notepads: 'cursorToys.sidebar.notepadsVisible',
+  kanban: 'cursorToys.sidebar.kanbanVisible',
+  clipboard: 'cursorToys.sidebar.clipboardVisible',
   commands: 'cursorToys.sidebar.commandsVisible',
   prompts: 'cursorToys.sidebar.promptsVisible',
   plans: 'cursorToys.sidebar.plansVisible',
@@ -42,6 +48,8 @@ const VISIBILITY_CONTEXT_KEYS: Record<SidebarResourceKey, string> = {
 /** VS Code context keys to optionally show views in Explorer. */
 const EXPLORER_CONTEXT_KEYS: Record<SidebarResourceKey, string> = {
   notepads: 'cursorToys.explorer.notepadsVisible',
+  kanban: 'cursorToys.explorer.kanbanVisible',
+  clipboard: 'cursorToys.explorer.clipboardVisible',
   commands: 'cursorToys.explorer.commandsVisible',
   prompts: 'cursorToys.explorer.promptsVisible',
   plans: 'cursorToys.explorer.plansVisible',

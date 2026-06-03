@@ -1,10 +1,14 @@
 # CursorToys
 
-![](https://i.imgur.com/ZLiERWl.jpeg)
+![](https://i.imgur.com/LDhaXRy.jpeg)
 
-## Unreleased
+## v2026.6.3 - Kanban and clipboard history
 
 ### Added
+
+- **Clipboard manager**: JetBrains-style copy/cut history ring buffer, **Paste from Clipboard History** (`Ctrl+Shift+V` / `Cmd+Shift+V` in editor), named snippet slots (`clip01`–`clip99`), optional system clipboard sync, and **command clipboard** (save/copy/run terminal commands) with global and workspace scopes. New **Clipboard** sidebar section; use **Copy (Add to History)** / **Cut (Add to History)** commands or rebind keys. Coexistence notes for third-party clipboard extensions in README.
+
+- **Kanban board**: Workspace Kanban in `.{baseFolder}/kanban/` — each card is a markdown file with YAML frontmatter (`status`: `backlog` | `todo` | `doing` | `done`, optional colored `tags`). **Open Kanban Board** webview with full-height columns, fixed-size cards, drag-and-drop, and tag editor; tree view and CRUD commands in the CursorToys sidebar (like Notepads).
 
 - **HTTP request editor — environment & tests UX**: Workspace environment picker and Environment tab sections are collapsible (collapsed by default). Active `.env` pill styling is clearer; open `.env` files via ↗ next to each env. Local `# @var` variables appear first and are editable inline; workspace keys follow in a separate section. Tests can be edited in place (Edit / Save / Cancel).
 

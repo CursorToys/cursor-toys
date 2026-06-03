@@ -73,7 +73,7 @@ export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'pro
     return 'prompt';
   }
   // Notepads can use custom base folder or legacy .cursor
-  if (normalizedPath.includes(`/.${baseFolderName}/notepads/`) || 
+  if (normalizedPath.includes(`/.${baseFolderName}/notepads/`) ||
       normalizedPath.includes('/.cursor/notepads/')) {
     return 'notepad';
   }
@@ -300,6 +300,80 @@ export function getPersonalPromptsPaths(): string[] {
 export function getNotepadsPath(workspacePath: string, isUser: boolean = false): string {
   const baseFolderName = getBaseFolderName();
   return path.join(workspacePath, `.${baseFolderName}`, 'notepads');
+}
+
+/**
+ * Gets the full path to the Kanban folder (workspace-specific).
+ * @param workspacePath Workspace root path
+ */
+export function getKanbanPath(workspacePath: string): string {
+  const baseFolderName = getBaseFolderName();
+  return path.join(workspacePath, `.${baseFolderName}`, 'kanban');
+}
+
+/**
+ * Gets the workspace clipboard folder (history metadata and workspace-scoped command clipboard).
+ */
+export function getClipboardPath(workspacePath: string): string {
+  const baseFolderName = getBaseFolderName();
+  return path.join(workspacePath, `.${baseFolderName}`, 'clipboard');
+}
+
+/**
+ * Gets the personal (global) clipboard folder under the user home directory.
+ */
+export function getPersonalClipboardPath(): string {
+  const baseFolderName = getBaseFolderName();
+  return path.join(getUserHomePath(), `.${baseFolderName}`, 'clipboard');
+}
+
+/**
+ * Paths for global command clipboard storage (includes legacy .cursor when baseFolder differs).
+ */
+export function getPersonalClipboardPaths(): string[] {
+  const homePath = getUserHomePath();
+  const baseFolderName = getBaseFolderName();
+  const paths: string[] = [path.join(homePath, `.${baseFolderName}`, 'clipboard')];
+  if (baseFolderName !== 'cursor') {
+    paths.push(path.join(homePath, '.cursor', 'clipboard'));
+  }
+  return paths;
+}
+
+/**
+ * File path for persisted snippet slots (clip01, clip02, …).
+ */
+export function getClipboardSlotsFilePath(): string {
+  return path.join(getPersonalClipboardPath(), 'slots.json');
+}
+
+/**
+ * Directory for saved commands for a given scope.
+ */
+export function getClipboardCommandsDir(
+  scope: 'global' | 'workspace' | 'project',
+  workspacePath?: string
+): string {
+  if (scope === 'global') {
+    return path.join(getPersonalClipboardPath(), 'commands');
+  }
+  const root = workspacePath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!root) {
+    return path.join(getPersonalClipboardPath(), 'commands');
+  }
+  return path.join(getClipboardPath(root), 'commands');
+}
+
+/**
+ * Returns true when the path is under the workspace Kanban folder.
+ */
+export function isKanbanCardPath(filePath: string): boolean {
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  const baseFolderName = getBaseFolderName();
+  return (
+    normalizedPath.includes(`/.${baseFolderName}/kanban/`) ||
+    normalizedPath.includes('/.cursor/kanban/')
+  );
 }
 
 /**
