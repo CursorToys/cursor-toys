@@ -9,6 +9,7 @@
   Test APIs, share AI configs, and manage your Cursor workspace — without context switching.
 </p>
 
+[![Publish Extension](https://img.shields.io/github/actions/workflow/status/CursorToys/cursor-toys/publish.yml?style=flat-square&label=Publish)](https://github.com/CursorToys/cursor-toys/actions/workflows/publish.yml)
 [![Open VSX Downloads](https://img.shields.io/open-vsx/dt/godrix/cursor-toys?label=Open%20VSX%20downloads)](https://open-vsx.org/extension/godrix/cursor-toys)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -250,6 +251,22 @@ npm install && npm run compile && npm run package
 ```
 
 Install the generated `.vsix` via Extensions → Install from VSIX.
+
+</details>
+
+<details>
+<summary><strong>Maintainers — automated Open VSX publish</strong></summary>
+
+Pushing a **git tag** runs the [Publish Extension](https://github.com/CursorToys/cursor-toys/actions/workflows/publish.yml) workflow (build, package, publish to [Open VSX](https://open-vsx.org/extension/godrix/cursor-toys)).
+
+**Repository secret (required):** `OPEN_VSX_TOKEN` — [Open VSX access token](https://github.com/eclipse/openvsx/wiki/Publishing-Extensions#1-create-an-access-token) for the `godrix` namespace.
+
+```bash
+git tag v2026.6.4-1
+git push origin v2026.6.4-1
+```
+
+Ensure `package.json` `version` matches the release you are publishing.
 
 </details>
 

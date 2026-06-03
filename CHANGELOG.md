@@ -2,6 +2,12 @@
 
 ![](https://i.imgur.com/LDhaXRy.jpeg)
 
+## v2026.6.4 - Code Anchors
+
+### Added
+
+- **Code Anchors**: Bookmark specific lines across your workspace with gutter icons, sidebar navigation, and status bar controls. Toggle anchors with `Ctrl+Shift+A` / `Cmd+Shift+A`, navigate between them with `Ctrl+Alt+N` (next) / `Ctrl+Alt+P` (previous), or use the Code Anchors sidebar view. Settings: `cursorToys.codeAnchors.enabled`, `cursorToys.codeAnchors.showStatusBar`.
+
 ## v2026.6.3 - Kanban and clipboard history
 
 ### Added

@@ -119,6 +119,30 @@ const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
     ],
   },
   {
+    id: 'code-anchors',
+    label: 'Code Anchors',
+    kind: 'category',
+    iconId: 'bookmark',
+    children: [
+      {
+        id: 'code-anchors-enabled',
+        label: 'Enabled',
+        kind: 'setting',
+        iconId: 'check',
+        settingKey: 'cursorToys.codeAnchors.enabled',
+        description: 'Bookmarks on code lines',
+      },
+      {
+        id: 'code-anchors-status-bar',
+        label: 'Status Bar Navigation',
+        kind: 'setting',
+        iconId: 'arrow-both',
+        settingKey: 'cursorToys.codeAnchors.showStatusBar',
+        description: 'Forward/backward controls',
+      },
+    ],
+  },
+  {
     id: 'http',
     label: 'HTTP',
     kind: 'category',
@@ -439,6 +463,22 @@ const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
         iconId: 'refresh',
         settingKey: 'cursorToys.spending.refreshInterval',
         description: 'Minutes',
+      },
+    ],
+  },
+  {
+    id: 'kanban',
+    label: 'Kanban',
+    kind: 'category',
+    iconId: 'tasklist',
+    children: [
+      {
+        id: 'kanban-show-statusbar',
+        label: 'Show Status Bar Icon',
+        kind: 'setting',
+        iconId: 'eye',
+        settingKey: 'cursorToys.kanban.showStatusBar',
+        description: 'Quick access to Kanban board',
       },
     ],
   },

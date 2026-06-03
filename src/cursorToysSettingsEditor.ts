@@ -462,6 +462,27 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       });
       return;
 
+    case 'cursorToys.codeAnchors.enabled':
+      await pickBoolean(settingKey, true, {
+        on: 'Enable code anchors',
+        off: 'Disable code anchors',
+      });
+      return;
+
+    case 'cursorToys.codeAnchors.showStatusBar':
+      await pickBoolean(settingKey, true, {
+        on: 'Show status bar navigation',
+        off: 'Hide status bar navigation',
+      });
+      return;
+
+    case 'cursorToys.kanban.showStatusBar':
+      await pickBoolean(settingKey, false, {
+        on: 'Show Kanban icon in status bar',
+        off: 'Hide Kanban icon from status bar',
+      });
+      return;
+
     default:
       void vscode.window.showWarningMessage(
         `Unknown setting "${settingKey}". Use the items in the CursorToys Settings tree to edit options.`

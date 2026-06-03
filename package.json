@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.3-1",
+  "version": "2026.6.4-1",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -87,6 +87,11 @@
     "onCommand:cursor-toys.removeGeminiApiKey",
     "onCommand:cursor-toys.installMcpb",
     "onView:cursor-toys.userMcpb",
+    "onView:cursor-toys.codeAnchors",
+    "onCommand:cursor-toys.toggleAnchor",
+    "onCommand:cursor-toys.nextAnchor",
+    "onCommand:cursor-toys.prevAnchor",
+    "onCommand:cursor-toys.clearAnchors",
     "onView:cursor-toys.explorer.userCommands",
     "onView:cursor-toys.explorer.userPrompts",
     "onView:cursor-toys.explorer.userNotepads",
@@ -681,6 +686,40 @@
         "title": "Inject text into Cursor Chat"
       },
       {
+        "command": "cursor-toys.toggleAnchor",
+        "title": "CursorToys: Toggle Anchor",
+        "icon": "$(bookmark)"
+      },
+      {
+        "command": "cursor-toys.addAnchor",
+        "title": "CursorToys: Add Anchor",
+        "icon": "$(add)"
+      },
+      {
+        "command": "cursor-toys.removeAnchor",
+        "title": "CursorToys: Remove Anchor",
+        "icon": "$(close)"
+      },
+      {
+        "command": "cursor-toys.nextAnchor",
+        "title": "CursorToys: Next Anchor",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "cursor-toys.prevAnchor",
+        "title": "CursorToys: Previous Anchor",
+        "icon": "$(arrow-up)"
+      },
+      {
+        "command": "cursor-toys.clearAnchors",
+        "title": "CursorToys: Clear All Anchors",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "cursor-toys.goToAnchor",
+        "title": "CursorToys: Go to Anchor"
+      },
+      {
         "command": "cursorToys.command",
         "title": "CursorToys: Internal Command Router"
       },
@@ -839,6 +878,12 @@
           "id": "cursor-toys.userMcpb",
           "name": "MCPB Packages",
           "when": "cursorToys.sidebar.mcpbVisible",
+          "visibility": "collapsed"
+        },
+        {
+          "id": "cursor-toys.codeAnchors",
+          "name": "Code Anchors",
+          "when": "cursorToys.codeAnchorsEnabled",
           "visibility": "collapsed"
         },
         {
@@ -1542,9 +1587,31 @@
           "group": "navigation"
         },
         {
+          "command": "cursor-toys.addAnchor",
+          "when": "editorTextFocus && cursorToys.codeAnchorsEnabled && !cursorToys.hasAnchorOnCurrentLine",
+          "group": "navigation@1"
+        },
+        {
+          "command": "cursor-toys.removeAnchor",
+          "when": "editorTextFocus && cursorToys.codeAnchorsEnabled && cursorToys.hasAnchorOnCurrentLine",
+          "group": "navigation@1"
+        },
+        {
           "command": "cursor-toys.minifyFile",
           "when": "resourceExtname =~ /\\.(json|html|htm|xml|css|svg|js|jsx|ts|tsx)$/",
           "group": "cursorToys@1"
+        }
+      ],
+      "editor/lineNumber/context": [
+        {
+          "command": "cursor-toys.addAnchor",
+          "when": "cursorToys.codeAnchorsEnabled && !cursorToys.hasAnchorOnCurrentLine",
+          "group": "navigation@1"
+        },
+        {
+          "command": "cursor-toys.removeAnchor",
+          "when": "cursorToys.codeAnchorsEnabled && cursorToys.hasAnchorOnCurrentLine",
+          "group": "navigation@1"
         }
       ],
       "cursor-toys-selection": [
@@ -1691,6 +1758,16 @@
             ],
             "default": "both",
             "description": "Which command folders to show in Personal Commands view: 'both' for .cursor and .claude, 'cursor' for .cursor only, or 'claude' for .claude only"
+          },
+          "cursorToys.codeAnchors.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enable code anchors (bookmarks on specific lines with gutter icons, sidebar list, and navigation)."
+          },
+          "cursorToys.codeAnchors.showStatusBar": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show forward/backward navigation controls in the status bar when anchors exist in the workspace."
           },
           "cursorToys.sidebar.hiddenViews": {
             "type": "array",
@@ -1923,6 +2000,11 @@
             "minimum": 1,
             "maximum": 1440,
             "description": "Refresh interval for spending usage in minutes."
+          },
+          "cursorToys.kanban.showStatusBar": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show a Kanban icon in the status bar for quick access to the Kanban board."
           }
         }
       },
@@ -2045,6 +2127,24 @@
         "key": "ctrl+x",
         "mac": "cmd+x",
         "when": "editorTextFocus && !editorReadonly && cursorToys.clipboard.standardKeysEnabled"
+      },
+      {
+        "command": "cursor-toys.toggleAnchor",
+        "key": "ctrl+shift+a",
+        "mac": "cmd+shift+a",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "cursor-toys.nextAnchor",
+        "key": "ctrl+alt+n",
+        "mac": "cmd+alt+n",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "cursor-toys.prevAnchor",
+        "key": "ctrl+alt+p",
+        "mac": "cmd+alt+p",
+        "when": "editorTextFocus"
       }
     ],
     "uriHandlers": [

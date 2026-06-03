@@ -54,10 +54,17 @@ import { checkAndShowReleaseNotes, ReleaseNotesPanel, loadChangelogSection } fro
 import { installMcpbPackage, uninstallMcpbPackage, getMcpbRoot } from './mcpbInstaller';
 import { UserMcpbTreeProvider, McpbPackageItem } from './userMcpbTreeProvider';
 import { initSpendingStatusBar, refreshSpending, openSpendingTokenSetup } from './spendingStatusBar';
+import { initKanbanStatusBar } from './kanbanStatusBar';
 import { CursorToysUtilsTreeProvider } from './utilsTreeProvider';
 import { injectTextToChat, notifyPasteWithoutSubmit, removeLegacyRemoteChatSkill } from './chatInjection';
 import * as fs from 'fs';
 import { syncExplorerViewVisibility, syncSidebarViewVisibility } from './sidebarVisibility';
+import { CodeAnchorsManager } from './codeAnchorsManager';
+import { CodeAnchorsDecorationProvider } from './codeAnchorsDecorationProvider';
+import { CodeAnchorsTreeProvider } from './codeAnchorsTreeProvider';
+import { registerCodeAnchorsCommands } from './codeAnchorsCommands';
+import { CodeAnchorsStatusBar } from './codeAnchorsStatusBar';
+import { registerCodeAnchorsConfigListener } from './codeAnchorsConfig';
 
 /**
  * Helper function to generate deeplink with validations
@@ -291,6 +298,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
   );
   initSpendingStatusBar(context);
+  initKanbanStatusBar(context);
 
   removeLegacyRemoteChatSkill();
 
@@ -369,6 +377,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           label: '$(key) Configure spending token',
           description: 'Set session token for spending indicator',
           detail: 'Spending'
+        },
+        {
+          label: '$(tasklist) Open Kanban Board',
+          description: 'Open the Kanban board',
+          detail: 'Kanban'
         }
       ];
 
@@ -394,7 +407,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         'Minify File': 'cursor-toys.minifyFile',
         'Trim Clipboard': 'cursor-toys.trimClipboard',
         'Refresh spending usage': 'cursor-toys.spending.refresh',
-        'Configure spending token': 'cursor-toys.spending.openTokenSetup'
+        'Configure spending token': 'cursor-toys.spending.openTokenSetup',
+        'Open Kanban Board': 'cursor-toys.openKanbanBoard'
       };
 
       const commandId = commandMap[selected.label.replace(/\$\([^)]+\)\s*/, '')];
@@ -2048,6 +2062,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     treeDataProvider: userMcpbTreeProvider,
     showCollapseAll: false
   });
+
+  // Code Anchors feature
+  registerCodeAnchorsConfigListener(context);
+  CodeAnchorsManager.getInstance(context);
+  const codeAnchorsDecorationProvider = new CodeAnchorsDecorationProvider(context);
+  context.subscriptions.push(codeAnchorsDecorationProvider);
+  const codeAnchorsTreeProvider = new CodeAnchorsTreeProvider(context);
+  const codeAnchorsTreeView = vscode.window.createTreeView('cursor-toys.codeAnchors', {
+    treeDataProvider: codeAnchorsTreeProvider,
+    showCollapseAll: true
+  });
+  context.subscriptions.push(codeAnchorsTreeProvider);
+  context.subscriptions.push(codeAnchorsTreeView);
+  const codeAnchorsStatusBar = new CodeAnchorsStatusBar(context);
+  context.subscriptions.push(codeAnchorsStatusBar);
+  registerCodeAnchorsCommands(context);
 
   // Explorer mirrors (unique view IDs; same providers as activity bar views)
   const userCommandsExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userCommands', {
