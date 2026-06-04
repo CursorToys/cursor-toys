@@ -2,24 +2,95 @@ name: Publish Extension
 
 on:
   push:
-    tags:
-      - '*'
+    branches:
+      - main
+    paths:
+      - package.json
+
+permissions:
+  contents: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect version bump
+        id: version
+        run: |
+          NEW=$(node -p "require('./package.json').version")
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          if git rev-parse HEAD^ >/dev/null 2>&1; then
+            OLD=$(git show HEAD^:package.json | node -e "let s='';process.stdin.on('data',c=>s+=c);process.stdin.on('end',()=>console.log(JSON.parse(s).version))")
+          else
+            OLD=""
+          fi
+          echo "old=$OLD" >> "$GITHUB_OUTPUT"
+          if [ "$NEW" != "$OLD" ]; then
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+            echo "Version bump: ${OLD:-<none>} -> $NEW"
+          else
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+            echo "No version change in package.json ($NEW); skipping publish."
+          fi
 
       - uses: actions/setup-node@v4
+        if: steps.version.outputs.bumped == 'true'
         with:
           node-version: 20
 
-      - run: npm ci
+      - name: Install dependencies
+        if: steps.version.outputs.bumped == 'true'
+        run: npm ci
 
-      - run: npm run compile
+      - name: Compile TypeScript
+        if: steps.version.outputs.bumped == 'true'
+        run: npm run compile
 
       - name: Publish to Open VSX Registry
+        if: steps.version.outputs.bumped == 'true'
+        id: publish
         uses: HaaLeo/publish-vscode-extension@v2
         with:
           pat: ${{ secrets.OPEN_VSX_TOKEN }}
+          skipDuplicate: true
+
+      - name: Extract release notes from CHANGELOG
+        if: steps.version.outputs.bumped == 'true'
+        id: changelog
+        run: |
+          TAG="v${{ steps.version.outputs.version }}"
+          NOTES=$(node .github/scripts/extract-changelog.js "${{ steps.version.outputs.version }}")
+          {
+            echo "tag=$TAG"
+            echo "notes<<RELEASE_NOTES_EOF"
+            echo "$NOTES"
+            echo "RELEASE_NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create and push git tag
+        if: steps.version.outputs.bumped == 'true'
+        run: |
+          TAG="${{ steps.changelog.outputs.tag }}"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists; skipping tag push."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.bumped == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.changelog.outputs.tag }}
+          name: ${{ steps.changelog.outputs.tag }}
+          body: ${{ steps.changelog.outputs.notes }}
+          files: ${{ steps.publish.outputs.vsixPath }}
+          make_latest: true
+          generate_release_notes: false

@@ -483,6 +483,32 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       });
       return;
 
+    case 'cursorToys.usageMonitor.openRouter.showInStatusBar':
+      await pickBoolean(settingKey, false, {
+        on: 'Show OpenRouter balance in status bar',
+        off: 'Hide OpenRouter from status bar',
+      });
+      return;
+
+    case 'cursorToys.usageMonitor.deepInfra.showInStatusBar':
+      await pickBoolean(settingKey, false, {
+        on: 'Show DeepInfra balance in status bar',
+        off: 'Hide DeepInfra from status bar',
+      });
+      return;
+
+    case 'cursorToys.usageMonitor.refreshIntervalMinutes':
+      await pickNumber(settingKey, 10, 'Usage monitor refresh interval (minutes)', (n) => {
+        if (n < 5) {
+          return 'Minimum 5 minutes';
+        }
+        if (n > 1440) {
+          return 'Maximum 1440 minutes (24h)';
+        }
+        return null;
+      });
+      return;
+
     default:
       void vscode.window.showWarningMessage(
         `Unknown setting "${settingKey}". Use the items in the CursorToys Settings tree to edit options.`

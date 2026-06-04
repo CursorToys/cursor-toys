@@ -1,10 +1,18 @@
 # CursorToys
 
-![](https://i.imgur.com/LDhaXRy.jpeg)
+![](https://i.imgur.com/Kcba7GK.jpeg)
+
+## v2026.6.5-1 - Usage Monitor & Automated Releases
+
+### Added
+
+- **Usage Monitor** (OpenRouter & DeepInfra): New **Usage Monitor** section in CursorToys Settings — save API keys securely (SecretStorage only, no `state.vscdb` changes), view balances in a panel, and optionally show counters in the status bar (`cursorToys.usageMonitor.openRouter.showInStatusBar`, `cursorToys.usageMonitor.deepInfra.showInStatusBar`). Configure refresh interval via `cursorToys.usageMonitor.refreshIntervalMinutes`.
 
 ## v2026.6.4 - Code Anchors
 
 ### Added
+
+- **Code Anchors**: Bookmark specific lines across your workspace with gutter icons, sidebar navigation, and status bar controls. Toggle anchors with `Ctrl+Shift+A` / `Cmd+Shift+A`, navigate between them with `Ctrl+Alt+N` (next) / `Ctrl+Alt+P` (previous), or use the Code Anchors sidebar view. Settings: `cursorToys.codeAnchors.enabled`, `cursorToys.codeAnchors.showStatusBar`.
 
 - **Code Anchors**: Bookmark specific lines across your workspace with gutter icons, sidebar navigation, and status bar controls. Toggle anchors with `Ctrl+Shift+A` / `Cmd+Shift+A`, navigate between them with `Ctrl+Alt+N` (next) / `Ctrl+Alt+P` (previous), or use the Code Anchors sidebar view. Settings: `cursorToys.codeAnchors.enabled`, `cursorToys.codeAnchors.showStatusBar`.
 

@@ -54,6 +54,13 @@ import { checkAndShowReleaseNotes, ReleaseNotesPanel, loadChangelogSection } fro
 import { installMcpbPackage, uninstallMcpbPackage, getMcpbRoot } from './mcpbInstaller';
 import { UserMcpbTreeProvider, McpbPackageItem } from './userMcpbTreeProvider';
 import { initSpendingStatusBar, refreshSpending, openSpendingTokenSetup } from './spendingStatusBar';
+import {
+  configureProviderApiKey,
+  initUsageMonitorStatusBar,
+  openUsageMonitorPanel,
+  refreshUsageMonitorPanelIfOpen,
+  refreshUsageMonitorStatusBar,
+} from './providerUsage';
 import { initKanbanStatusBar } from './kanbanStatusBar';
 import { CursorToysUtilsTreeProvider } from './utilsTreeProvider';
 import { injectTextToChat, notifyPasteWithoutSubmit, removeLegacyRemoteChatSkill } from './chatInjection';
@@ -297,7 +304,37 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       vscode.window.showInformationMessage('CursorToys: Spending indicator enabled.');
     })
   );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.usageMonitor.open', () => {
+      openUsageMonitorPanel(context);
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.usageMonitor.refresh', () => {
+      refreshUsageMonitorStatusBar();
+      void refreshUsageMonitorPanelIfOpen();
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.usageMonitor.configureOpenRouter', async () => {
+      const ok = await configureProviderApiKey(context, 'openRouter');
+      if (ok) {
+        refreshUsageMonitorStatusBar();
+        void refreshUsageMonitorPanelIfOpen();
+      }
+    })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('cursor-toys.usageMonitor.configureDeepInfra', async () => {
+      const ok = await configureProviderApiKey(context, 'deepInfra');
+      if (ok) {
+        refreshUsageMonitorStatusBar();
+        void refreshUsageMonitorPanelIfOpen();
+      }
+    })
+  );
   initSpendingStatusBar(context);
+  initUsageMonitorStatusBar(context);
   initKanbanStatusBar(context);
 
   removeLegacyRemoteChatSkill();

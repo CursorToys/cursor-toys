@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.4-1",
+  "version": "2026.6.5-1",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -680,6 +680,22 @@
       {
         "command": "cursor-toys.spending.enable",
         "title": "CursorToys: Show spending (enable status bar)"
+      },
+      {
+        "command": "cursor-toys.usageMonitor.open",
+        "title": "CursorToys: Open Usage Monitor"
+      },
+      {
+        "command": "cursor-toys.usageMonitor.refresh",
+        "title": "CursorToys: Refresh usage monitor"
+      },
+      {
+        "command": "cursor-toys.usageMonitor.configureOpenRouter",
+        "title": "CursorToys: Configure OpenRouter API key"
+      },
+      {
+        "command": "cursor-toys.usageMonitor.configureDeepInfra",
+        "title": "CursorToys: Configure DeepInfra API key"
       },
       {
         "command": "cursorInject.send",
@@ -2001,6 +2017,23 @@
             "maximum": 1440,
             "description": "Refresh interval for spending usage in minutes."
           },
+          "cursorToys.usageMonitor.refreshIntervalMinutes": {
+            "type": "number",
+            "default": 10,
+            "minimum": 5,
+            "maximum": 1440,
+            "description": "Refresh interval for OpenRouter / DeepInfra status bar items (minutes)."
+          },
+          "cursorToys.usageMonitor.openRouter.showInStatusBar": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show OpenRouter remaining credits in the status bar. Set API key via Usage Monitor in CursorToys Settings."
+          },
+          "cursorToys.usageMonitor.deepInfra.showInStatusBar": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show DeepInfra account balance in the status bar. Set API key via Usage Monitor in CursorToys Settings."
+          },
           "cursorToys.kanban.showStatusBar": {
             "type": "boolean",
             "default": false,
@@ -2165,6 +2198,7 @@
     "compile": "tsc -p ./",
     "test:serializer": "npm run compile && node out/httpRequestEditorSerializer.test.js",
     "test:file-meta": "npm run compile && node out/httpRequestEditorFileMeta.test.js",
+    "test:usage-monitor": "npm run compile && node out/providerUsage/openRouterCredits.test.js && node out/providerUsage/deepInfraBilling.test.js",
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
     "publish": "vsce publish"

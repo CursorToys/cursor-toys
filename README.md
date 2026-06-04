@@ -257,16 +257,16 @@ Install the generated `.vsix` via Extensions → Install from VSIX.
 <details>
 <summary><strong>Maintainers — automated Open VSX publish</strong></summary>
 
-Pushing a **git tag** runs the [Publish Extension](https://github.com/CursorToys/cursor-toys/actions/workflows/publish.yml) workflow (build, package, publish to [Open VSX](https://open-vsx.org/extension/godrix/cursor-toys)).
+Pushing to **`main`** with a **new `version` in `package.json`** runs [Publish Extension](https://github.com/CursorToys/cursor-toys/actions/workflows/publish.yml): build, publish to [Open VSX](https://open-vsx.org/extension/godrix/cursor-toys), create git tag `v{version}`, and open a [GitHub Release](https://github.com/CursorToys/cursor-toys/releases) with notes from `CHANGELOG.md` (matching `## v{version}` or `## v{base}`) plus the `.vsix` attached. If only `package.json` changed but `version` is unchanged, the workflow skips publish.
 
 **Repository secret (required):** `OPEN_VSX_TOKEN` — [Open VSX access token](https://github.com/eclipse/openvsx/wiki/Publishing-Extensions#1-create-an-access-token) for the `godrix` namespace.
 
 ```bash
-git tag v2026.6.4-1
-git push origin v2026.6.4-1
+# Bump version in package.json, commit, push to main
+git add package.json
+git commit -m "chore: release 2026.6.5-1"
+git push origin main
 ```
-
-Ensure `package.json` `version` matches the release you are publishing.
 
 </details>
 
