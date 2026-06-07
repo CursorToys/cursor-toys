@@ -1,110 +1,34 @@
 import * as vscode from 'vscode';
 import {
   DEEPINFRA_BILLING_URL,
-  DEEPINFRA_CURSOR_BASE_URL,
   DEEPINFRA_KEYS_URL,
-  OPENROUTER_CURSOR_BASE_URL,
   OPENROUTER_KEYS_URL,
 } from './constants';
+import { maskApiKey } from './maskApiKey';
+import type { OpenRouterDashboard } from './usageFetcher';
 import { fetchAllProviderUsage, type ProviderUsageSnapshot } from './usageFetcher';
-import { hasProviderApiKey } from './secrets';
+import { getProviderApiKey, hasProviderApiKey } from './secrets';
+import {
+  resolveUsageMonitorPanelState,
+  type UsageMonitorPanelState,
+} from './usageMonitorPanelState';
 
 let panel: vscode.WebviewPanel | undefined;
 let extensionContext: vscode.ExtensionContext | undefined;
+const visibleKeys = { openRouter: false, deepInfra: false };
 
 function formatUsd(n: number): string {
   return n.toFixed(2);
 }
 
-function renderCursorSetupInfo(): string {
-  return `
-  <section class="info-box">
-    <h2>Using OpenRouter or DeepInfra in Cursor</h2>
-    <p class="muted">CursorToys only <strong>monitors</strong> usage here. To run models in Cursor, configure each provider in <strong>Cursor Settings → Models</strong> (or the OpenAI-compatible override).</p>
-    <div class="setup-grid">
-      <div class="setup-card">
-        <h3>OpenRouter</h3>
-        <ol>
-          <li>Enable <strong>Use your own API key</strong> (OpenAI-compatible).</li>
-          <li>Set <strong>OpenAI Base URL</strong> to:<br><code>${OPENROUTER_CURSOR_BASE_URL}</code></li>
-          <li>Paste your <strong>OpenRouter API key</strong> (from <a href="${OPENROUTER_KEYS_URL}" class="ext-link">openrouter.ai/keys</a>).</li>
-          <li>Add the models you want (e.g. from the OpenRouter catalog).</li>
-        </ol>
-      </div>
-      <div class="setup-card">
-        <h3>DeepInfra</h3>
-        <ol>
-          <li>Enable <strong>Use your own API key</strong> (OpenAI-compatible).</li>
-          <li>Set <strong>OpenAI Base URL</strong> to:<br><code>${DEEPINFRA_CURSOR_BASE_URL}</code></li>
-          <li>Paste your <strong>DeepInfra API key</strong> (from <a href="${DEEPINFRA_KEYS_URL}" class="ext-link">dashboard API keys</a>).</li>
-          <li>Add the DeepInfra model IDs you want to use.</li>
-        </ol>
-      </div>
-    </div>
-    <p class="muted tip">Use the <strong>Configure API Key</strong> buttons below only for the usage monitor (status bar). Keys can match the ones in Cursor Settings.</p>
-  </section>`;
-}
-
-function renderProviderSection(snap: ProviderUsageSnapshot): string {
-  const title = snap.provider === 'openRouter' ? 'OpenRouter' : 'DeepInfra';
-  const keysUrl = snap.provider === 'openRouter' ? OPENROUTER_KEYS_URL : DEEPINFRA_BILLING_URL;
-
-  if (!snap.configured) {
-    return `
-      <section class="provider" data-provider="${snap.provider}">
-        <h2>${title} — usage</h2>
-        <p class="muted">No API key saved for monitoring. Configure below to show usage in this panel and the status bar.</p>
-        <button class="configure-btn" data-provider="${snap.provider}">Configure API Key</button>
-      </section>`;
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) {
+    return `${(n / 1_000_000).toFixed(2)}M`;
   }
-
-  if (snap.error) {
-    return `
-      <section class="provider" data-provider="${snap.provider}">
-        <h2>${title} — usage</h2>
-        <p class="error">${escapeHtml(snap.error)}</p>
-        <button class="configure-btn" data-provider="${snap.provider}">Update API Key</button>
-        <a href="${keysUrl}" class="ext-link">Provider dashboard</a>
-      </section>`;
+  if (n >= 1_000) {
+    return `${(n / 1_000).toFixed(1)}K`;
   }
-
-  if (snap.openRouter) {
-    const c = snap.openRouter;
-    return `
-      <section class="provider" data-provider="${snap.provider}">
-        <h2>${title} — usage</h2>
-        <dl>
-          <dt>Remaining</dt><dd class="highlight">$${formatUsd(c.remaining)}</dd>
-          <dt>Used</dt><dd>$${formatUsd(c.totalUsage)}</dd>
-          <dt>Purchased</dt><dd>$${formatUsd(c.totalCredits)}</dd>
-        </dl>
-        <button class="configure-btn" data-provider="${snap.provider}">Update API Key</button>
-        <a href="${keysUrl}" class="ext-link">API keys</a>
-      </section>`;
-  }
-
-  if (snap.deepInfra) {
-    const b = snap.deepInfra;
-    const limit =
-      b.spendingLimitUsd === null ? 'No limit' : `$${formatUsd(b.spendingLimitUsd)}`;
-    const remainingRow =
-      b.owedUsd > 0
-        ? `<dt>Amount owed</dt><dd class="highlight">$${formatUsd(b.owedUsd)}</dd>`
-        : `<dt>Remaining</dt><dd class="highlight">$${formatUsd(b.remainingUsd)}</dd>`;
-    return `
-      <section class="provider" data-provider="${snap.provider}">
-        <h2>${title} — usage</h2>
-        <dl>
-          ${remainingRow}
-          <dt>Used (since last invoice)</dt><dd>$${formatUsd(b.recentUsageUsd)}</dd>
-          <dt>Spending limit</dt><dd>${limit}</dd>
-        </dl>
-        <button class="configure-btn" data-provider="${snap.provider}">Update API Key</button>
-        <a href="${keysUrl}" class="ext-link">Billing</a>
-      </section>`;
-  }
-
-  return `<section class="provider"><h2>${title}</h2><p class="muted">No data</p></section>`;
+  return String(n);
 }
 
 function escapeHtml(text: string): string {
@@ -115,9 +39,342 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function getPanelHtml(snapshots: ProviderUsageSnapshot[], nonce: string): string {
+function renderLimitProgress(keyInfo: NonNullable<OpenRouterDashboard['keyInfo']>): string {
+  if (keyInfo.limit === null || keyInfo.limit <= 0) {
+    return '';
+  }
+  const used = Math.max(0, keyInfo.usage);
+  const pct = Math.min(100, Math.round((used / keyInfo.limit) * 100));
+  const remaining = keyInfo.limitRemaining ?? Math.max(0, keyInfo.limit - used);
+  return `
+    <div class="limit-block">
+      <div class="limit-header">
+        <span>Alert limit</span>
+        <span>$${formatUsd(remaining)} remaining of $${formatUsd(keyInfo.limit)}</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+}
+
+function renderOpenRouterDashboard(snap: ProviderUsageSnapshot): string {
+  if (!snap.configured) {
+    return `
+      <section class="provider-card">
+        <p class="muted">No OpenRouter API key saved for monitoring.</p>
+        <button class="configure-btn" data-provider="openRouter">Configure OpenRouter</button>
+      </section>`;
+  }
+
+  if (snap.error) {
+    return `
+      <section class="provider-card">
+        <p class="error">${escapeHtml(snap.error)}</p>
+        <button class="configure-btn" data-provider="openRouter">Update API Key</button>
+        <a href="${OPENROUTER_KEYS_URL}" class="ext-link">OpenRouter keys</a>
+      </section>`;
+  }
+
+  const dashboard = snap.openRouterDashboard;
+  const credits = dashboard?.credits ?? snap.openRouter;
+  if (!credits) {
+    return `<section class="provider-card"><p class="muted">No OpenRouter data</p></section>`;
+  }
+
+  const keyInfo = dashboard?.keyInfo;
+  const activity = dashboard?.activity;
+
+  const modelsTable =
+    activity && activity.models.length > 0
+      ? `
+    <table class="models-table">
+      <thead>
+        <tr><th>Model</th><th>Requests</th><th>Tokens (in/out)</th><th>Cost</th></tr>
+      </thead>
+      <tbody>
+        ${activity.models
+          .slice(0, 10)
+          .map(
+            (m) => `
+          <tr>
+            <td title="${escapeHtml(m.modelPermaslug)}">${escapeHtml(m.model)}</td>
+            <td>${m.requests}</td>
+            <td>${formatTokens(m.promptTokens)} / ${formatTokens(m.completionTokens)}</td>
+            <td>$${formatUsd(m.usageUsd)}</td>
+          </tr>`
+          )
+          .join('')}
+      </tbody>
+    </table>`
+      : dashboard?.activityError
+        ? `<p class="muted warn">${escapeHtml(dashboard.activityError)}</p>`
+        : `<p class="muted">No model activity in the last 30 days.</p>`;
+
+  const metricsBlock = activity
+    ? `
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-label">Requests (30d)</span>
+        <span class="metric-value">${activity.totalRequests}</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Prompt tokens</span>
+        <span class="metric-value">${formatTokens(activity.totalPromptTokens)}</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Completion tokens</span>
+        <span class="metric-value">${formatTokens(activity.totalCompletionTokens)}</span>
+      </div>
+    </div>`
+    : '';
+
+  return `
+  <section class="provider-card openrouter-dashboard">
+    <div class="card-header">
+      <h2>OpenRouter</h2>
+      ${keyInfo ? `<span class="key-label">${escapeHtml(keyInfo.label)}</span>` : ''}
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card highlight-card">
+        <span class="metric-label">Remaining balance</span>
+        <span class="metric-value-lg">$${formatUsd(credits.remaining)}</span>
+      </div>
+      <div class="summary-card">
+        <span class="metric-label">Accumulated usage</span>
+        <span class="metric-value-lg">$${formatUsd(credits.totalUsage)}</span>
+      </div>
+      <div class="summary-card">
+        <span class="metric-label">Total purchased</span>
+        <span class="metric-value-lg">$${formatUsd(credits.totalCredits)}</span>
+      </div>
+    </div>
+
+    ${keyInfo ? renderLimitProgress(keyInfo) : dashboard?.keyInfoError ? `<p class="muted warn">${escapeHtml(dashboard.keyInfoError)}</p>` : ''}
+
+    <h3 class="section-title">Performance &amp; requests</h3>
+    ${metricsBlock || '<p class="muted">Detailed metrics require a management API key (sk-mgmt-…).</p>'}
+
+    <h3 class="section-title">Top models (30 days)</h3>
+    ${modelsTable}
+
+    <div class="card-actions">
+      <button class="configure-btn" data-provider="openRouter">Update API Key</button>
+      <a href="${OPENROUTER_KEYS_URL}" class="ext-link">Dashboard</a>
+    </div>
+  </section>`;
+}
+
+function renderDeepInfraCard(
+  snap: ProviderUsageSnapshot,
+  apiKey: string | null,
+  showKey: boolean
+): string {
+  const isActive = snap.configured && !snap.error && Boolean(snap.deepInfra);
+  const statusClass = isActive ? 'status-active' : 'status-inactive';
+  const statusLabel = isActive ? 'Active' : snap.configured ? 'Error' : 'Inactive';
+
+  const keyDisplay =
+    apiKey && showKey ? escapeHtml(apiKey) : apiKey ? escapeHtml(maskApiKey(apiKey)) : '';
+
+  let usageText = 'Configure an API key to view usage.';
+  if (snap.error) {
+    usageText = snap.error;
+  } else if (snap.deepInfra) {
+    const b = snap.deepInfra;
+    usageText =
+      b.owedUsd > 0
+        ? `Amount owed: $${formatUsd(b.owedUsd)} · Used $${formatUsd(b.recentUsageUsd)} since last invoice`
+        : `Remaining: $${formatUsd(b.remainingUsd)} · Used $${formatUsd(b.recentUsageUsd)} since last invoice`;
+  }
+
+  return `
+  <section class="provider-card deepinfra-card">
+    <div class="card-header">
+      <h2>DeepInfra</h2>
+      <span class="status-badge ${statusClass}">${statusLabel}</span>
+    </div>
+
+    <label class="field-label" for="di-key">API Key</label>
+    <div class="key-row">
+      <input id="di-key" class="key-input" type="text" readonly value="${keyDisplay}" placeholder="Not configured" />
+      ${
+        apiKey
+          ? `<button class="toggle-key-btn" data-provider="deepInfra">${showKey ? 'Hide' : 'Show'}</button>`
+          : ''
+      }
+    </div>
+
+    <div class="usage-line">
+      <span class="metric-label">Usage</span>
+      <span class="${snap.error ? 'error' : 'usage-value'}">${escapeHtml(usageText)}</span>
+    </div>
+
+    <div class="card-actions">
+      <button class="configure-btn" data-provider="deepInfra">Configure API Key</button>
+      <a href="${DEEPINFRA_BILLING_URL}" class="ext-link">Billing</a>
+    </div>
+  </section>`;
+}
+
+function renderEmptyState(): string {
+  return `
+  <section class="empty-state">
+    <h2>No providers configured</h2>
+    <p class="muted">Add an API key to monitor OpenRouter or DeepInfra usage from this panel and the status bar.</p>
+    <div class="empty-actions">
+      <button class="configure-btn primary" data-provider="openRouter">Configure OpenRouter</button>
+      <button class="configure-btn primary" data-provider="deepInfra">Configure DeepInfra</button>
+    </div>
+  </section>`;
+}
+
+function renderTabs(activeTab: 'openRouter' | 'deepInfra'): string {
+  return `
+  <nav class="tabs">
+    <button class="tab-btn ${activeTab === 'openRouter' ? 'active' : ''}" data-tab="openRouter">OpenRouter</button>
+    <button class="tab-btn ${activeTab === 'deepInfra' ? 'active' : ''}" data-tab="deepInfra">DeepInfra</button>
+  </nav>`;
+}
+
+function panelStyles(): string {
+  return `
+    body { font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); padding: 1rem 1.5rem; margin: 0; }
+    h1 { font-size: 1.25rem; margin: 0 0 1rem 0; }
+    h2 { font-size: 1rem; margin: 0; }
+    h3.section-title { font-size: 0.95rem; margin: 1.25rem 0 0.65rem 0; font-weight: 600; }
+    .toolbar { margin-bottom: 1rem; }
+    .provider-card { border: 1px solid var(--vscode-panel-border); border-radius: 8px; padding: 1rem 1.15rem; margin-bottom: 1rem; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; }
+    .key-label { font-size: 0.85em; color: var(--vscode-descriptionForeground); }
+    .summary-grid, .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; }
+    .summary-card, .metric-card { border: 1px solid var(--vscode-widget-border); border-radius: 6px; padding: 0.75rem; background: var(--vscode-editor-background); }
+    .highlight-card { border-color: var(--vscode-focusBorder); }
+    .metric-label { display: block; font-size: 0.85em; color: var(--vscode-descriptionForeground); margin-bottom: 0.25rem; }
+    .metric-value { font-size: 1.1rem; font-weight: 600; }
+    .metric-value-lg { font-size: 1.25rem; font-weight: 600; }
+    .limit-block { margin-top: 1rem; }
+    .limit-header { display: flex; justify-content: space-between; font-size: 0.85em; color: var(--vscode-descriptionForeground); margin-bottom: 0.35rem; }
+    .progress-track { height: 6px; border-radius: 3px; background: var(--vscode-progressBar-background); overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--vscode-progressBar-foreground, var(--vscode-button-background)); }
+    .models-table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 0.35rem; }
+    .models-table th, .models-table td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--vscode-panel-border); }
+    .models-table th { color: var(--vscode-descriptionForeground); font-weight: 500; }
+    .empty-state { text-align: center; padding: 3rem 1rem; max-width: 420px; margin: 2rem auto; }
+    .empty-actions { display: flex; flex-direction: column; gap: 0.65rem; margin-top: 1.25rem; }
+    .add-provider { margin-top: 0.5rem; text-align: right; }
+    .add-provider-btn { background: none; border: none; color: var(--vscode-textLink-foreground); cursor: pointer; font: inherit; padding: 0; }
+    .add-provider-btn:hover { text-decoration: underline; }
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--vscode-panel-border); margin-bottom: 1rem; }
+    .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; color: var(--vscode-descriptionForeground); cursor: pointer; font: inherit; padding: 0.5rem 1rem; margin: 0; }
+    .tab-btn.active { color: var(--vscode-foreground); border-bottom-color: var(--vscode-focusBorder); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .status-badge { font-size: 0.8em; padding: 0.15rem 0.5rem; border-radius: 999px; }
+    .status-active { background: var(--vscode-testing-iconPassed); color: var(--vscode-editor-background); }
+    .status-inactive { background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); }
+    .field-label { display: block; font-size: 0.85em; color: var(--vscode-descriptionForeground); margin-bottom: 0.35rem; }
+    .key-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.85rem; }
+    .key-input { flex: 1; padding: 0.4rem 0.6rem; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); font: inherit; }
+    .usage-line { margin-bottom: 1rem; }
+    .usage-value { display: block; margin-top: 0.25rem; font-weight: 500; }
+    .muted { color: var(--vscode-descriptionForeground); line-height: 1.5; }
+    .warn { font-size: 0.9em; }
+    .error { color: var(--vscode-errorForeground); }
+    button { padding: 0.4rem 0.85rem; background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; cursor: pointer; font: inherit; margin-right: 0.5rem; }
+    button.primary { min-width: 200px; }
+    button:hover { background: var(--vscode-button-hoverBackground); }
+    .toggle-key-btn { margin: 0; }
+    a.ext-link { color: var(--vscode-textLink-foreground); font-size: 0.9em; }
+    .card-actions { margin-top: 1rem; }
+    .hidden { display: none !important; }
+  `;
+}
+
+function panelScripts(nonce: string, initialTab: 'openRouter' | 'deepInfra'): string {
+  return `
+  <script nonce="${nonce}">
+    const vscode = acquireVsCodeApi();
+    let activeTab = ${JSON.stringify(initialTab)};
+
+    document.getElementById('refresh-btn')?.addEventListener('click', () => {
+      vscode.postMessage({ type: 'refresh' });
+    });
+
+    document.querySelectorAll('.configure-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        vscode.postMessage({ type: 'configure', provider: btn.getAttribute('data-provider') });
+      });
+    });
+
+    document.querySelectorAll('.add-provider-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        vscode.postMessage({ type: 'configure', provider: btn.getAttribute('data-provider') });
+      });
+    });
+
+    document.querySelectorAll('.toggle-key-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        vscode.postMessage({ type: 'toggleKey', provider: btn.getAttribute('data-provider') });
+      });
+    });
+
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        activeTab = btn.getAttribute('data-tab');
+        document.querySelectorAll('.tab-btn').forEach((b) => {
+          b.classList.toggle('active', b.getAttribute('data-tab') === activeTab);
+        });
+        document.querySelectorAll('.tab-panel').forEach((panel) => {
+          panel.classList.toggle('active', panel.getAttribute('data-tab') === activeTab);
+        });
+      });
+    });
+
+    document.querySelectorAll('a.ext-link').forEach((a) => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        vscode.postMessage({ type: 'openLink', url: a.getAttribute('href') });
+      });
+    });
+  </script>`;
+}
+
+interface PanelHtmlInput {
+  snapshots: ProviderUsageSnapshot[];
+  state: UsageMonitorPanelState;
+  openRouterKey: string | null;
+  deepInfraKey: string | null;
+  nonce: string;
+}
+
+function getPanelHtml(input: PanelHtmlInput): string {
+  const { snapshots, state, openRouterKey, deepInfraKey, nonce } = input;
   const openRouter = snapshots.find((s) => s.provider === 'openRouter')!;
   const deepInfra = snapshots.find((s) => s.provider === 'deepInfra')!;
+
+  let bodyContent = '';
+
+  switch (state) {
+    case 'empty':
+      bodyContent = renderEmptyState();
+      break;
+    case 'openRouterOnly':
+      bodyContent = `
+        ${renderOpenRouterDashboard(openRouter)}
+        <div class="add-provider">
+          <button class="add-provider-btn" data-provider="deepInfra">+ Add DeepInfra</button>
+        </div>`;
+      break;
+    case 'deepInfraOnly':
+      bodyContent = renderDeepInfraCard(deepInfra, deepInfraKey, visibleKeys.deepInfra);
+      break;
+    case 'both':
+      bodyContent = `
+        ${renderTabs('openRouter')}
+        <div class="tab-panel active" data-tab="openRouter">${renderOpenRouterDashboard(openRouter)}</div>
+        <div class="tab-panel" data-tab="deepInfra">${renderDeepInfraCard(deepInfra, deepInfraKey, visibleKeys.deepInfra)}</div>`;
+      break;
+  }
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -126,57 +383,15 @@ function getPanelHtml(snapshots: ProviderUsageSnapshot[], nonce: string): string
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Usage Monitor</title>
-  <style>
-    body { font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); padding: 1rem 1.5rem; margin: 0; }
-    h1 { font-size: 1.25rem; margin: 0 0 1rem 0; }
-    h2 { font-size: 1rem; margin: 0 0 0.65rem 0; }
-    h3 { font-size: 0.95rem; margin: 0 0 0.5rem 0; }
-    .info-box { border: 1px solid var(--vscode-panel-border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem; background: var(--vscode-editor-inactiveSelectionBackground); }
-    .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem; }
-    @media (max-width: 720px) { .setup-grid { grid-template-columns: 1fr; } }
-    .setup-card { border: 1px solid var(--vscode-widget-border); border-radius: 4px; padding: 0.75rem; background: var(--vscode-editor-background); }
-    .setup-card ol { margin: 0.5rem 0 0 1.1rem; padding: 0; line-height: 1.55; }
-    .setup-card li { margin-bottom: 0.35rem; }
-    .setup-card code { font-size: 0.9em; word-break: break-all; }
-    .provider { border: 1px solid var(--vscode-panel-border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem; }
-    dl { display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 1rem; margin: 0 0 1rem 0; }
-    dt { color: var(--vscode-descriptionForeground); }
-    dd { margin: 0; }
-    .highlight { font-weight: 600; font-size: 1.1rem; }
-    .muted { color: var(--vscode-descriptionForeground); line-height: 1.5; }
-    .tip { margin-top: 0.75rem; font-size: 0.92em; }
-    .error { color: var(--vscode-errorForeground); }
-    button { padding: 0.4rem 0.85rem; background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; cursor: pointer; font: inherit; margin-right: 0.5rem; }
-    button:hover { background: var(--vscode-button-hoverBackground); }
-    a.ext-link { color: var(--vscode-textLink-foreground); font-size: 0.9em; }
-    .toolbar { margin-bottom: 1rem; }
-  </style>
+  <style>${panelStyles()}</style>
 </head>
 <body>
   <h1>Usage Monitor</h1>
   <div class="toolbar">
     <button id="refresh-btn">Refresh</button>
   </div>
-  ${renderCursorSetupInfo()}
-  ${renderProviderSection(openRouter)}
-  ${renderProviderSection(deepInfra)}
-  <script nonce="${nonce}">
-    const vscode = acquireVsCodeApi();
-    document.getElementById('refresh-btn').addEventListener('click', () => {
-      vscode.postMessage({ type: 'refresh' });
-    });
-    document.querySelectorAll('.configure-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        vscode.postMessage({ type: 'configure', provider: btn.getAttribute('data-provider') });
-      });
-    });
-    document.querySelectorAll('a.ext-link').forEach((a) => {
-      a.addEventListener('click', (e) => {
-        e.preventDefault();
-        vscode.postMessage({ type: 'openLink', url: a.getAttribute('href') });
-      });
-    });
-  </script>
+  ${bodyContent}
+  ${panelScripts(nonce, 'openRouter')}
 </body>
 </html>`;
 }
@@ -185,9 +400,24 @@ async function refreshPanelContent(): Promise<void> {
   if (!panel || !extensionContext) {
     return;
   }
+
   const snapshots = await fetchAllProviderUsage(extensionContext);
+  const keyFlags = {
+    openRouter: snapshots.some((s) => s.provider === 'openRouter' && s.configured),
+    deepInfra: snapshots.some((s) => s.provider === 'deepInfra' && s.configured),
+  };
+  const state = resolveUsageMonitorPanelState(keyFlags);
+  const openRouterKey = await getProviderApiKey(extensionContext, 'openRouter');
+  const deepInfraKey = await getProviderApiKey(extensionContext, 'deepInfra');
   const nonce = String(Date.now());
-  panel.webview.html = getPanelHtml(snapshots, nonce);
+
+  panel.webview.html = getPanelHtml({
+    snapshots,
+    state,
+    openRouterKey,
+    deepInfraKey,
+    nonce,
+  });
 }
 
 export function openUsageMonitorPanel(context: vscode.ExtensionContext): void {
@@ -208,10 +438,17 @@ export function openUsageMonitorPanel(context: vscode.ExtensionContext): void {
 
   panel.onDidDispose(() => {
     panel = undefined;
+    visibleKeys.openRouter = false;
+    visibleKeys.deepInfra = false;
   });
 
   panel.webview.onDidReceiveMessage(async (message: { type?: string; provider?: string; url?: string }) => {
     if (message.type === 'refresh') {
+      await refreshPanelContent();
+      return;
+    }
+    if (message.type === 'toggleKey' && message.provider === 'deepInfra') {
+      visibleKeys.deepInfra = !visibleKeys.deepInfra;
       await refreshPanelContent();
       return;
     }
@@ -248,3 +485,6 @@ export async function getUsageMonitorKeyStatus(
     deepInfra: await hasProviderApiKey(context, 'deepInfra'),
   };
 }
+
+// Exported for unit tests
+export { getPanelHtml, resolveUsageMonitorPanelState };

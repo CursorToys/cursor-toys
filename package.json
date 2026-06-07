@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.5-1",
+  "version": "2026.6.6-0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -2198,16 +2198,15 @@
     "compile": "tsc -p ./",
     "test:serializer": "npm run compile && node out/httpRequestEditorSerializer.test.js",
     "test:file-meta": "npm run compile && node out/httpRequestEditorFileMeta.test.js",
-    "test:usage-monitor": "npm run compile && node out/providerUsage/openRouterCredits.test.js && node out/providerUsage/deepInfraBilling.test.js",
+    "test:usage-monitor": "npm run compile && node out/providerUsage/openRouterCredits.test.js && node out/providerUsage/openRouterKeyInfo.test.js && node out/providerUsage/openRouterActivity.test.js && node out/providerUsage/usageMonitorPanelState.test.js && node out/providerUsage/deepInfraBilling.test.js",
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
     "publish": "vsce publish"
   },
-  "dependencies": {},
   "devDependencies": {
     "@types/node": "16.x",
     "@types/vscode": "^1.74.0",
-    "typescript": "^4.9.4"
+    "typescript": "^5.7.3"
   },
   "extensionRecommendations": [
     "godrix.deepspec"

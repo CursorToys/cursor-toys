@@ -12,6 +12,8 @@ export const OPENROUTER_CURSOR_BASE_URL = 'https://openrouter.ai/api/v1';
 export const DEEPINFRA_CURSOR_BASE_URL = 'https://api.deepinfra.com/v1';
 
 export const OPENROUTER_CREDITS_URL = 'https://openrouter.ai/api/v1/credits';
+export const OPENROUTER_KEY_INFO_URL = 'https://openrouter.ai/api/v1/key';
+export const OPENROUTER_ACTIVITY_URL = 'https://openrouter.ai/api/v1/activity';
 export const OPENROUTER_KEYS_URL = 'https://openrouter.ai/keys';
 export const DEEPINFRA_KEYS_URL = 'https://deepinfra.com/dash/api_keys';
 
