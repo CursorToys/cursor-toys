@@ -2,6 +2,33 @@
 
 ![](https://i.imgur.com/Kcba7GK.jpeg)
 
+## v2026.6.6-1 - Usage Monitor UI Improvements
+
+### Changed
+
+- **Usage Monitor - Conditional UI**: Redesigned usage panel with dynamic layout based on configured providers.
+  - **Empty State**: Clean centered view with quick-action buttons to configure OpenRouter or DeepInfra.
+  - **Single Provider Views**: When only one provider is configured, the dashboard renders directly without tabs.
+  - **Tabbed View**: Side-by-side tabs `[ OpenRouter ] | [ DeepInfra ]` appear when both providers are configured.
+
+### Added
+
+- **OpenRouter Dashboard - Enhanced Metrics**:
+  - **Credits & Usage**: Real-time balance, accumulated usage, and total purchased via `/api/v1/credits`.
+  - **Optional Spending Limit**: Visual progress bar showing remaining credits against configured limit (from `/api/v1/key`).
+  - **Performance Metrics**: Total requests, prompt tokens, and completion tokens (from `/api/v1/activity`).
+  - **Top Models Table**: Model usage ranked by cost over the last 30 days (requires management key for activity endpoint).
+
+- **DeepInfra - Simplified Card**:
+  - **Status Badge**: Visual Active/Inactive indicator.
+  - **Masked API Key Input**: Shows masked key with Show/Hide toggle.
+  - **Usage Text Indicator**: Clean textual display of remaining balance or amount owed.
+
+### Technical
+
+- New modules: `openRouterKeyInfo.ts`, `openRouterActivity.ts`, `usageMonitorPanelState.ts`, `maskApiKey.ts`.
+- Dashboard uses `Promise.allSettled` for non-blocking partial data rendering (gracious degradation when management key is unavailable).
+
 ## v2026.6.5-1 - Usage Monitor & Automated Releases
 
 ### Added
