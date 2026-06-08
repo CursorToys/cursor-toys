@@ -1,6 +1,49 @@
 # CursorToys
 
-![](https://i.imgur.com/Kcba7GK.jpeg)
+![](https://i.imgur.com/WdFjpJk.jpeg)
+
+## v2026.6.8-2 - CursorToys Command Palette
+
+### Added
+
+- **CursorToys Command Palette** (`Ctrl+T` / `Cmd+T`): quick access to common actions (import, skills, Kanban, notepads, tools, spending, usage monitor). Also available from the status bar item and **CursorToys → Settings → CursorToys Command Palette**.
+- **Most-used sorting**: palette entries are reordered by usage count (persisted in extension global state); search/filter still works in the Quick Pick.
+
+### Changed
+
+- Renamed command **CursorToys: Show Menu** → **CursorToys: Command Palette**.
+
+### Fixed
+
+- CursorToys Settings tree editor now supports `cursorToys.notepads.showStatusBar` and `cursorToys.extensionDataFolder` (no more “Unknown setting” warning).
+
+## v2026.6.8-1 - Extension Data Folder (.cursortoys)
+
+### Added
+
+- **`cursorToys.extensionDataFolder`** (default `cursortoys`): Kanban and Notepads use `~/.cursortoys/` and `{workspace}/.cursortoys/` instead of mixing with Cursor AI config under `.cursor/`.
+- **Personal + workspace scopes** for Kanban and Notepads sidebar trees (same category pattern as Plans).
+- **Kanban board scope tabs** (Workspace | Personal) when a personal board exists.
+- **`cursorToys.notepads.showStatusBar`**: optional Notepads icon in the status bar (focuses the Notepads sidebar view).
+
+### Changed
+
+- Legacy paths (`.cursor/kanban`, `.cursor/notepads`, etc.) remain supported when `.cursortoys/` is empty for that scope.
+- Create Notepad / Create Kanban card commands ask for personal vs workspace when a workspace is open.
+
+## v2026.6.8-0 - Project Tree Generation
+
+### Added
+
+- **Project Tree Generation**: Quickly visualize and share your folder structure for documentation or AI context. Right-click any folder in the Explorer to:
+  - **Generate Tree**: Copies a beautifully formatted directory tree (using box-drawing characters) to your clipboard.
+  - **Generate Tree & Send to Chat**: Injects the folder structure directly into your Cursor chat, providing immediate context to the AI without manual copying.
+- New tree generator respects safety limits (max depth and file count) and uses `.gitignore` rules (root and nested) to decide what to exclude; falls back to common build folders when no git repository is found.
+
+### Changed
+
+- Improved chat injection reliability using the same robust mechanism as "Refine & Send to Chat" and Kanban board sharing (`injectTextToChat`).
+- Menu structure refined to ensure tree generation commands appear at the top level of the Explorer context menu for folders.
 
 ## v2026.6.6-1 - Usage Monitor UI Improvements
 

@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { getKanbanPath, isAllowedExtension } from './utils';
+import {
+  getExtensionDataFolderName,
+  getKanbanPath,
+  isAllowedExtension,
+} from './utils';
 import {
   KANBAN_COLUMN_LABELS,
   KANBAN_STATUSES,
@@ -15,13 +19,12 @@ import {
   TreeLoadingPlaceholder,
 } from './treeLoading';
 
-export type KanbanTreeElement = KanbanFileItem | KanbanStatusFolderItem | TreeLoadingPlaceholder;
-
 export interface KanbanFileItem {
   kind: 'file';
   uri: vscode.Uri;
   fileName: string;
   filePath: string;
+  isPersonal: boolean;
 }
 
 export interface KanbanStatusFolderItem {
@@ -29,6 +32,27 @@ export interface KanbanStatusFolderItem {
   status: KanbanStatus;
   label: string;
   folderPath: string;
+  kanbanPath: string;
+  isPersonal: boolean;
+}
+
+export interface KanbanScopeCategoryItem {
+  kind: 'scopeCategory';
+  label: string;
+  kanbanPath: string;
+  isPersonal: boolean;
+}
+
+export type KanbanTreeElement =
+  | KanbanScopeCategoryItem
+  | KanbanStatusFolderItem
+  | KanbanFileItem
+  | TreeLoadingPlaceholder;
+
+function isKanbanScopeCategoryItem(
+  element: KanbanTreeElement | undefined
+): element is KanbanScopeCategoryItem {
+  return !!element && 'kind' in element && element.kind === 'scopeCategory';
 }
 
 function isKanbanStatusFolderItem(
@@ -42,7 +66,7 @@ function isKanbanFileItem(element: KanbanTreeElement | undefined): element is Ka
 }
 
 /**
- * Tree data provider for workspace Kanban card files grouped by status folder.
+ * Tree data provider for personal and workspace Kanban card files grouped by status folder.
  */
 export class UserKanbanTreeProvider implements vscode.TreeDataProvider<KanbanTreeElement> {
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<KanbanTreeElement | undefined | null | void>();
@@ -53,7 +77,7 @@ export class UserKanbanTreeProvider implements vscode.TreeDataProvider<KanbanTre
     () => '__kanban_root__'
   );
 
-  private readonly folderLoaders = new Map<KanbanStatus, TreeLoadCoordinator<KanbanTreeElement, KanbanFileItem>>();
+  private readonly folderLoaders = new Map<string, TreeLoadCoordinator<KanbanTreeElement, KanbanFileItem>>();
 
   refresh(): void {
     this.rootLoader.clear();
@@ -64,6 +88,12 @@ export class UserKanbanTreeProvider implements vscode.TreeDataProvider<KanbanTre
   getTreeItem(element: KanbanTreeElement): vscode.TreeItem {
     if (isTreeLoadingPlaceholder(element)) {
       return renderLoadingTreeItem(element);
+    }
+    if (isKanbanScopeCategoryItem(element)) {
+      const treeItem = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
+      treeItem.contextValue = 'userKanbanScopeCategory';
+      treeItem.iconPath = new vscode.ThemeIcon(element.isPersonal ? 'home' : 'root-folder');
+      return treeItem;
     }
     if (isKanbanStatusFolderItem(element)) {
       const treeItem = new vscode.TreeItem(element.label, vscode.TreeItemCollapsibleState.Collapsed);
@@ -90,60 +120,87 @@ export class UserKanbanTreeProvider implements vscode.TreeDataProvider<KanbanTre
     if (isTreeLoadingPlaceholder(element)) {
       return [];
     }
+    if (isKanbanScopeCategoryItem(element)) {
+      return KANBAN_STATUSES.map((status) => ({
+        kind: 'statusFolder' as const,
+        status,
+        label: KANBAN_COLUMN_LABELS[status],
+        folderPath: getKanbanStatusPath(element.kanbanPath, status),
+        kanbanPath: element.kanbanPath,
+        isPersonal: element.isPersonal,
+      }));
+    }
     if (isKanbanFileItem(element)) {
       return [];
     }
     if (isKanbanStatusFolderItem(element)) {
-      return this.getFolderLoader(element.status).resolveChildren(element, () =>
+      return this.getFolderLoader(element).resolveChildren(element, () =>
         this.loadStatusFolderChildren(element)
       );
     }
     return [];
   }
 
-  private getFolderLoader(status: KanbanStatus): TreeLoadCoordinator<KanbanTreeElement, KanbanFileItem> {
-    let loader = this.folderLoaders.get(status);
+  private getFolderLoader(
+    folder: KanbanStatusFolderItem
+  ): TreeLoadCoordinator<KanbanTreeElement, KanbanFileItem> {
+    const key = `${folder.isPersonal ? 'p' : 'w'}:${folder.status}:${folder.kanbanPath}`;
+    let loader = this.folderLoaders.get(key);
     if (!loader) {
       loader = new TreeLoadCoordinator<KanbanTreeElement, KanbanFileItem>(
         () => this._onDidChangeTreeData.fire(),
-        () => `__kanban_folder__:${status}`
+        () => `__kanban_folder__:${key}`
       );
-      this.folderLoaders.set(status, loader);
+      this.folderLoaders.set(key, loader);
     }
     return loader;
   }
 
-  private async loadRootChildren(): Promise<KanbanTreeElement[]> {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      return [];
-    }
-
-    const kanbanPath = getKanbanPath(workspaceFolder.uri.fsPath);
+  private async folderExists(folderPath: string): Promise<boolean> {
     try {
-      await vscode.workspace.fs.stat(vscode.Uri.file(kanbanPath));
+      await vscode.workspace.fs.stat(vscode.Uri.file(folderPath));
+      return true;
     } catch {
-      return [];
+      return false;
+    }
+  }
+
+  private async loadRootChildren(): Promise<KanbanTreeElement[]> {
+    const items: KanbanScopeCategoryItem[] = [];
+    const extFolder = getExtensionDataFolderName();
+
+    const personalPath = getKanbanPath(undefined, true);
+    if (await this.folderExists(personalPath)) {
+      items.push({
+        kind: 'scopeCategory',
+        label: `Personal (~/.${extFolder})`,
+        kanbanPath: personalPath,
+        isPersonal: true,
+      });
     }
 
-    return KANBAN_STATUSES.map((status) => ({
-      kind: 'statusFolder' as const,
-      status,
-      label: KANBAN_COLUMN_LABELS[status],
-      folderPath: getKanbanStatusPath(kanbanPath, status),
-    }));
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const workspacePath = workspaceFolder.uri.fsPath;
+      const workspaceKanbanPath = getKanbanPath(workspacePath, false);
+      if (await this.folderExists(workspaceKanbanPath)) {
+        const workspaceName = workspaceFolder.name || 'Project';
+        items.push({
+          kind: 'scopeCategory',
+          label: `${workspaceName} (workspace)`,
+          kanbanPath: workspaceKanbanPath,
+          isPersonal: false,
+        });
+      }
+    }
+
+    return items;
   }
 
   private async loadStatusFolderChildren(folder: KanbanStatusFolderItem): Promise<KanbanFileItem[]> {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      return [];
-    }
-
     const config = vscode.workspace.getConfiguration('cursorToys');
     const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
-    const kanbanPath = getKanbanPath(workspaceFolder.uri.fsPath);
-    await migrateLegacyKanbanCards(kanbanPath, allowedExtensions);
+    await migrateLegacyKanbanCards(folder.kanbanPath, allowedExtensions);
 
     try {
       await vscode.workspace.fs.stat(vscode.Uri.file(folder.folderPath));
@@ -174,6 +231,7 @@ export class UserKanbanTreeProvider implements vscode.TreeDataProvider<KanbanTre
         uri: vscode.Uri.file(filePath),
         fileName: name,
         filePath,
+        isPersonal: folder.isPersonal,
         mtime,
       });
     }

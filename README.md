@@ -27,9 +27,11 @@
 
 CursorToys is built around a simple DX idea: **the best workflow is the one you never leave the editor for.**
 
+- **When you need to see your project structure** → right-click any folder and generate a formatted tree for docs or AI context.
 - **When you need to hit an API** → write a `.req` file, click Send Request, assert the response.
 - **When you want to share a command** → generate a link; your teammate imports with `Cmd+Shift+I`.
 - **When you organize AI assets** → browse commands, prompts, skills, and hooks in sidebar trees.
+- **When you need a CursorToys action fast** → `Ctrl+T` / `Cmd+T` opens the **CursorToys Command Palette** (sorted by your most-used actions).
 
 Everything below follows that pattern: short path from intent to action, progressive detail when you need it.
 
@@ -37,14 +39,16 @@ Everything below follows that pattern: short path from intent to action, progres
 
 | Utility | What it does |
 |:--------|:-------------|
+| [⚡ CursorToys Command Palette](#-cursortoys-command-palette) | `Ctrl+T` / `Cmd+T` — quick actions sorted by usage. |
+| [🌳 Project Tree Generation](#-project-tree-generation) | Generate formatted directory trees for documentation or AI context. |
 | [🌐 In-Editor API Testing](#-in-editor-api-testing) | Run and assert HTTP requests from `.req` files without leaving Cursor. |
 | [🔗 Instant Sharing](#-instant-sharing) | Turn commands, rules, and prompts into shareable links in one click. |
 | [🤖 AI Text Refinement](#-ai-text-refinement) | Polish selected text or clipboard with Google Gemini. |
 | [📚 Personal Libraries](#-personal-libraries) | Reusable personal commands and prompts across all projects. |
 | [🎓 Skills Management](#-skills-management) | Browse, organize, and share Cursor Agent Skills. |
 | [🎯 Skills Marketplace](#-skills-marketplace) | Discover and install community skills from Tech Leads Club. |
-| [📓 Project Notepads](#-project-notepads) | Project-scoped markdown notes in `.cursor/notepads/`. |
-| [📋 Kanban Board](#-kanban-board) | File-backed Todo / Doing / Done board in `.cursor/kanban/`. |
+| [📓 Notepads](#-notepads) | Personal and project markdown notes in `.cursortoys/notepads/`. |
+| [📋 Kanban Board](#-kanban-board) | File-backed board in `.cursortoys/kanban/` (personal + workspace). |
 | [📎 Clipboard Manager](#-clipboard-manager) | Copy/cut history, snippet slots (`clip01`), saved terminal commands. |
 | [🪝 Cursor Hooks](#-cursor-hooks) | Manage personal and project `hooks.json` from the sidebar. |
 | [💬 Chat Integration](#-chat-integration) | Send selections and prompts to Cursor chat faster. |
@@ -54,6 +58,24 @@ Everything below follows that pattern: short path from intent to action, progres
 | [📊 Spending (API usage)](#-spending-cursor-api-usage) | See Cursor Auto/API usage % in the status bar. |
 | [🧪 DeepSpec](#-deepspec) | Spec-driven dev — install the separate **DeepSpec** extension (`godrix.deepspec`). |
 | [Explorer sidebar visibility](#explorer-sidebar-visibility) | Hide individual CursorToys trees in the Explorer. |
+
+### ⚡ CursorToys Command Palette
+
+**Your shortcut to CursorToys actions** — like `Ctrl+P` for files, but for extension workflows.
+
+- **`Ctrl+T` / `Cmd+T`** — open the palette from anywhere (status bar **CursorToys** item does the same).
+- **Most-used first** — entries reorder as you use them (counts stored in extension global state).
+- Includes: import, skills marketplace, new notepad, Kanban board, usage monitor, minify/trim tools, spending refresh, and more.
+- Command: **CursorToys: Command Palette** (formerly “Show Menu”).
+
+### 🌳 Project Tree Generation
+
+**Instantly visualize and share your project structure.**
+
+- Right-click any folder in the Explorer and select **CursorToys: Generate Tree** to copy a beautifully formatted directory tree to your clipboard.
+- Select **CursorToys: Generate Tree & Send to Chat** to inject the folder structure directly into your Cursor chat, providing immediate context to the AI.
+- The generated tree uses clean box-drawing characters (`├──`, `└──`, `│`), respects `.gitignore` rules from the repository root (including nested `.gitignore` files), and applies safety limits (max depth and file count) to prevent performance issues in large projects.
+- Perfect for generating READMEs, sharing architecture context, or giving the AI a bird's-eye view of your workspace.
 
 ### 🌐 In-Editor API Testing
 
@@ -135,20 +157,26 @@ GET https://api.example.com/user/123
 - **CursorToys: Browse Marketplace** → Install in Cursor.
 - Smart memory and disk caching for fast browsing.
 
-### 📓 Project Notepads
+### 📓 Notepads
 
-**Notes that live with the repo** — markdown in `.cursor/notepads/`.
+**Markdown notes for you and your project** — stored under `.cursortoys/notepads/` (configurable via `cursorToys.extensionDataFolder`, default `cursortoys`).
 
-- Sidebar tree with folders and drag-and-drop.
+- **Personal** (`~/.cursortoys/notepads/`) and **workspace** categories in the sidebar (same pattern as Plans).
+- Legacy `.cursor/notepads/` is still used when `.cursortoys/notepads/` is empty.
+- Optional status bar icon: `cursorToys.notepads.showStatusBar`.
 - Create, rename, delete; share notepads or folders via CursorToys or Gist.
 
 ### 📋 Kanban Board
 
-**Lightweight task board stored as markdown** — one card per file in `.{baseFolder}/kanban/`.
+**Lightweight task board stored as markdown** — one card per file in `.cursortoys/kanban/` (personal and/or workspace).
+
+- Legacy `.{baseFolder}/kanban/` remains supported when `.cursortoys/kanban/` is empty for that scope.
+- Board webview tabs **Workspace | Personal** when a personal board exists.
+- Optional status bar icon: `cursorToys.kanban.showStatusBar`.
 
 - Frontmatter field `status`: `backlog`, `todo`, `doing`, or `done`.
 - Optional `tags` in frontmatter (`name` or `name:#hexcolor` per tag) with colored pills on cards.
-- **CursorToys: Open Kanban Board** — three-column webview with drag-and-drop; edits persist to disk.
+- **CursorToys: Open Kanban Board** — four-column webview (Backlog, Todo, Doing, Done) with drag-and-drop; edits persist to disk.
 - Sidebar tree: create, rename, delete, and open cards (same pattern as Notepads).
 
 ### 📎 Clipboard Manager
@@ -217,8 +245,16 @@ GET https://api.example.com/user/123
 
 **Declutter the Explorer** without losing commands.
 
-- `cursorToys.sidebar.hiddenViews` — hide: `notepads`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`
+- `cursorToys.sidebar.hiddenViews` — hide: `notepads`, `kanban`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`
 - `cursorToys.sidebar.explorerViews` — duplicate selected sections into the Files sidebar (default: `skills`, `plans`)
+
+### Extension data folder (`.cursortoys/`)
+
+**CursorToys-owned data** (Kanban, Notepads) lives separately from Cursor AI config (commands, rules, prompts, skills):
+
+- Default folder: **`~/.cursortoys/`** and **`{workspace}/.cursortoys/`**
+- Setting: `cursorToys.extensionDataFolder` (default: `cursortoys`)
+- Legacy `.cursor/kanban` and `.cursor/notepads` still work when the new folder is empty
 
 ## 📋 Installation
 
@@ -295,6 +331,7 @@ Click **Send Request** above the file → response in the panel.
 
 | Area | Command | Shortcut |
 |:-----|:--------|:---------|
+| General | CursorToys Command Palette | `Cmd+T` / `Ctrl+T` |
 | AI | Refine Selection with AI | `Cmd+Shift+R` / `Ctrl+Shift+R` |
 | AI | Import from Link | `Cmd+Shift+I` / `Ctrl+Shift+I` |
 | HTTP | Send HTTP Request | CodeLens on `.req` files |
@@ -302,23 +339,27 @@ Click **Send Request** above the file → response in the panel.
 | Share | Generate / Share (commands, rules, prompts) | Context menu, CodeLens |
 | Chat | Send Selection to Chat | Context menu |
 | Tools | Minify File / Trim & Minify Clipboard | Command Palette |
+| Notepads | Focus Notepads (optional status bar) | `cursorToys.notepads.showStatusBar` |
+| Kanban | Open Kanban Board (optional status bar) | `cursorToys.kanban.showStatusBar` |
 
 Most actions are also on **CodeLens** and **right-click context menus**. Full list: Command Palette → `CursorToys:`.
 
 ## ✨ What's New
 
-**Unreleased** — see [CHANGELOG](CHANGELOG.md) for details.
+**v2026.6.8-2** — see [CHANGELOG](CHANGELOG.md)
 
-- **DeepSpec (experimental)** — Activity bar spec pipeline; off by default.
-- **HTTP env at project root** — **Breaking:** `.env*` at workspace root; removed `http/environments`.
-- **HTTP response panel** — Reusable webview by default; optional save to disk.
-- **Explorer visibility** — `cursorToys.sidebar.hiddenViews` to hide resource trees.
+- **CursorToys Command Palette** — `Ctrl+T` / `Cmd+T`; actions sorted by most-used.
+- Settings editor fixes for `cursorToys.notepads.showStatusBar` and `cursorToys.extensionDataFolder`.
 
-**v1.13.1** — Share skills as CursorToys from Skills tree and `SKILL.md`.
+**v2026.6.8-1**
 
-**v1.13.0** — Spending status bar; Open Chat with Prompt; MCPB official CLI option.
+- **`.cursortoys/` data folder** — Kanban and Notepads in personal + workspace scopes (`cursorToys.extensionDataFolder`).
+- Kanban board **Workspace | Personal** tabs; optional Notepads status bar icon.
+- Legacy `.cursor/kanban` and `.cursor/notepads` paths still supported.
 
-**v1.10.0** — HTTP `@assert()` system (27+ operators); project-root env files; HTTP docs skill.
+**v2026.6.8-0** — Project tree generation from Explorer folders (clipboard or send to chat).
+
+**v2026.6.6-1** — Usage Monitor UI (OpenRouter / DeepInfra dashboards and status bar).
 
 Older releases → [CHANGELOG](CHANGELOG.md).
 

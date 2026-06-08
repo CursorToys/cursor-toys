@@ -7,8 +7,8 @@ import {
   listKanbanCardPaths,
   loadKanbanCard,
 } from './kanbanCard';
-import { getKanbanPath } from './utils';
-import { KanbanBoardCardView, KanbanBoardState } from './kanbanBoardTypes';
+import { extensionDataScopeHasContent, getKanbanPath } from './utils';
+import { KanbanBoardCardView, KanbanBoardScope, KanbanBoardState } from './kanbanBoardTypes';
 
 export const DESCRIPTION_PREVIEW_MAX = 120;
 
@@ -74,12 +74,47 @@ function toView(card: KanbanCardData, modifiedAt?: number): KanbanBoardCardView 
 }
 
 /**
- * Builds board state from workspace Kanban folder.
+ * Resolves which board scopes are available for the current workspace context.
  */
-export async function buildKanbanBoardState(workspacePath: string): Promise<KanbanBoardState | null> {
+export function resolveKanbanBoardScopes(workspacePath: string | undefined): {
+  availableScopes: KanbanBoardScope[];
+  defaultScope: KanbanBoardScope;
+} {
+  const personalHasContent = extensionDataScopeHasContent('kanban', true);
+  const availableScopes: KanbanBoardScope[] = [];
+
+  if (workspacePath) {
+    availableScopes.push('workspace');
+  }
+  if (personalHasContent) {
+    availableScopes.push('personal');
+  }
+
+  if (availableScopes.length === 0 && workspacePath) {
+    availableScopes.push('workspace');
+  }
+  if (availableScopes.length === 0 && personalHasContent) {
+    availableScopes.push('personal');
+  }
+
+  const defaultScope: KanbanBoardScope =
+    workspacePath && availableScopes.includes('workspace') ? 'workspace' : 'personal';
+
+  return { availableScopes, defaultScope };
+}
+
+/**
+ * Builds board state from a Kanban root (personal or workspace).
+ */
+export async function buildKanbanBoardState(
+  workspacePath: string | undefined,
+  scope: KanbanBoardScope
+): Promise<KanbanBoardState | null> {
   const config = vscode.workspace.getConfiguration('cursorToys');
   const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
-  const kanbanPath = getKanbanPath(workspacePath);
+  const isPersonal = scope === 'personal';
+  const kanbanPath = getKanbanPath(workspacePath, isPersonal);
+  const { availableScopes } = resolveKanbanBoardScopes(workspacePath);
 
   const fileEntries = await listKanbanCardPaths(kanbanPath, allowedExtensions);
   const cards: Array<{ card: KanbanCardData; modifiedAt?: number }> = [];
@@ -115,5 +150,5 @@ export async function buildKanbanBoardState(workspacePath: string): Promise<Kanb
     columns.done = columns.done.slice(0, DONE_COLUMN_DISPLAY_LIMIT);
   }
 
-  return { kanbanPath, columns, columnTotals };
+  return { kanbanPath, scope, availableScopes, columns, columnTotals };
 }

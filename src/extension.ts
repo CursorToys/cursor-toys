@@ -62,6 +62,7 @@ import {
   refreshUsageMonitorStatusBar,
 } from './providerUsage';
 import { initKanbanStatusBar } from './kanbanStatusBar';
+import { initNotepadsStatusBar } from './notepadsStatusBar';
 import { CursorToysUtilsTreeProvider } from './utilsTreeProvider';
 import { injectTextToChat, notifyPasteWithoutSubmit, removeLegacyRemoteChatSkill } from './chatInjection';
 import * as fs from 'fs';
@@ -72,6 +73,8 @@ import { CodeAnchorsTreeProvider } from './codeAnchorsTreeProvider';
 import { registerCodeAnchorsCommands } from './codeAnchorsCommands';
 import { CodeAnchorsStatusBar } from './codeAnchorsStatusBar';
 import { registerCodeAnchorsConfigListener } from './codeAnchorsConfig';
+import { generateTree, generateTreeFromUri } from './treeGenerator';
+import { showCursorToysCommandPalette } from './cursorToysCommandPalette';
 
 /**
  * Helper function to generate deeplink with validations
@@ -277,7 +280,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     100
   );
   cursorToysStatusBarItem.text = '$(github-action) CursorToys';
-  cursorToysStatusBarItem.tooltip = 'Open CursorToys Menu';
+  cursorToysStatusBarItem.tooltip = 'Open CursorToys Command Palette (Ctrl+T / Cmd+T)';
   cursorToysStatusBarItem.command = 'cursor-toys.showMenu';
   cursorToysStatusBarItem.show();
   context.subscriptions.push(cursorToysStatusBarItem);
@@ -336,6 +339,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   initSpendingStatusBar(context);
   initUsageMonitorStatusBar(context);
   initKanbanStatusBar(context);
+  initNotepadsStatusBar(context);
 
   removeLegacyRemoteChatSkill();
 
@@ -356,103 +360,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     })
   );
 
-  // Register CursorToys Menu command
+  // Register CursorToys Command Palette
   context.subscriptions.push(
-    vscode.commands.registerCommand('cursor-toys.showMenu', async () => {
-      const items: vscode.QuickPickItem[] = [
-        {
-          label: '$(megaphone) What\'s New',
-          description: 'View release notes and changelog',
-          detail: 'Release notes'
-        },
-        {
-          label: '$(compass) Open Skills Marketplace',
-          description: 'Browse Agent Skills from Tech Leads Club',
-          detail: 'Marketplace'
-        },
-        {
-          label: '$(cloud-download) Import from URL',
-          description: 'Import command, prompt or rule from deeplink or Gist',
-          detail: 'Import'
-        },
-        {
-          label: '$(package) Install MCPB',
-          description: 'Install MCP server from .mcpb package',
-          detail: 'MCP'
-        },
-        {
-          label: '$(note) New Notepad',
-          description: 'Create a new notepad for quick notes',
-          detail: 'Notepads'
-        },
-        {
-          label: '$(sparkle) Create Skill',
-          description: 'Create a new skill template',
-          detail: 'Skills'
-        },
-        {
-          label: '$(repo-clone) Add Skill Remote',
-          description: 'Import a skill from a remote GitHub folder URL',
-          detail: 'Skills'
-        },
-        {
-          label: '$(file-zip) Minify File',
-          description: 'Minify current file (JSON, HTML, CSS, JS, etc)',
-          detail: 'Tools'
-        },
-        {
-          label: '$(clippy) Trim Clipboard',
-          description: 'Trim and minify clipboard content',
-          detail: 'Tools'
-        },
-        {
-          label: '$(refresh) Refresh spending usage',
-          description: 'Refresh Cursor API usage in status bar',
-          detail: 'Spending'
-        },
-        {
-          label: '$(key) Configure spending token',
-          description: 'Set session token for spending indicator',
-          detail: 'Spending'
-        },
-        {
-          label: '$(tasklist) Open Kanban Board',
-          description: 'Open the Kanban board',
-          detail: 'Kanban'
-        }
-      ];
-
-      const selected = await vscode.window.showQuickPick(items, {
-        placeHolder: 'Select a CursorToys action',
-        matchOnDescription: true,
-        matchOnDetail: true
-      });
-
-      if (!selected) {
-        return;
-      }
-
-      // Map selection to command
-      const commandMap: { [key: string]: string } = {
-        'What\'s New': 'cursor-toys.showReleaseNotes',
-        'Open Skills Marketplace': 'cursor-toys.browseRecommendations',
-        'Import from URL': 'cursor-toys.import',
-        'Install MCPB': 'cursor-toys.installMcpb',
-        'New Notepad': 'cursor-toys.createNotepad',
-        'Create Skill': 'cursor-toys.createSkill',
-        'Add Skill Remote': 'cursor-toys.addSkillRemote',
-        'Minify File': 'cursor-toys.minifyFile',
-        'Trim Clipboard': 'cursor-toys.trimClipboard',
-        'Refresh spending usage': 'cursor-toys.spending.refresh',
-        'Configure spending token': 'cursor-toys.spending.openTokenSetup',
-        'Open Kanban Board': 'cursor-toys.openKanbanBoard'
-      };
-
-      const commandId = commandMap[selected.label.replace(/\$\([^)]+\)\s*/, '')];
-      if (commandId) {
-        await vscode.commands.executeCommand(commandId);
-      }
-    })
+    vscode.commands.registerCommand('cursor-toys.showMenu', () =>
+      showCursorToysCommandPalette(context)
+    )
   );
 
   // Compatibility router for command-style invocations like: cursorToys.command addskillremote
@@ -955,9 +867,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         }
 
         // Handle NotepadFileItem (from tree view)
-        if ('type' in arg && arg.type === 'folder') {
-          // Notepads don't have categories (only workspace), just folders
+        if ('type' in arg && arg.type === 'category') {
           folderPath = arg.filePath;
+        } else if ('type' in arg && arg.type === 'folder') {
+          const base = arg.basePath ?? '';
+          folderPath = arg.folderPath
+            ? path.join(base, arg.folderPath)
+            : path.join(base, arg.fileName);
         } else if (arg instanceof vscode.Uri) {
           // Handle Uri (from file explorer)
           const stat = await vscode.workspace.fs.stat(arg);
@@ -2995,15 +2911,46 @@ Detailed instructions for the agent.
     return null;
   }
 
+  async function pickExtensionDataScope(
+    itemLabel: string
+  ): Promise<{ isPersonal: boolean; workspacePath?: string } | undefined> {
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+      return { isPersonal: true };
+    }
+    const choice = await vscode.window.showQuickPick<
+      { label: string; description: string; isPersonal: boolean }
+    >(
+      [
+        {
+          label: 'Workspace',
+          description: `Project .cursortoys/${itemLabel}`,
+          isPersonal: false,
+        },
+        {
+          label: 'Personal',
+          description: `~/.cursortoys/${itemLabel}`,
+          isPersonal: true,
+        },
+      ],
+      { placeHolder: `Where should this ${itemLabel} be stored?` }
+    );
+    if (!choice) {
+      return undefined;
+    }
+    return {
+      isPersonal: choice.isPersonal,
+      workspacePath: choice.isPersonal ? undefined : workspaceFolder.uri.fsPath,
+    };
+  }
+
   // Command to create new notepad
   const createNotepad = vscode.commands.registerCommand(
     'cursor-toys.createNotepad',
     async () => {
       try {
-        // Check if workspace is open
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-        if (!workspaceFolder) {
-          vscode.window.showErrorMessage('No workspace open. Notepads are workspace-specific.');
+        const scope = await pickExtensionDataScope('notepads');
+        if (!scope) {
           return;
         }
 
@@ -3037,9 +2984,8 @@ Detailed instructions for the agent.
         const sanitized = sanitizeFileName(notepadName);
         const fileName = `${sanitized}.${defaultExtension}`;
 
-        // Get notepads path (project only)
-        const workspacePath = workspaceFolder.uri.fsPath;
-        const notepadsPath = getNotepadsPath(workspacePath, false);
+        // Get notepads path for selected scope
+        const notepadsPath = getNotepadsPath(scope.workspacePath, scope.isPersonal);
         const fullPath = path.join(notepadsPath, fileName);
         const fileUri = vscode.Uri.file(fullPath);
 
@@ -3280,14 +3226,17 @@ Detailed instructions for the agent.
     return arg.filePath;
   }
 
+  const focusNotepads = vscode.commands.registerCommand('cursor-toys.focusNotepads', async () => {
+    await vscode.commands.executeCommand('cursor-toys.userNotepads.focus');
+  });
+
   const openKanbanBoard = vscode.commands.registerCommand('cursor-toys.openKanbanBoard', async () => {
     await KanbanBoardPanel.createOrShow(refreshKanbanViews);
   });
 
   const createKanbanCard = vscode.commands.registerCommand('cursor-toys.createKanbanCard', async () => {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      vscode.window.showErrorMessage('No workspace open. Kanban is workspace-specific.');
+    const scope = await pickExtensionDataScope('kanban');
+    if (!scope) {
       return;
     }
     const title = await vscode.window.showInputBox({
@@ -3306,7 +3255,13 @@ Detailed instructions for the agent.
     if (!title) {
       return;
     }
-    const created = await createKanbanCardFile(workspaceFolder.uri.fsPath, title.trim(), 'backlog');
+    const created = await createKanbanCardFile(
+      scope.workspacePath,
+      title.trim(),
+      'backlog',
+      '',
+      scope.isPersonal
+    );
     if (created) {
       vscode.window.showInformationMessage('Kanban card created.');
       refreshKanbanViews();
@@ -4579,6 +4534,44 @@ Detailed instructions for the agent.
     }
   );
 
+  const generateTreeCommand = vscode.commands.registerCommand(
+    'cursor-toys.generateTree',
+    async (uri: vscode.Uri | undefined) => {
+      if (!uri) {
+        vscode.window.showErrorMessage('No folder selected');
+        return;
+      }
+      await generateTreeFromUri(uri);
+    }
+  );
+
+  const generateTreeAndSendToChatCommand = vscode.commands.registerCommand(
+    'cursor-toys.generateTreeAndSendToChat',
+    async (uri: vscode.Uri | undefined) => {
+      if (!uri) {
+        vscode.window.showErrorMessage('No folder selected');
+        return;
+      }
+
+      const result = await generateTree(uri.fsPath);
+      if (!result) {
+        return;
+      }
+
+      const folderName = path.basename(uri.fsPath);
+      const text = `Here is the folder structure for "${folderName}" (${result.fileCount} files, ${result.folderCount} folders):\n\n\`\`\`\n${result.tree}\n\`\`\``;
+      const injectResult = await injectTextToChat(text, { submit: false });
+
+      if (injectResult.pasted) {
+        vscode.window.showInformationMessage('Tree pasted in chat.');
+      } else {
+        vscode.window.showWarningMessage(
+          'Could not paste tree into chat. Use "Generate Tree" and paste manually.'
+        );
+      }
+    }
+  );
+
   // File system watchers to update tree when files change
   // Create watchers for all folders that might be watched
   const createWatchers = (): vscode.FileSystemWatcher[] => {
@@ -4712,35 +4705,24 @@ Detailed instructions for the agent.
   // File system watchers for notepads folder
   const createNotepadsWatchers = (): vscode.FileSystemWatcher[] => {
     const watchers: vscode.FileSystemWatcher[] = [];
+
+    const addWatcher = (folderPath: string): void => {
+      const folderUri = vscode.Uri.file(folderPath);
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(folderUri, '**/*')
+      );
+      watcher.onDidCreate(() => userNotepadsTreeProvider.refresh());
+      watcher.onDidDelete(() => userNotepadsTreeProvider.refresh());
+      watchers.push(watcher);
+    };
+
+    addWatcher(getNotepadsPath(undefined, true));
+
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    
-    if (!workspaceFolder) {
-      return watchers; // No workspace, no watchers
+    if (workspaceFolder) {
+      addWatcher(getNotepadsPath(workspaceFolder.uri.fsPath, false));
     }
 
-    const workspacePath = workspaceFolder.uri.fsPath;
-    const notepadsPath = getNotepadsPath(workspacePath, false);
-    const folderUri = vscode.Uri.file(notepadsPath);
-    
-    const watcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(folderUri, '**/*')
-    );
-
-    watcher.onDidCreate(() => {
-      userNotepadsTreeProvider.refresh();
-    });
-
-    watcher.onDidDelete(() => {
-      userNotepadsTreeProvider.refresh();
-    });
-
-    watcher.onDidChange(() => {
-      // Optionally refresh on file changes (not just create/delete)
-      // userNotepadsTreeProvider.refresh();
-    });
-
-    watchers.push(watcher);
-    
     return watchers;
   };
 
@@ -4748,18 +4730,24 @@ Detailed instructions for the agent.
 
   const createKanbanWatchers = (): vscode.FileSystemWatcher[] => {
     const watchers: vscode.FileSystemWatcher[] = [];
+
+    const addWatcher = (folderPath: string): void => {
+      const folderUri = vscode.Uri.file(folderPath);
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(folderUri, '**/*')
+      );
+      watcher.onDidCreate(() => refreshKanbanViews());
+      watcher.onDidDelete(() => refreshKanbanViews());
+      watchers.push(watcher);
+    };
+
+    addWatcher(getKanbanPath(undefined, true));
+
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      return watchers;
+    if (workspaceFolder) {
+      addWatcher(getKanbanPath(workspaceFolder.uri.fsPath, false));
     }
-    const kanbanPath = getKanbanPath(workspaceFolder.uri.fsPath);
-    const folderUri = vscode.Uri.file(kanbanPath);
-    const watcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(folderUri, '**/*')
-    );
-    watcher.onDidCreate(() => refreshKanbanViews());
-    watcher.onDidDelete(() => refreshKanbanViews());
-    watchers.push(watcher);
+
     return watchers;
   };
 
@@ -4942,6 +4930,7 @@ Detailed instructions for the agent.
     userClipboardTreeView,
     userClipboardExplorerTreeView,
     openKanbanBoard,
+    focusNotepads,
     createKanbanCard,
     openKanbanCard,
     deleteKanbanCard,
@@ -5039,7 +5028,9 @@ Detailed instructions for the agent.
     userMcpbExplorerTreeView,
     refreshMcpbCommand,
     revealMcpbCommand,
-    deleteMcpbCommand
+    deleteMcpbCommand,
+    generateTreeCommand,
+    generateTreeAndSendToChatCommand
   );
   
   // Dispose decoration provider

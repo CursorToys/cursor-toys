@@ -2,6 +2,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as vscode from 'vscode';
+import {
+  buildExtensionDataSubfolderPath,
+  isExtensionDataSubfolderPath,
+  normalizeExtensionDataFolderName,
+  resolveExtensionDataSubfolderRoot,
+} from './extensionDataPaths';
 
 /**
  * Sanitizes the file name to use only letters, numbers, dots, hyphens, and underscores
@@ -72,9 +78,10 @@ export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'pro
       normalizedPath.includes('/.cursor/prompts/')) {
     return 'prompt';
   }
-  // Notepads can use custom base folder or legacy .cursor
-  if (normalizedPath.includes(`/.${baseFolderName}/notepads/`) ||
-      normalizedPath.includes('/.cursor/notepads/')) {
+  // Notepads: extension data folder (.cursortoys) or legacy base folder
+  if (
+    isExtensionDataSubfolderPath(normalizedPath, 'notepads', getExtensionDataFolderName(), baseFolderName)
+  ) {
     return 'notepad';
   }
   // Plans can be in personal folder (~/.cursor/plans/) or workspace folder
@@ -293,22 +300,90 @@ export function getPersonalPromptsPaths(): string[] {
 }
 
 /**
- * Gets the full path to the notepads folder
- * @param workspacePath Workspace path (required for notepads - they are workspace-specific)
- * @param isUser Deprecated - notepads are always workspace-specific
+ * Gets the configured extension data folder name (default: cursortoys → `.cursortoys/`).
  */
-export function getNotepadsPath(workspacePath: string, isUser: boolean = false): string {
-  const baseFolderName = getBaseFolderName();
-  return path.join(workspacePath, `.${baseFolderName}`, 'notepads');
+export function getExtensionDataFolderName(): string {
+  const config = vscode.workspace.getConfiguration('cursorToys');
+  const folderName = config.get<string>('extensionDataFolder', 'cursortoys');
+  return normalizeExtensionDataFolderName(folderName);
+}
+
+function directoryHasContent(dirPath: string, maxDepth = 4): boolean {
+  if (!fs.existsSync(dirPath)) {
+    return false;
+  }
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile()) {
+        return true;
+      }
+      if (entry.isDirectory() && maxDepth > 0) {
+        if (directoryHasContent(path.join(dirPath, entry.name), maxDepth - 1)) {
+          return true;
+        }
+      }
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+function resolveExtensionDataRoot(
+  workspacePath: string | undefined,
+  isPersonal: boolean,
+  subfolder: 'kanban' | 'notepads'
+): string {
+  return resolveExtensionDataSubfolderRoot({
+    homePath: getUserHomePath(),
+    workspacePath,
+    isPersonal,
+    subfolder,
+    extensionDataFolder: getExtensionDataFolderName(),
+    baseFolderName: getBaseFolderName(),
+    pathHasContent: directoryHasContent,
+  });
 }
 
 /**
- * Gets the full path to the Kanban folder (workspace-specific).
- * @param workspacePath Workspace root path
+ * Canonical path for new extension data (always under `.cursortoys/` or configured folder).
  */
-export function getKanbanPath(workspacePath: string): string {
-  const baseFolderName = getBaseFolderName();
-  return path.join(workspacePath, `.${baseFolderName}`, 'kanban');
+export function getCanonicalExtensionDataPath(
+  subfolder: 'kanban' | 'notepads',
+  workspacePath?: string,
+  isPersonal: boolean = false
+): string {
+  const rootDir = isPersonal
+    ? getUserHomePath()
+    : (workspacePath ?? getUserHomePath());
+  return buildExtensionDataSubfolderPath(rootDir, getExtensionDataFolderName(), subfolder);
+}
+
+/**
+ * Gets the resolved notepads folder (personal or workspace), with legacy fallback.
+ */
+export function getNotepadsPath(workspacePath?: string, isPersonal: boolean = false): string {
+  return resolveExtensionDataRoot(workspacePath, isPersonal, 'notepads');
+}
+
+/**
+ * Gets the resolved Kanban folder (personal or workspace), with legacy fallback.
+ */
+export function getKanbanPath(workspacePath?: string, isPersonal: boolean = false): string {
+  return resolveExtensionDataRoot(workspacePath, isPersonal, 'kanban');
+}
+
+/**
+ * Returns true when a personal Kanban or notepads folder has content.
+ */
+export function extensionDataScopeHasContent(
+  subfolder: 'kanban' | 'notepads',
+  isPersonal: boolean,
+  workspacePath?: string
+): boolean {
+  const root = resolveExtensionDataRoot(workspacePath, isPersonal, subfolder);
+  return directoryHasContent(root);
 }
 
 /**
@@ -368,11 +443,11 @@ export function getClipboardCommandsDir(
  * Returns true when the path is under the workspace Kanban folder.
  */
 export function isKanbanCardPath(filePath: string): boolean {
-  const normalizedPath = filePath.replace(/\\/g, '/');
-  const baseFolderName = getBaseFolderName();
-  return (
-    normalizedPath.includes(`/.${baseFolderName}/kanban/`) ||
-    normalizedPath.includes('/.cursor/kanban/')
+  return isExtensionDataSubfolderPath(
+    filePath,
+    'kanban',
+    getExtensionDataFolderName(),
+    getBaseFolderName()
   );
 }
 

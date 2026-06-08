@@ -592,16 +592,31 @@ async function importNotepadBundle(bundleUrl: string): Promise<void> {
       return;
     }
 
-    // Notepads are always saved in project workspace
+    // Resolve import target (personal or workspace)
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    
+    let isPersonal = false;
+    let workspacePath: string | undefined;
+
     if (!workspaceFolder) {
-      vscode.window.showErrorMessage('No workspace open. Notepads are workspace-specific.');
-      return;
+      isPersonal = true;
+    } else {
+      const scopeChoice = await vscode.window.showQuickPick<
+        { label: string; isPersonal: boolean }
+      >(
+        [
+          { label: 'Workspace (project)', isPersonal: false },
+          { label: 'Personal (~/.cursortoys)', isPersonal: true },
+        ],
+        { placeHolder: 'Import notepads to…' }
+      );
+      if (!scopeChoice) {
+        return;
+      }
+      isPersonal = scopeChoice.isPersonal;
+      workspacePath = isPersonal ? undefined : workspaceFolder.uri.fsPath;
     }
 
-    const workspacePath = workspaceFolder.uri.fsPath;
-    const notepadsPath = getNotepadsPath(workspacePath, false);
+    const notepadsPath = getNotepadsPath(workspacePath, isPersonal);
     
     // Get default extension
     const config = vscode.workspace.getConfiguration('cursorToys');

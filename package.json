@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.6-1",
+  "version": "2026.6.8-2",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -194,6 +194,16 @@
       {
         "command": "cursor-toys.shareAsCursorToysProject",
         "title": "CursorToys: Share Project as CursorToys (Complete Bundle)"
+      },
+      {
+        "command": "cursor-toys.generateTree",
+        "title": "CursorToys: Generate Tree",
+        "icon": "$(folder-tree)"
+      },
+      {
+        "command": "cursor-toys.generateTreeAndSendToChat",
+        "title": "CursorToys: Generate Tree & Send to Chat",
+        "icon": "$(comment-discussion)"
       },
       {
         "command": "cursor-toys.save-as-user-command",
@@ -642,7 +652,7 @@
       },
       {
         "command": "cursor-toys.showMenu",
-        "title": "CursorToys: Show Menu",
+        "title": "CursorToys: Command Palette",
         "icon": "$(zap)"
       },
       {
@@ -970,8 +980,18 @@
       "explorer/context": [
         {
           "submenu": "cursor-toys",
-          "when": "resourcePath =~ /[\\\\/]\\.(cursor|claude|vscode|ai)[\\\\/](commands|rules|prompts|notepads|plans|skills|http)/ || resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)$/ || resourceFilename == hooks.json || resourceFilename == SKILL.md",
+          "when": "resourcePath =~ /[\\\\/]\\.(cursor|claude|vscode|ai|cursortoys)[\\\\/](commands|rules|prompts|notepads|plans|skills|http|kanban)/ || resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai|cursortoys)$/ || resourceFilename == hooks.json || resourceFilename == SKILL.md",
           "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.generateTree",
+          "when": "explorerResourceIsFolder",
+          "group": "9_cutcopypaste@5"
+        },
+        {
+          "command": "cursor-toys.generateTreeAndSendToChat",
+          "when": "explorerResourceIsFolder",
+          "group": "9_cutcopypaste@6"
         }
       ],
       "view/title": [
@@ -1520,11 +1540,11 @@
         },
         {
           "command": "cursor-toys.shareAsCursorToysNotepad",
-          "when": "resourcePath =~ /\\.(cursor|vscode|ai)\\/notepads\\// && !explorerResourceIsFolder"
+          "when": "resourcePath =~ /\\.(cursor|vscode|ai|cursortoys)\\/(notepads|kanban)\\// && !explorerResourceIsFolder"
         },
         {
           "command": "cursor-toys.shareAsCursorToysNotepadFolder",
-          "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)[\\\\/]notepads($|[\\\\/])/"
+          "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai|cursortoys)[\\\\/](notepads|kanban)($|[\\\\/])/"
         },
         {
           "command": "cursor-toys.shareAsCursorToysPlan",
@@ -1576,6 +1596,16 @@
           "when": "explorerResourceIsFolder && resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)$/"
         },
         {
+          "command": "cursor-toys.generateTree",
+          "when": "explorerResourceIsFolder",
+          "group": "2_workspace@5"
+        },
+        {
+          "command": "cursor-toys.generateTreeAndSendToChat",
+          "when": "explorerResourceIsFolder",
+          "group": "2_workspace@6"
+        },
+        {
           "command": "cursor-toys.shareHooks",
           "when": "resourceFilename == hooks.json"
         },
@@ -1593,7 +1623,7 @@
         },
         {
           "command": "cursor-toys.shareFolderViaGist",
-          "when": "explorerResourceIsFolder && (resourcePath =~ /[\\\\/]\\.(cursor|claude|vscode|ai)[\\\\/](commands|rules|prompts|notepads|http)($|[\\\\/])/ || resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai)$/)"
+          "when": "explorerResourceIsFolder && (resourcePath =~ /[\\\\/]\\.(cursor|claude|vscode|ai|cursortoys)[\\\\/](commands|rules|prompts|notepads|http|kanban)($|[\\\\/])/ || resourcePath =~ /[\\\\/]\\.(cursor|vscode|ai|cursortoys)$/)"
         }
       ],
       "editor/context": [
@@ -1746,6 +1776,12 @@
             "default": "cursor",
             "pattern": "^[a-zA-Z0-9_-]+$",
             "description": "Base folder name for storing commands, rules, prompts and HTTP files (e.g., 'cursor', 'vscode', 'ai'). Note: Rules and prompts are Cursor-specific features."
+          },
+          "cursorToys.extensionDataFolder": {
+            "type": "string",
+            "default": "cursortoys",
+            "pattern": "^[a-zA-Z0-9_-]+$",
+            "description": "Folder name for CursorToys-exclusive data (Kanban, Notepads). Stored as .{name}/ in your home directory and workspace (default: .cursortoys/)."
           },
           "cursorToys.commandsFolder": {
             "type": "string",
@@ -2038,6 +2074,11 @@
             "type": "boolean",
             "default": false,
             "description": "Show a Kanban icon in the status bar for quick access to the Kanban board."
+          },
+          "cursorToys.notepads.showStatusBar": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show a Notepads icon in the status bar to focus the Notepads sidebar view."
           }
         }
       },
@@ -2108,6 +2149,11 @@
       }
     ],
     "keybindings": [
+      {
+        "command": "cursor-toys.showMenu",
+        "key": "ctrl+t",
+        "mac": "cmd+t"
+      },
       {
         "command": "cursor-toys.import",
         "key": "ctrl+shift+i",
@@ -2196,7 +2242,8 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
-    "test:serializer": "npm run compile && node out/httpRequestEditorSerializer.test.js",
+    "test:command-palette": "npm run compile && node out/cursorToysCommandPalette.test.js",
+    "test:extension-data": "npm run compile && node out/utils.extensionData.test.js",
     "test:file-meta": "npm run compile && node out/httpRequestEditorFileMeta.test.js",
     "test:usage-monitor": "npm run compile && node out/providerUsage/openRouterCredits.test.js && node out/providerUsage/openRouterKeyInfo.test.js && node out/providerUsage/openRouterActivity.test.js && node out/providerUsage/usageMonitorPanelState.test.js && node out/providerUsage/deepInfraBilling.test.js",
     "watch": "tsc -watch -p ./",

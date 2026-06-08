@@ -171,6 +171,28 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       return;
     }
 
+    case 'cursorToys.extensionDataFolder': {
+      const current = config.get<string>(settingKey, 'cursortoys');
+      const next = await vscode.window.showInputBox({
+        prompt: 'Extension data folder name (e.g. cursortoys) — Kanban, Notepads',
+        value: current,
+        validateInput: (v) => {
+          if (!v || !v.trim()) {
+            return 'Value cannot be empty';
+          }
+          if (!/^[a-zA-Z0-9_-]+$/.test(v.trim())) {
+            return 'Use only letters, numbers, _ or -';
+          }
+          return null;
+        },
+      });
+      if (next === undefined) {
+        return;
+      }
+      await updateGlobalSetting(settingKey, next.trim().toLowerCase());
+      return;
+    }
+
     case 'cursorToys.linkType': {
       const current = config.get<string>(settingKey, 'deeplink');
       const picked = await vscode.window.showQuickPick(
@@ -480,6 +502,13 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       await pickBoolean(settingKey, false, {
         on: 'Show Kanban icon in status bar',
         off: 'Hide Kanban icon from status bar',
+      });
+      return;
+
+    case 'cursorToys.notepads.showStatusBar':
+      await pickBoolean(settingKey, false, {
+        on: 'Show Notepads icon in status bar',
+        off: 'Hide Notepads icon from status bar',
       });
       return;
 

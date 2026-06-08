@@ -46,6 +46,21 @@ export function buildKanbanBoardHtml(state: KanbanBoardState): string {
       flex: 1;
       min-width: 120px;
     }
+    .scope-tabs {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .scope-tabs button.scope-tab {
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+      padding: 4px 10px;
+      font-size: 0.9em;
+    }
+    .scope-tabs button.scope-tab.active {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+    }
     button {
       background: var(--vscode-button-background);
       color: var(--vscode-button-foreground);
@@ -269,6 +284,7 @@ export function buildKanbanBoardHtml(state: KanbanBoardState): string {
   <div id="error" class="error-banner"></div>
   <div class="toolbar">
     <h1>Kanban Board</h1>
+    <div class="scope-tabs" id="scope-tabs" hidden></div>
     <button type="button" id="btn-add">Add card</button>
     <button type="button" class="secondary" id="btn-refresh">Refresh</button>
   </div>
@@ -420,7 +436,32 @@ export function buildKanbanBoardHtml(state: KanbanBoardState): string {
       }).join('');
     }
 
+    function renderScopeTabs() {
+      const container = document.getElementById('scope-tabs');
+      container.innerHTML = '';
+      const scopes = (state.availableScopes || []);
+      if (scopes.length <= 1) {
+        container.hidden = true;
+        return;
+      }
+      container.hidden = false;
+      for (const scope of scopes) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'scope-tab' + (state.scope === scope ? ' active' : '');
+        btn.textContent = scope === 'personal' ? 'Personal' : 'Workspace';
+        btn.dataset.scope = scope;
+        btn.addEventListener('click', () => {
+          if (state.scope !== scope) {
+            post('switchScope', { scope: scope });
+          }
+        });
+        container.appendChild(btn);
+      }
+    }
+
     function render() {
+      renderScopeTabs();
       const board = document.getElementById('board');
       board.innerHTML = '';
       for (const col of COLUMNS) {

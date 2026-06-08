@@ -26,11 +26,11 @@ const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
     children: [
       {
         id: 'show-menu',
-        label: 'Quick Actions Menu',
+        label: 'CursorToys Command Palette',
         kind: 'action',
         iconId: 'list-selection',
         commandId: 'cursor-toys.showMenu',
-        description: 'Import, skills, tools',
+        description: 'Ctrl+T / Cmd+T',
       },
       {
         id: 'whats-new',
@@ -45,6 +45,15 @@ const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
         kind: 'setting',
         iconId: 'folder',
         settingKey: 'cursorToys.baseFolder',
+        description: 'Cursor AI assets (commands, rules, …)',
+      },
+      {
+        id: 'extension-data-folder',
+        label: 'Extension Data Folder',
+        kind: 'setting',
+        iconId: 'archive',
+        settingKey: 'cursorToys.extensionDataFolder',
+        description: 'Kanban, Notepads (.cursortoys)',
       },
       {
         id: 'link-type',
@@ -547,6 +556,22 @@ const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
         iconId: 'eye',
         settingKey: 'cursorToys.kanban.showStatusBar',
         description: 'Quick access to Kanban board',
+      },
+    ],
+  },
+  {
+    id: 'notepads',
+    label: 'Notepads',
+    kind: 'category',
+    iconId: 'note',
+    children: [
+      {
+        id: 'notepads-show-statusbar',
+        label: 'Show Status Bar Icon',
+        kind: 'setting',
+        iconId: 'eye',
+        settingKey: 'cursorToys.notepads.showStatusBar',
+        description: 'Focus Notepads sidebar view',
       },
     ],
   },

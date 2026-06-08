@@ -20,3 +20,4 @@ analytics-export-*.json
 cursor-toys-vsx-extension.code-workspace
 .deepspec
 .vscode
+.cursortoys

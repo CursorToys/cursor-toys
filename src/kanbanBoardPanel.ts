@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { buildKanbanBoardHtml } from './kanbanBoardHtml';
-import { buildKanbanBoardState } from './kanbanBoardModel';
-import { KanbanBoardInboundMessage } from './kanbanBoardTypes';
+import { buildKanbanBoardState, resolveKanbanBoardScopes } from './kanbanBoardModel';
+import { KanbanBoardInboundMessage, KanbanBoardScope } from './kanbanBoardTypes';
 import {
   createKanbanCardFile,
   formatKanbanCardShareText,
@@ -10,7 +10,7 @@ import {
   saveKanbanCard,
 } from './kanbanCard';
 import { injectTextToChat } from './chatInjection';
-import { getBaseFolderName } from './utils';
+import { getExtensionDataFolderName, getBaseFolderName, getKanbanPath } from './utils';
 
 const PANEL_VIEW_TYPE = 'cursorToysKanbanBoard';
 const WATCHER_DEBOUNCE_MS = 350;
@@ -20,17 +20,20 @@ export class KanbanBoardPanel {
 
   private readonly panel: vscode.WebviewPanel;
   private readonly disposables: vscode.Disposable[] = [];
-  private watcher: vscode.FileSystemWatcher | undefined;
+  private watchers: vscode.FileSystemWatcher[] = [];
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private onFilesystemChange: (() => void) | undefined;
   private boardHtmlLoaded = false;
+  private currentScope: KanbanBoardScope;
 
   private constructor(
     panel: vscode.WebviewPanel,
-    private readonly workspacePath: string,
+    private readonly workspacePath: string | undefined,
+    initialScope: KanbanBoardScope,
     onFilesystemChange?: () => void
   ) {
     this.panel = panel;
+    this.currentScope = initialScope;
     this.onFilesystemChange = onFilesystemChange;
     this.panel.webview.options = { enableScripts: true };
     this.pushState();
@@ -42,13 +45,18 @@ export class KanbanBoardPanel {
       this.disposables
     );
 
-    this.setupWatcher();
+    this.setupWatchers();
   }
 
   public static async createOrShow(onFilesystemChange?: () => void): Promise<void> {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      vscode.window.showErrorMessage('No workspace open. Kanban is workspace-specific.');
+    const workspacePath = workspaceFolder?.uri.fsPath;
+    const { availableScopes, defaultScope } = resolveKanbanBoardScopes(workspacePath);
+
+    if (availableScopes.length === 0) {
+      vscode.window.showErrorMessage(
+        'No Kanban board found. Open a workspace or create personal cards under ~/.cursortoys/kanban/.'
+      );
       return;
     }
 
@@ -69,17 +77,14 @@ export class KanbanBoardPanel {
 
     KanbanBoardPanel.currentPanel = new KanbanBoardPanel(
       panel,
-      workspaceFolder.uri.fsPath,
+      workspacePath,
+      defaultScope,
       onFilesystemChange
     );
   }
 
-  private setupWatcher(): void {
-    const pattern = new vscode.RelativePattern(
-      vscode.workspace.workspaceFolders![0],
-      `.${getBaseFolderName()}/kanban/**`
-    );
-    this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
+  private setupWatchers(): void {
+    this.clearWatchers();
     const schedule = (): void => {
       if (this.refreshTimer) {
         clearTimeout(this.refreshTimer);
@@ -89,14 +94,47 @@ export class KanbanBoardPanel {
         this.onFilesystemChange?.();
       }, WATCHER_DEBOUNCE_MS);
     };
-    this.watcher.onDidCreate(schedule);
-    this.watcher.onDidChange(schedule);
-    this.watcher.onDidDelete(schedule);
-    this.disposables.push(this.watcher);
+
+    const addWatcher = (folderPath: string): void => {
+      const folderUri = vscode.Uri.file(folderPath);
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(folderUri, '**/*')
+      );
+      watcher.onDidCreate(schedule);
+      watcher.onDidChange(schedule);
+      watcher.onDidDelete(schedule);
+      this.watchers.push(watcher);
+      this.disposables.push(watcher);
+    };
+
+    const { availableScopes } = resolveKanbanBoardScopes(this.workspacePath);
+    if (availableScopes.includes('personal')) {
+      addWatcher(getKanbanPath(undefined, true));
+    }
+    if (this.workspacePath && availableScopes.includes('workspace')) {
+      addWatcher(getKanbanPath(this.workspacePath, false));
+      const extFolder = getExtensionDataFolderName();
+      const baseFolder = getBaseFolderName();
+      if (baseFolder !== extFolder) {
+        const legacyPath = vscode.Uri.joinPath(
+          vscode.Uri.file(this.workspacePath),
+          `.${baseFolder}`,
+          'kanban'
+        ).fsPath;
+        addWatcher(legacyPath);
+      }
+    }
+  }
+
+  private clearWatchers(): void {
+    for (const watcher of this.watchers) {
+      watcher.dispose();
+    }
+    this.watchers = [];
   }
 
   private async pushState(): Promise<void> {
-    const state = await buildKanbanBoardState(this.workspacePath);
+    const state = await buildKanbanBoardState(this.workspacePath, this.currentScope);
     if (!state) {
       this.panel.webview.postMessage({ type: 'error', message: 'Could not load Kanban board.' });
       return;
@@ -116,16 +154,27 @@ export class KanbanBoardPanel {
         case 'refresh':
           await this.pushState();
           break;
+        case 'switchScope': {
+          const { availableScopes } = resolveKanbanBoardScopes(this.workspacePath);
+          if (!availableScopes.includes(msg.scope)) {
+            return;
+          }
+          this.currentScope = msg.scope;
+          await this.pushState();
+          break;
+        }
         case 'createCard': {
           const title = msg.title?.trim();
           if (!title) {
             return;
           }
+          const isPersonal = this.currentScope === 'personal';
           const created = await createKanbanCardFile(
             this.workspacePath,
             title,
             'backlog',
-            msg.description ?? ''
+            msg.description ?? '',
+            isPersonal
           );
           if (created) {
             vscode.window.showInformationMessage('Kanban card created.');
@@ -228,6 +277,7 @@ export class KanbanBoardPanel {
     if (this.refreshTimer) {
       clearTimeout(this.refreshTimer);
     }
+    this.clearWatchers();
     KanbanBoardPanel.currentPanel = undefined;
     this.disposables.forEach((d) => d.dispose());
   }

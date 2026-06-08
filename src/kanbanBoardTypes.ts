@@ -1,5 +1,7 @@
 import { KanbanStatus, KanbanTag } from './kanbanCardCore';
 
+export type KanbanBoardScope = 'personal' | 'workspace';
+
 export interface KanbanBoardCardView {
   filePath: string;
   fileName: string;
@@ -16,6 +18,8 @@ export interface KanbanBoardCardView {
 
 export interface KanbanBoardState {
   kanbanPath: string;
+  scope: KanbanBoardScope;
+  availableScopes: KanbanBoardScope[];
   columns: Record<KanbanStatus, KanbanBoardCardView[]>;
   /** Total cards per column before board display limits are applied. */
   columnTotals?: Partial<Record<KanbanStatus, number>>;
@@ -37,7 +41,8 @@ export type KanbanBoardInboundMessage =
   | { type: 'openCard'; filePath: string }
   | { type: 'copyCardContent'; filePath: string }
   | { type: 'sendCardToChat'; filePath: string }
-  | { type: 'moveCardMenu'; filePath: string; status: KanbanStatus };
+  | { type: 'moveCardMenu'; filePath: string; status: KanbanStatus }
+  | { type: 'switchScope'; scope: KanbanBoardScope };
 
 export type KanbanBoardOutboundMessage =
   | { type: 'init'; state: KanbanBoardState }

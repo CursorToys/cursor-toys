@@ -1,6 +1,10 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { getNotepadsPath, isAllowedExtension } from './utils';
+import {
+  getExtensionDataFolderName,
+  getNotepadsPath,
+  isAllowedExtension,
+} from './utils';
 import {
   isTreeLoadingPlaceholder,
   renderLoadingTreeItem,
@@ -8,14 +12,8 @@ import {
   TreeLoadingPlaceholder,
 } from './treeLoading';
 
-/**
- * Represents a tree item (can be a folder or a file)
- */
-export type TreeItemType = 'folder' | 'file';
+export type TreeItemType = 'category' | 'folder' | 'file';
 
-/**
- * Represents a notepad file or folder in the tree view
- */
 export type NotepadTreeElement = NotepadFileItem | TreeLoadingPlaceholder;
 
 export interface NotepadFileItem {
@@ -23,43 +21,50 @@ export interface NotepadFileItem {
   fileName: string;
   filePath: string;
   type: TreeItemType;
-  folderPath?: string; // Relative folder path for grouping
-  children?: NotepadFileItem[]; // Children for folder items
+  folderPath?: string;
+  isPersonal?: boolean;
+  basePath?: string;
+  children?: NotepadFileItem[];
 }
 
 /**
- * Tree data provider for user notepads folder with drag and drop support
+ * Tree data provider for personal and workspace notepads with drag and drop support.
  */
-export class UserNotepadsTreeProvider implements vscode.TreeDataProvider<NotepadTreeElement>, vscode.TreeDragAndDropController<NotepadFileItem> {
-  private _onDidChangeTreeData: vscode.EventEmitter<NotepadTreeElement | undefined | null | void> = new vscode.EventEmitter<NotepadTreeElement | undefined | null | void>();
-  readonly onDidChangeTreeData: vscode.Event<NotepadTreeElement | undefined | null | void> = this._onDidChangeTreeData.event;
+export class UserNotepadsTreeProvider
+  implements vscode.TreeDataProvider<NotepadTreeElement>, vscode.TreeDragAndDropController<NotepadFileItem>
+{
+  private _onDidChangeTreeData: vscode.EventEmitter<NotepadTreeElement | undefined | null | void> =
+    new vscode.EventEmitter<NotepadTreeElement | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<NotepadTreeElement | undefined | null | void> =
+    this._onDidChangeTreeData.event;
 
   private readonly rootLoader = new TreeLoadCoordinator<NotepadFileItem | undefined, NotepadFileItem>(
     () => this._onDidChangeTreeData.fire(),
     () => '__notepads_root__'
   );
 
-  // Drag and drop support
   dropMimeTypes = ['application/vnd.code.tree.cursor-deeplink.userNotepads'];
   dragMimeTypes = ['text/uri-list'];
 
-  /**
-   * Refreshes the tree view
-   */
   refresh(): void {
     this.rootLoader.clear();
     this._onDidChangeTreeData.fire();
   }
 
-  /**
-   * Gets the tree item for a given element
-   */
   getTreeItem(element: NotepadTreeElement): vscode.TreeItem {
     if (isTreeLoadingPlaceholder(element)) {
       return renderLoadingTreeItem(element);
     }
+    if (element.type === 'category') {
+      const treeItem = new vscode.TreeItem(
+        element.fileName,
+        vscode.TreeItemCollapsibleState.Collapsed
+      );
+      treeItem.iconPath = new vscode.ThemeIcon(element.isPersonal ? 'home' : 'root-folder');
+      treeItem.contextValue = 'notepadCategory';
+      return treeItem;
+    }
     if (element.type === 'folder') {
-      // Folder item
       const treeItem = new vscode.TreeItem(
         element.fileName,
         vscode.TreeItemCollapsibleState.Collapsed
@@ -67,88 +72,72 @@ export class UserNotepadsTreeProvider implements vscode.TreeDataProvider<Notepad
       treeItem.iconPath = vscode.ThemeIcon.Folder;
       treeItem.contextValue = 'userNotepadFolder';
       return treeItem;
-    } else {
-      // File item
-      const treeItem = new vscode.TreeItem(element.fileName, vscode.TreeItemCollapsibleState.None);
-      treeItem.resourceUri = element.uri;
-      treeItem.command = {
-        command: 'cursor-toys.openNotepad',
-        title: 'Open Notepad',
-        arguments: [element.uri]
-      };
-      treeItem.contextValue = 'userNotepadFile';
-      treeItem.iconPath = new vscode.ThemeIcon('note');
-      return treeItem;
     }
+    const treeItem = new vscode.TreeItem(element.fileName, vscode.TreeItemCollapsibleState.None);
+    treeItem.resourceUri = element.uri;
+    treeItem.command = {
+      command: 'cursor-toys.openNotepad',
+      title: 'Open Notepad',
+      arguments: [element.uri],
+    };
+    treeItem.contextValue = 'userNotepadFile';
+    treeItem.iconPath = new vscode.ThemeIcon('note');
+    return treeItem;
   }
 
-  /**
-   * Recursively reads directory contents and finds all notepad files
-   * @param basePath The base notepads folder path (e.g., ~/.cursor/notepads/)
-   * @param currentPath The current directory being processed
-   * @param allowedExtensions Array of allowed file extensions
-   * @returns Array of NotepadFileItem with relative paths in fileName
-   */
   private async readDirectoryRecursive(
     basePath: string,
     currentPath: string,
-    allowedExtensions: string[]
+    allowedExtensions: string[],
+    isPersonal: boolean
   ): Promise<NotepadFileItem[]> {
     const notepadFiles: NotepadFileItem[] = [];
     const currentUri = vscode.Uri.file(currentPath);
 
     try {
-      // Read directory contents
       const entries = await vscode.workspace.fs.readDirectory(currentUri);
 
       for (const [name, type] of entries) {
         const itemPath = path.join(currentPath, name);
 
         if (type === vscode.FileType.File) {
-          // Check if extension is allowed
           if (isAllowedExtension(itemPath, allowedExtensions)) {
-            // Calculate relative path from basePath
             const relativePath = path.relative(basePath, itemPath);
-            // Get the folder path (directory part of relative path)
             const folderPath = path.dirname(relativePath);
-            // Normalize path separators for cross-platform compatibility
             const normalizedFolderPath = folderPath === '.' ? '' : folderPath.replace(/\\/g, '/');
-            
-            const fileUri = vscode.Uri.file(itemPath);
+
             notepadFiles.push({
-              uri: fileUri,
-              fileName: path.basename(itemPath), // Just the file name, not the full path
+              uri: vscode.Uri.file(itemPath),
+              fileName: path.basename(itemPath),
               filePath: itemPath,
               type: 'file',
-              folderPath: normalizedFolderPath
+              folderPath: normalizedFolderPath,
+              isPersonal,
+              basePath,
             });
           }
         } else if (type === vscode.FileType.Directory) {
-          // Recursively search in subdirectories
-          const subFiles = await this.readDirectoryRecursive(basePath, itemPath, allowedExtensions);
+          const subFiles = await this.readDirectoryRecursive(
+            basePath,
+            itemPath,
+            allowedExtensions,
+            isPersonal
+          );
           notepadFiles.push(...subFiles);
         }
       }
     } catch (error) {
-      // Handle errors (permission denied, etc.) silently for subdirectories
       console.error(`Error reading directory ${currentPath}:`, error);
     }
 
     return notepadFiles;
   }
 
-  /**
-   * Groups files by folder path and creates a hierarchical structure
-   * @param files Array of notepad files with folderPath information
-   * @param sourceFolder Source folder name (cursor) for labeling
-   * @returns Array of folder items with their children
-   */
-  private groupFilesByFolder(files: NotepadFileItem[], sourceFolder: string): NotepadFileItem[] {
-    // Group files by folder path
+  private groupFilesByFolder(files: NotepadFileItem[]): NotepadFileItem[] {
     const folderMap = new Map<string, NotepadFileItem[]>();
-    
+
     for (const file of files) {
-      const folder = file.folderPath || ''; // Root folder if empty
+      const folder = file.folderPath || '';
       if (!folderMap.has(folder)) {
         folderMap.set(folder, []);
       }
@@ -156,35 +145,33 @@ export class UserNotepadsTreeProvider implements vscode.TreeDataProvider<Notepad
     }
 
     const result: NotepadFileItem[] = [];
-
-    // Sort folder keys (root first, then alphabetically)
     const sortedFolders = Array.from(folderMap.keys()).sort((a, b) => {
-      if (a === '' && b !== '') return -1; // Root first
-      if (a !== '' && b === '') return 1;
+      if (a === '' && b !== '') {
+        return -1;
+      }
+      if (a !== '' && b === '') {
+        return 1;
+      }
       return a.localeCompare(b);
     });
 
     for (const folderPath of sortedFolders) {
       const filesInFolder = folderMap.get(folderPath)!;
-      
-      // Sort files alphabetically
       filesInFolder.sort((a, b) => a.fileName.localeCompare(b.fileName));
 
       if (folderPath === '') {
-        // Root folder - add files directly
         result.push(...filesInFolder);
       } else {
-        // Create folder item
         const folderName = path.basename(folderPath);
-        const folderLabel = `${folderName}`;
-        
         result.push({
-          uri: vscode.Uri.file(''), // Dummy URI for folder
-          fileName: folderLabel,
+          uri: vscode.Uri.file(''),
+          fileName: folderName,
           filePath: folderPath,
           type: 'folder',
-          folderPath: folderPath,
-          children: filesInFolder
+          folderPath,
+          isPersonal: filesInFolder[0]?.isPersonal,
+          basePath: filesInFolder[0]?.basePath,
+          children: filesInFolder,
         });
       }
     }
@@ -192,20 +179,16 @@ export class UserNotepadsTreeProvider implements vscode.TreeDataProvider<Notepad
     return result;
   }
 
-  /**
-   * Gets the children of the tree (folders and files)
-   */
   async getChildren(element?: NotepadTreeElement): Promise<NotepadTreeElement[]> {
     if (isTreeLoadingPlaceholder(element)) {
       return [];
     }
-
-    // If element is a folder, return its children
+    if (element && element.type === 'category') {
+      return element.children || [];
+    }
     if (element && element.type === 'folder') {
       return element.children || [];
     }
-
-    // If element is a file, no children
     if (element && element.type === 'file') {
       return [];
     }
@@ -213,73 +196,92 @@ export class UserNotepadsTreeProvider implements vscode.TreeDataProvider<Notepad
     return this.rootLoader.resolveChildren(undefined, () => this.loadRootChildren());
   }
 
+  private async folderExists(folderPath: string): Promise<boolean> {
+    try {
+      await vscode.workspace.fs.stat(vscode.Uri.file(folderPath));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   private async loadRootChildren(): Promise<NotepadFileItem[]> {
     try {
-      // Check if workspace is open
-      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-      if (!workspaceFolder) {
-        // No workspace open, return empty
-        return [];
-      }
-
-      // Get allowed extensions from configuration (only .md for notepads)
       const config = vscode.workspace.getConfiguration('cursorToys');
       const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+      const extFolder = getExtensionDataFolderName();
+      const items: NotepadFileItem[] = [];
 
-      const workspacePath = workspaceFolder.uri.fsPath;
-      const notepadsPath = getNotepadsPath(workspacePath, false);
-      const folderUri = vscode.Uri.file(notepadsPath);
-
-      // Check if folder exists
-      try {
-        await vscode.workspace.fs.stat(folderUri);
-      } catch {
-        // Folder doesn't exist, return empty
-        return [];
+      const personalPath = getNotepadsPath(undefined, true);
+      if (await this.folderExists(personalPath)) {
+        const personalFiles = await this.readDirectoryRecursive(
+          personalPath,
+          personalPath,
+          allowedExtensions,
+          true
+        );
+        items.push({
+          uri: vscode.Uri.file(''),
+          fileName: `Personal (~/.${extFolder})`,
+          filePath: personalPath,
+          type: 'category',
+          isPersonal: true,
+          basePath: personalPath,
+          children: this.groupFilesByFolder(personalFiles),
+        });
       }
 
-      // Recursively read all notepad files from workspace
-      const notepadFiles = await this.readDirectoryRecursive(
-        notepadsPath,
-        notepadsPath,
-        allowedExtensions
-      );
+      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      if (workspaceFolder) {
+        const workspacePath = workspaceFolder.uri.fsPath;
+        const notepadsPath = getNotepadsPath(workspacePath, false);
+        if (await this.folderExists(notepadsPath)) {
+          const workspaceFiles = await this.readDirectoryRecursive(
+            notepadsPath,
+            notepadsPath,
+            allowedExtensions,
+            false
+          );
+          const workspaceName = workspaceFolder.name || 'Project';
+          items.push({
+            uri: vscode.Uri.file(''),
+            fileName: `${workspaceName} (workspace)`,
+            filePath: notepadsPath,
+            type: 'category',
+            isPersonal: false,
+            basePath: notepadsPath,
+            children: this.groupFilesByFolder(workspaceFiles),
+          });
+        }
+      }
 
-      // Group files by their subfolders
-      const groupedItems = this.groupFilesByFolder(notepadFiles, 'notepads');
-
-      // Sort items alphabetically
-      groupedItems.sort((a, b) => a.fileName.localeCompare(b.fileName));
-
-      return groupedItems;
+      return items;
     } catch (error) {
       console.error('Error reading notepads folder:', error);
       return [];
     }
   }
 
-  /**
-   * Handle drag operation - called when user starts dragging an item
-   */
-  async handleDrag(source: readonly NotepadFileItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
-    // Only allow dragging files, not folders
-    const files = source.filter(item => item.type === 'file' && item.uri.scheme === 'file');
+  async handleDrag(
+    source: readonly NotepadFileItem[],
+    dataTransfer: vscode.DataTransfer,
+    token: vscode.CancellationToken
+  ): Promise<void> {
+    const files = source.filter((item) => item.type === 'file' && item.uri.scheme === 'file');
     if (files.length === 0) {
       return;
     }
-
-    // Store the dragged items in the data transfer
     dataTransfer.set(
       'application/vnd.code.tree.cursor-deeplink.userNotepads',
       new vscode.DataTransferItem(files)
     );
   }
 
-  /**
-   * Handle drop operation - called when user drops an item
-   */
-  async handleDrop(target: NotepadFileItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
-    // Get the dragged items
+  async handleDrop(
+    target: NotepadFileItem | undefined,
+    dataTransfer: vscode.DataTransfer,
+    token: vscode.CancellationToken
+  ): Promise<void> {
     const transferItem = dataTransfer.get('application/vnd.code.tree.cursor-deeplink.userNotepads');
     if (!transferItem) {
       return;
@@ -290,54 +292,49 @@ export class UserNotepadsTreeProvider implements vscode.TreeDataProvider<Notepad
       return;
     }
 
-    // Determine the target folder
     let targetFolderPath: string;
-    let targetBasePath: string;
 
     if (!target) {
-      // Dropped on root - shouldn't happen but handle it
       vscode.window.showErrorMessage('Cannot drop files on root. Please drop on a folder.');
       return;
     }
 
-    if (target.type === 'folder') {
-      // Dropped on a folder
-      const draggedItem = draggedItems[0];
-      const draggedBasePath = this.getBasePath(draggedItem.filePath);
-      targetBasePath = draggedBasePath;
-      
-      // Extract the actual folder path
-      const folderName = target.fileName.replace('📁 ', '');
-      targetFolderPath = path.join(draggedBasePath, target.folderPath || folderName);
-    } else {
-      // Dropped on a file - move to the same folder as the target file
-      const targetDir = path.dirname(target.filePath);
-      targetFolderPath = targetDir;
-      targetBasePath = this.getBasePath(target.filePath);
+    if (target.type === 'category') {
+      vscode.window.showErrorMessage('Drop on a folder inside the category, not on the category itself.');
+      return;
     }
 
-    // Move each dragged file
+    if (target.type === 'folder') {
+      const draggedItem = draggedItems[0];
+      const basePath = draggedItem.basePath ?? this.getBasePathFromFile(draggedItem.filePath);
+      if (!basePath) {
+        return;
+      }
+      targetFolderPath = path.join(basePath, target.folderPath || target.fileName);
+    } else {
+      targetFolderPath = path.dirname(target.filePath);
+    }
+
     for (const item of draggedItems) {
       try {
         const sourceUri = item.uri;
         const fileName = path.basename(item.filePath);
         const targetUri = vscode.Uri.file(path.join(targetFolderPath, fileName));
 
-        // Check if target already exists
         try {
           await vscode.workspace.fs.stat(targetUri);
           const overwrite = await vscode.window.showWarningMessage(
             `File "${fileName}" already exists in the target folder. Overwrite?`,
-            'Yes', 'No'
+            'Yes',
+            'No'
           );
           if (overwrite !== 'Yes') {
             continue;
           }
         } catch {
-          // File doesn't exist, proceed
+          // File does not exist
         }
 
-        // Move the file
         await vscode.workspace.fs.rename(sourceUri, targetUri, { overwrite: true });
         vscode.window.showInformationMessage(`Moved "${fileName}" successfully!`);
       } catch (error) {
@@ -345,27 +342,24 @@ export class UserNotepadsTreeProvider implements vscode.TreeDataProvider<Notepad
       }
     }
 
-    // Refresh the tree view
     this.refresh();
   }
 
-  /**
-   * Get the base notepads path from a file path
-   * @param filePath Full file path
-   * @returns Base notepads path (.cursor/notepads)
-   */
-  private getBasePath(filePath: string): string {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      return '';
-    }
-    const workspacePath = workspaceFolder.uri.fsPath;
-    const notepadsPath = getNotepadsPath(workspacePath, false);
-    
-    if (filePath.startsWith(notepadsPath)) {
-      return notepadsPath;
+  private getBasePathFromFile(filePath: string): string {
+    const normalized = filePath.replace(/\\/g, '/');
+    const extFolder = getExtensionDataFolderName();
+    const markers = [
+      `/.${extFolder}/notepads/`,
+      '/.cursor/notepads/',
+      '/.vscode/notepads/',
+      '/.ai/notepads/',
+    ];
+    for (const marker of markers) {
+      const idx = normalized.indexOf(marker);
+      if (idx >= 0) {
+        return filePath.slice(0, idx + marker.length - 1);
+      }
     }
     return '';
   }
 }
-

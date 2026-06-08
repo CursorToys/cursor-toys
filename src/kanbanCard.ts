@@ -165,10 +165,11 @@ export async function saveKanbanCard(card: KanbanCardData, kanbanPath?: string):
  * Creates a new Kanban card file and returns its absolute path.
  */
 export async function createKanbanCardFile(
-  workspacePath: string,
+  workspacePath: string | undefined,
   title: string,
   status: KanbanStatus = 'todo',
-  description: string = ''
+  description: string = '',
+  isPersonal: boolean = false
 ): Promise<string | null> {
   const config = vscode.workspace.getConfiguration('cursorToys');
   const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
@@ -179,7 +180,7 @@ export async function createKanbanCardFile(
     return null;
   }
 
-  const kanbanPath = getKanbanPath(workspacePath);
+  const kanbanPath = getKanbanPath(workspacePath, isPersonal);
   await ensureKanbanStatusDirectories(kanbanPath);
 
   const statusPath = getKanbanStatusPath(kanbanPath, status);
