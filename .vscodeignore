@@ -9,7 +9,8 @@ src/**
 **/*.ts
 !out/**/*.js
 tsconfig.json
-node_modules/**
+# Production deps (zod, @modelcontextprotocol/sdk) must ship in the VSIX for MCP stdio server.
+# vsce runs `npm install --production` before pack; do not ignore node_modules here.
 
 *.md
 # Exceto estes específicos

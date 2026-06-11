@@ -759,6 +759,9 @@ export async function isSkillFolder(folderPath: string): Promise<boolean> {
 /** Skill folder name installed by createHttpDocsSkill */
 export const HTTP_DOCS_SKILL_NAME = 'cursor-toys-http';
 
+/** Skill folder name installed by createMcpDocsSkill */
+export const MCP_DOCS_SKILL_NAME = 'cursor-toys-mcp';
+
 export interface CreateHttpDocsSkillOptions {
   /** VS Code extension root (contains resources/skills/) */
   extensionPath?: string;
@@ -768,21 +771,20 @@ export interface CreateHttpDocsSkillOptions {
   workspacePath?: string;
 }
 
-/**
- * Loads the bundled HTTP skill template and substitutes folder placeholders.
- */
-export function loadHttpDocsSkillTemplate(extensionPath: string, baseFolderName?: string): string {
-  const baseFolder = baseFolderName ?? getBaseFolderName();
-  const httpFolder = `.${baseFolder}/http`;
-  const templatePath = path.join(extensionPath, 'resources', 'skills', HTTP_DOCS_SKILL_NAME, 'SKILL.md');
-  const raw = fs.readFileSync(templatePath, 'utf8');
-  return raw.split('{{HTTP_FOLDER}}').join(httpFolder).split('{{BASE_FOLDER}}').join(baseFolder);
+export type CreateMcpDocsSkillOptions = CreateHttpDocsSkillOptions;
+
+interface InstallBundledSkillOptions {
+  extensionPath: string;
+  installPersonal?: boolean;
+  workspacePath?: string;
+  skillFolderName: string;
+  skillLabel: string;
+  placeHolder: string;
+  projectSkillError: string;
+  loadContent: (extensionPath: string, baseFolderName: string) => string;
 }
 
-/**
- * Installs the CursorToys HTTP skill (create, organize, test .req files + CLI).
- */
-export async function createHttpDocsSkill(options: CreateHttpDocsSkillOptions = {}): Promise<void> {
+async function installBundledSkill(options: InstallBundledSkillOptions): Promise<string | undefined> {
   const baseFolderName = getBaseFolderName();
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
   const workspacePath = options.workspacePath ?? workspaceFolder?.uri.fsPath;
@@ -804,26 +806,21 @@ export async function createHttpDocsSkill(options: CreateHttpDocsSkillOptions = 
           value: true as const,
         },
       ],
-      { placeHolder: 'Where should the HTTP skill be installed?' }
+      { placeHolder: options.placeHolder }
     );
     if (location === undefined) {
-      return;
+      return undefined;
     }
     installPersonal = location.value;
   }
 
   if (!installPersonal && !workspacePath) {
-    vscode.window.showErrorMessage('Open a workspace folder to install a project HTTP skill.');
-    return;
-  }
-
-  if (!options.extensionPath) {
-    vscode.window.showErrorMessage('Extension path is required to install the HTTP skill.');
-    return;
+    vscode.window.showErrorMessage(options.projectSkillError);
+    return undefined;
   }
 
   const skillsRoot = getSkillsPath(workspacePath, installPersonal);
-  const skillPath = path.join(skillsRoot, HTTP_DOCS_SKILL_NAME);
+  const skillPath = path.join(skillsRoot, options.skillFolderName);
   const skillFilePath = path.join(skillPath, 'SKILL.md');
   const skillFileUri = vscode.Uri.file(skillFilePath);
 
@@ -837,29 +834,97 @@ export async function createHttpDocsSkill(options: CreateHttpDocsSkillOptions = 
 
   if (skillExists) {
     const overwrite = await vscode.window.showInformationMessage(
-      'HTTP skill (cursor-toys-http) already exists. Reinstall?',
+      `${options.skillLabel} (${options.skillFolderName}) already exists. Reinstall?`,
       'Reinstall',
       'Cancel'
     );
     if (overwrite !== 'Reinstall') {
-      return;
+      return undefined;
     }
   }
 
+  await vscode.workspace.fs.createDirectory(vscode.Uri.file(skillPath));
+  const skillContent = options.loadContent(options.extensionPath, baseFolderName);
+  await vscode.workspace.fs.writeFile(skillFileUri, Buffer.from(skillContent, 'utf8'));
+
+  const scope = installPersonal ? 'personal' : 'project';
+  vscode.window.showInformationMessage(`${options.skillLabel} installed (${scope}): ${options.skillFolderName}`);
+
+  const document = await vscode.workspace.openTextDocument(skillFileUri);
+  await vscode.window.showTextDocument(document);
+  return skillFilePath;
+}
+
+/**
+ * Loads the bundled HTTP skill template and substitutes folder placeholders.
+ */
+export function loadHttpDocsSkillTemplate(extensionPath: string, baseFolderName?: string): string {
+  const baseFolder = baseFolderName ?? getBaseFolderName();
+  const httpFolder = `.${baseFolder}/http`;
+  const templatePath = path.join(extensionPath, 'resources', 'skills', HTTP_DOCS_SKILL_NAME, 'SKILL.md');
+  const raw = fs.readFileSync(templatePath, 'utf8');
+  return raw.split('{{HTTP_FOLDER}}').join(httpFolder).split('{{BASE_FOLDER}}').join(baseFolder);
+}
+
+/**
+ * Loads the bundled MCP skill template from resources/skills/.
+ */
+export function loadMcpDocsSkillTemplate(extensionPath: string, _baseFolderName?: string): string {
+  const templatePath = path.join(extensionPath, 'resources', 'skills', MCP_DOCS_SKILL_NAME, 'SKILL.md');
+  return fs.readFileSync(templatePath, 'utf8');
+}
+
+/**
+ * Installs the CursorToys HTTP skill (create, organize, test .req files + CLI).
+ */
+export async function createHttpDocsSkill(options: CreateHttpDocsSkillOptions = {}): Promise<void> {
+  if (!options.extensionPath) {
+    vscode.window.showErrorMessage('Extension path is required to install the HTTP skill.');
+    return;
+  }
   try {
-    await vscode.workspace.fs.createDirectory(vscode.Uri.file(skillPath));
-    const skillContent = loadHttpDocsSkillTemplate(options.extensionPath, baseFolderName);
-    await vscode.workspace.fs.writeFile(skillFileUri, Buffer.from(skillContent, 'utf8'));
-
-    const scope = installPersonal ? 'personal' : 'project';
-    vscode.window.showInformationMessage(`HTTP skill installed (${scope}): ${HTTP_DOCS_SKILL_NAME}`);
-
-    const document = await vscode.workspace.openTextDocument(skillFileUri);
-    await vscode.window.showTextDocument(document);
+    await installBundledSkill({
+      extensionPath: options.extensionPath,
+      installPersonal: options.installPersonal,
+      workspacePath: options.workspacePath,
+      skillFolderName: HTTP_DOCS_SKILL_NAME,
+      skillLabel: 'HTTP skill',
+      placeHolder: 'Where should the HTTP skill be installed?',
+      projectSkillError: 'Open a workspace folder to install a project HTTP skill.',
+      loadContent: loadHttpDocsSkillTemplate,
+    });
   } catch (error) {
     console.error('Failed to create HTTP skill:', error);
     vscode.window.showErrorMessage(
       `Failed to install HTTP skill: ${error instanceof Error ? error.message : String(error)}`
     );
+  }
+}
+
+/**
+ * Installs the CursorToys MCP skill (tools, resources, prompts guide for agents).
+ */
+export async function createMcpDocsSkill(options: CreateMcpDocsSkillOptions = {}): Promise<string | undefined> {
+  if (!options.extensionPath) {
+    vscode.window.showErrorMessage('Extension path is required to install the MCP skill.');
+    return undefined;
+  }
+  try {
+    return await installBundledSkill({
+      extensionPath: options.extensionPath,
+      installPersonal: options.installPersonal,
+      workspacePath: options.workspacePath,
+      skillFolderName: MCP_DOCS_SKILL_NAME,
+      skillLabel: 'MCP skill',
+      placeHolder: 'Where should the MCP skill be installed?',
+      projectSkillError: 'Open a workspace folder to install a project MCP skill.',
+      loadContent: loadMcpDocsSkillTemplate,
+    });
+  } catch (error) {
+    console.error('Failed to create MCP skill:', error);
+    vscode.window.showErrorMessage(
+      `Failed to install MCP skill: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return undefined;
   }
 }

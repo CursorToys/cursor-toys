@@ -1,15 +1,28 @@
 # CursorToys
 
-![](https://i.imgur.com/WdFjpJk.jpeg)
+![](https://i.imgur.com/sx9BPuJ.jpeg)
 
-## v2026.6.10-0 - Projects Workspace Launcher
+## v2026.6.11 - Built-in MCP Server and Projects Worspace Launcher
 
 ### Added
 
+- **Install MCP Skill**: same flow as HTTP skill — bundled `resources/skills/cursor-toys-mcp/`, UI action in MCP settings, command palette, and `mcp_install_skill` MCP tool.
 - **Projects** (opt-in via `cursorToys.projects.enabled`): pin, categorize, and reopen frequent workspaces from a CursorToys sidebar view and **Projects Dashboard** webview.
 - Registry stored at `~/.cursortoys/projects/registry.json` with pinned metadata (label, category, color, notes) and extension-maintained recent list.
 - Commands: **Pin Current Workspace**, **Add Project from Folder**, **Open Projects Dashboard**, **Clear Recent Projects**.
 - Settings category under **CursorToys → Settings → Projects** (recent limit, open in new window, dashboard on startup).
+- **Built-in MCP server** (`cursorToys.mcp.enabled`): stdio subprocess + IPC bridge to the extension host with full tool parity.
+- **MCP tools** (~150+): Kanban, Notepads, HTTP, code anchors, project/personal assets, hooks, plans, share/import, chat, clipboard, refine, recommendations, MCPB, usage, settings, DeepSpec.
+- **MCP resources** (`cursortoys://…`): config, kanban, notepads, HTTP, env, anchors, assets, plans, hooks, clipboard history.
+- **MCP prompts**: `kanban-workflow`, `http-test-suite`, `project-inventory`, `share-and-import`, `anchor-navigation`, `notepad-scratchpad`.
+- **Settings UI**: CursorToys Settings → MCP Server (enable, auto-register, open `mcp.json`, register now, security options).
+- **Audit log** (`cursorToys.mcp.auditLogEnabled`): append-only `.cursortoys/mcp-audit.log` for tool invocations.
+- **Skill** `.cursor/skills/cursor-toys-mcp/SKILL.md` for agent guidance.
+
+### Fixed
+
+- MCP subprocess no longer imports `vscode` (dedicated `toolSchemaCatalog` for stdio).
+- `mcp.json` uses Cursor `execPath` + `ELECTRON_RUN_AS_NODE` when `node` is not on PATH.
 
 ## v2026.6.8-2 - CursorToys Command Palette
 

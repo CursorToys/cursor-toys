@@ -1,0 +1,263 @@
+import * as path from 'path';
+import * as vscode from 'vscode';
+import {
+  getBaseFolderName,
+  getCommandsPath,
+  getExtensionDataFolderName,
+  getHttpPath,
+  getKanbanPath,
+  getNotepadsPath,
+  getPlansPath,
+  getPromptsPath,
+  getRulesPath,
+  getSkillsPath,
+  getUserHomePath,
+} from '../../utils';
+import * as kanban from '../services/kanbanTools';
+import * as notepad from '../services/notepadTools';
+import * as http from '../services/httpTools';
+import * as anchor from '../services/anchorTools';
+import * as hooks from '../services/hooksTools';
+import { buildAssetToolHandlers } from '../services/assetsTools';
+import { buildClipboardToolHandlers } from '../services/clipboardTools';
+import { buildPlansToolHandlers } from '../services/plansTools';
+import type { McpHostContext } from '../types';
+import { MCP_RESOURCE_DEFINITIONS } from '../resourceCatalog';
+import { trackMcpEvent } from '../mcpTelemetry';
+
+export interface McpResourceEntry {
+  uri: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+}
+
+function decodeUriSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+function parseCursortoysUri(uri: string): { host: string; segments: string[] } {
+  const normalized = uri.replace(/^cursortoys:\/\//, '');
+  const parts = normalized.split('/').filter(Boolean);
+  return { host: parts[0] ?? '', segments: parts.slice(1) };
+}
+
+/**
+ * Reads MCP resources for cursortoys:// URIs via extension host services.
+ */
+export class McpResourceHost {
+  private readonly assetHandlers: ReturnType<typeof buildAssetToolHandlers>;
+  private readonly planHandlers: ReturnType<typeof buildPlansToolHandlers>;
+  private readonly clipboardHandlers: ReturnType<typeof buildClipboardToolHandlers>;
+
+  constructor(_ctx: McpHostContext) {
+    this.assetHandlers = buildAssetToolHandlers();
+    this.planHandlers = buildPlansToolHandlers();
+    this.clipboardHandlers = buildClipboardToolHandlers();
+  }
+
+  listStaticResources(): McpResourceEntry[] {
+    return MCP_RESOURCE_DEFINITIONS.filter((d) => d.kind === 'static').map((d) => ({
+      uri: d.uri,
+      name: d.name,
+      description: d.description,
+      mimeType: d.mimeType,
+    }));
+  }
+
+  async listResources(template?: string): Promise<McpResourceEntry[]> {
+    const entries: McpResourceEntry[] = [...this.listStaticResources()];
+
+    if (!template || template.includes('kanban/{status}')) {
+      for (const status of ['backlog', 'todo', 'doing', 'done'] as const) {
+        entries.push({
+          uri: `cursortoys://kanban/${status}`,
+          name: `kanban-${status}`,
+          description: `Kanban column: ${status}`,
+          mimeType: 'application/json',
+        });
+      }
+    }
+
+    if (!template || template.includes('kanban/card/{path}')) {
+      const listed = (await kanban.kanbanList({ status: 'all' })) as {
+        cards?: Array<{ filePath: string; title: string }>;
+      };
+      for (const card of listed.cards ?? []) {
+        entries.push({
+          uri: `cursortoys://kanban/card/${encodeURIComponent(card.filePath)}`,
+          name: card.title,
+          description: 'Kanban card',
+          mimeType: 'text/markdown',
+        });
+      }
+    }
+
+    if (!template || template.includes('notepad/{name}')) {
+      const listed = (await notepad.notepadList({})) as { notepads?: Array<{ name: string }> };
+      for (const np of listed.notepads ?? []) {
+        entries.push({
+          uri: `cursortoys://notepad/${encodeURIComponent(np.name)}`,
+          name: np.name,
+          description: 'Notepad',
+          mimeType: 'text/markdown',
+        });
+      }
+    }
+
+    if (!template || template.includes('http/{path}')) {
+      const listed = (await http.httpList()) as { files?: string[] };
+      for (const filePath of listed.files ?? []) {
+        entries.push({
+          uri: `cursortoys://http/${encodeURIComponent(filePath)}`,
+          name: path.basename(filePath),
+          description: 'HTTP request file',
+          mimeType: 'text/plain',
+        });
+      }
+    }
+
+    if (!template || template.includes('assets/{type}')) {
+      for (const type of ['commands', 'rules', 'prompts', 'skills'] as const) {
+        entries.push({
+          uri: `cursortoys://assets/${type}`,
+          name: `${type}-index`,
+          description: `Project ${type} index`,
+          mimeType: 'application/json',
+        });
+      }
+    }
+
+    return entries;
+  }
+
+  async readResource(uri: string): Promise<{ contents: Array<{ uri: string; mimeType: string; text: string }> }> {
+    trackMcpEvent('mcp_resource_read', { uri: uri.split('/').slice(0, 3).join('/') });
+
+    const { host, segments } = parseCursortoysUri(uri);
+    let mimeType = 'application/json';
+    let text = '';
+
+    switch (host) {
+      case 'config':
+        text = JSON.stringify(this.buildConfigSnapshot(), null, 2);
+        break;
+      case 'kanban':
+        if (segments[0] === 'card' && segments[1]) {
+          const filePath = decodeUriSegment(segments.slice(1).join('/'));
+          const data = await kanban.kanbanRead({ filePath });
+          mimeType = 'text/markdown';
+          text = JSON.stringify(data, null, 2);
+        } else if (segments[0]) {
+          const data = await kanban.kanbanList({ status: segments[0] });
+          text = JSON.stringify(data, null, 2);
+        } else {
+          throw new Error('Invalid kanban resource URI');
+        }
+        break;
+      case 'notepad': {
+        const name = decodeUriSegment(segments.join('/'));
+        const data = await notepad.notepadRead({ name });
+        mimeType = 'text/markdown';
+        text = JSON.stringify(data, null, 2);
+        break;
+      }
+      case 'http': {
+        const filePath = decodeUriSegment(segments.join('/'));
+        const data = await http.httpRead({ filePath });
+        mimeType = 'text/plain';
+        text = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        break;
+      }
+      case 'env': {
+        const name = decodeUriSegment(segments.join('/')) || undefined;
+        const data = await http.httpGetEnv({ name });
+        text = JSON.stringify(data, null, 2);
+        break;
+      }
+      case 'anchors':
+        if (segments.length === 0) {
+          const data = await anchor.anchorList();
+          text = JSON.stringify(data, null, 2);
+        } else {
+          const filePath = decodeUriSegment(segments.join('/'));
+          const data = await anchor.anchorListFile({ filePath });
+          text = JSON.stringify(data, null, 2);
+        }
+        break;
+      case 'assets': {
+        const type = segments[0] as 'commands' | 'rules' | 'prompts' | 'skills';
+        const handler = this.assetHandlers[`${type}_list`];
+        const data = handler ? await handler({}) : [];
+        text = JSON.stringify(data, null, 2);
+        break;
+      }
+      case 'asset': {
+        const type = segments[0] as 'commands' | 'rules' | 'prompts' | 'skills';
+        const name = decodeUriSegment(segments.slice(1).join('/'));
+        const handler = this.assetHandlers[`${type}_read`];
+        const data = handler ? await handler({ name }) : null;
+        mimeType = 'text/markdown';
+        text = JSON.stringify(data, null, 2);
+        break;
+      }
+      case 'plan': {
+        const name = decodeUriSegment(segments.join('/'));
+        const data = await this.planHandlers.plan_read({ name });
+        mimeType = 'text/markdown';
+        text = JSON.stringify(data, null, 2);
+        break;
+      }
+      case 'hooks': {
+        const data = await hooks.hooksList({});
+        text = JSON.stringify(data, null, 2);
+        break;
+      }
+      case 'clipboard': {
+        if (segments[0] !== 'history') {
+          throw new Error('Unsupported clipboard resource');
+        }
+        const data = await this.clipboardHandlers.clipboard_history_list({});
+        text = JSON.stringify(data, null, 2);
+        break;
+      }
+      default:
+        throw new Error(`Unknown resource URI: ${uri}`);
+    }
+
+    return {
+      contents: [{ uri, mimeType, text }],
+    };
+  }
+
+  private buildConfigSnapshot(): Record<string, unknown> {
+    const config = vscode.workspace.getConfiguration('cursorToys');
+    const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const baseFolder = getBaseFolderName();
+    return {
+      workspacePath: workspacePath ?? null,
+      extensionDataFolder: getExtensionDataFolderName(),
+      baseFolder,
+      paths: {
+        kanban: getKanbanPath(workspacePath),
+        notepads: getNotepadsPath(workspacePath),
+        http: workspacePath ? getHttpPath(workspacePath) : null,
+        commands: getCommandsPath(workspacePath),
+        rules: getRulesPath(workspacePath),
+        prompts: getPromptsPath(workspacePath),
+        skills: getSkillsPath(workspacePath),
+        plans: getPlansPath(workspacePath),
+        personalHome: getUserHomePath(),
+      },
+      mcp: {
+        enabled: config.get<boolean>('mcp.enabled', false),
+        autoRegister: config.get<boolean>('mcp.autoRegister', true),
+        auditLogEnabled: config.get<boolean>('mcp.auditLogEnabled', false),
+      },
+    };
+  }
+}

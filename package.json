@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.10-0",
+  "version": "2026.6.11-6",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -506,6 +506,21 @@
         "command": "cursor-toys.settings.refresh",
         "title": "CursorToys: Refresh Settings",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.mcp.openMcpJson",
+        "title": "CursorToys: Open Cursor mcp.json",
+        "icon": "$(json)"
+      },
+      {
+        "command": "cursor-toys.mcp.registerInCursor",
+        "title": "CursorToys: Register MCP Server in mcp.json",
+        "icon": "$(add)"
+      },
+      {
+        "command": "cursor-toys.mcp.installSkill",
+        "title": "CursorToys: Install MCP Skill",
+        "icon": "$(book)"
       },
       {
         "command": "cursor-toys.shareAsCursorToysPlan",
@@ -2125,6 +2140,36 @@
             "default": 30,
             "description": "Timeout in seconds for Gemini API requests (default: 30)"
           },
+          "cursorToys.mcp.enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable the built-in CursorToys MCP server (stdio). Requires extension host for workspace access."
+          },
+          "cursorToys.mcp.autoRegister": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically add/remove the cursor-toys entry in ~/.cursor/mcp.json when MCP is enabled/disabled."
+          },
+          "cursorToys.mcp.port": {
+            "type": "number",
+            "default": 0,
+            "description": "Reserved for optional HTTP MCP transport (0 = auto). Stdio transport uses IPC bridge."
+          },
+          "cursorToys.mcp.allowDestructiveWithoutConfirm": {
+            "type": "boolean",
+            "default": false,
+            "description": "When true, MCP delete/clear tools do not require confirm: true (not recommended)."
+          },
+          "cursorToys.mcp.disableClipboardViaMcp": {
+            "type": "boolean",
+            "default": false,
+            "description": "When true, clipboard history MCP tools are disabled."
+          },
+          "cursorToys.mcp.auditLogEnabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Write MCP tool invocations to .cursortoys/mcp-audit.log in the workspace."
+          },
           "cursorToys.mcpb.useOfficialCli": {
             "type": "boolean",
             "default": true,
@@ -2372,6 +2417,7 @@
     "test:extension-data": "npm run compile && node out/utils.extensionData.test.js",
     "test:file-meta": "npm run compile && node out/httpRequestEditorFileMeta.test.js",
     "test:usage-monitor": "npm run compile && node out/providerUsage/openRouterCredits.test.js && node out/providerUsage/openRouterKeyInfo.test.js && node out/providerUsage/openRouterActivity.test.js && node out/providerUsage/usageMonitorPanelState.test.js && node out/providerUsage/deepInfraBilling.test.js",
+    "test:mcp": "npm run compile && node out/mcp/security.test.js && node out/mcp/commandRegistry.test.js && node out/mcp/mcpWave4.test.js",
     "test:projects": "npm run compile && node out/projects/projectRegistry.test.js && node out/projects/projectPathUtils.test.js",
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
@@ -2384,5 +2430,9 @@
   },
   "extensionRecommendations": [
     "godrix.deepspec"
-  ]
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.76"
+  }
 }

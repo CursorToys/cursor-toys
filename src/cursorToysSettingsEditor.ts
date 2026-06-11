@@ -392,6 +392,56 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       );
       return;
 
+    case 'cursorToys.mcp.enabled': {
+      const next = await pickBoolean(settingKey, false, {
+        on: 'Enable built-in CursorToys MCP server',
+        off: 'Disable MCP server',
+      });
+      if (next === undefined) {
+        return;
+      }
+      void vscode.window.showInformationMessage(
+        next
+          ? 'CursorToys MCP enabled. Reload the window or reconnect MCP in Cursor settings for agents to connect.'
+          : 'CursorToys MCP disabled. The cursor-toys entry was removed from mcp.json when auto-register is on.'
+      );
+      return;
+    }
+
+    case 'cursorToys.mcp.autoRegister':
+      await pickBoolean(settingKey, true, {
+        on: 'Update ~/.cursor/mcp.json automatically',
+        off: 'Manual registration only',
+      });
+      return;
+
+    case 'cursorToys.mcp.allowDestructiveWithoutConfirm':
+      await pickBoolean(settingKey, false, {
+        on: 'Skip confirm: true for delete/clear tools',
+        off: 'Require confirm: true (recommended)',
+      });
+      return;
+
+    case 'cursorToys.mcp.disableClipboardViaMcp':
+      await pickBoolean(settingKey, false, {
+        on: 'Block clipboard_* MCP tools',
+        off: 'Allow clipboard MCP tools',
+      });
+      return;
+
+    case 'cursorToys.mcp.auditLogEnabled':
+      await pickBoolean(settingKey, false, {
+        on: 'Log MCP tool calls to workspace',
+        off: 'No MCP audit log',
+      });
+      return;
+
+    case 'cursorToys.mcp.port':
+      await pickNumber(settingKey, 0, 'HTTP port (0 = auto; stdio transport does not use this yet)', (n) =>
+        n < 0 || n > 65535 ? 'Use 0–65535' : null
+      );
+      return;
+
     case 'cursorToys.mcpb.useOfficialCli':
       await pickBoolean(settingKey, true, {
         on: 'Use official MCPB CLI (npx)',

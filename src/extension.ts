@@ -23,6 +23,7 @@ import { UserPlansTreeProvider, PlanFileItem } from './userPlansTreeProvider';
 import { CursorToysSettingsTreeProvider } from './cursorToysSettingsTreeProvider';
 import { installDeepSpecExtension } from './installDeepSpecExtension';
 import { editCursorToysSetting } from './cursorToysSettingsEditor';
+import { installMcpSkill, openCursorMcpJson, registerMcpInCursorConfig } from './mcp/mcpSettingsCommands';
 import { openUserSettingsJson } from './openSettingsUri';
 import { isExtensionPausedForSettingsUi } from './settingsUiGuard';
 import { debounce } from './debounce';
@@ -3633,6 +3634,19 @@ Detailed instructions for the agent.
     }
   );
 
+  const openMcpJson = vscode.commands.registerCommand('cursor-toys.mcp.openMcpJson', () =>
+    openCursorMcpJson()
+  );
+
+  const registerMcpInCursor = vscode.commands.registerCommand(
+    'cursor-toys.mcp.registerInCursor',
+    () => registerMcpInCursorConfig(context)
+  );
+
+  const installMcpSkillCommand = vscode.commands.registerCommand('cursor-toys.mcp.installSkill', () =>
+    installMcpSkill(context)
+  );
+
   const configureKeys = vscode.commands.registerCommand(
     'cursor-toys.settings.configureKeys',
     async () => {
@@ -4994,6 +5008,9 @@ Detailed instructions for the agent.
     editSetting,
     installDeepSpec,
     openSettingsJson,
+    openMcpJson,
+    registerMcpInCursor,
+    installMcpSkillCommand,
     configureKeys,
     focusCursorToysView,
     focusHttpView,
@@ -5079,11 +5096,20 @@ Detailed instructions for the agent.
   if (shouldOpenProjectsDashboardOnStartup()) {
     void ProjectsDashboardPanel.createOrShow();
   }
+
+  // Load MCP after all views/commands are registered so a missing optional dep cannot break the UI.
+  try {
+    const { registerMcpHost } = await import('./mcp/mcpHost');
+    registerMcpHost(context);
+  } catch (err) {
+    console.error('[CursorToys] MCP module failed to load; sidebar views remain available.', err);
+  }
 }
 
 export function deactivate() {
   // Dispose environment manager watchers
   const envManager = EnvironmentManager.getInstance();
   envManager.dispose();
+  void import('./mcp/mcpHost').then((m) => m.stopMcpHost());
 }
 

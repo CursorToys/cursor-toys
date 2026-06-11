@@ -54,6 +54,7 @@ Everything below follows that pattern: short path from intent to action, progres
 | [💬 Chat Integration](#-chat-integration) | Send selections and prompts to Cursor chat faster. |
 | [🗜️ File Minification](#️-file-minification) | Minify JSON, HTML, CSS, JS, and more — files or clipboard. |
 | [🌐 GitHub Gist Integration](#-github-gist-integration) | Share and import via Gist for browser-friendly links. |
+| [🔌 MCP Server](#-mcp-server-built-in) | Built-in MCP: agents control Kanban, HTTP, assets, and more via tools/resources/prompts. |
 | [📦 MCPB Packages](#-mcpb-packages) | Install MCP server bundles (`.mcpb`) into Cursor with preview. |
 | [📊 Spending (API usage)](#-spending-cursor-api-usage) | See Cursor Auto/API usage % in the status bar. |
 | [🧪 DeepSpec](#-deepspec) | Spec-driven dev — install the separate **DeepSpec** extension (`godrix.deepspec`). |
@@ -218,6 +219,18 @@ GET https://api.example.com/user/123
 **Share for the web, not just Cursor** — public or private gists with version history.
 
 - Recipients view in the browser; import back with `Cmd+Shift+I`.
+
+### 🔌 MCP Server (built-in)
+
+**Let Cursor agents drive CursorToys** — first-party MCP server embedded in the extension (distinct from MCPB external bundles).
+
+- Enable: **CursorToys → Settings → MCP Server → Enable MCP Server** (`cursorToys.mcp.enabled`).
+- Auto-registers in `~/.cursor/mcp.json` when `cursorToys.mcp.autoRegister` is on (uses Cursor's embedded Node runtime).
+- **Tools** (~150+): Kanban, Notepads, HTTP, anchors, assets, hooks, plans, clipboard, chat, settings, DeepSpec integration, plus `cursortoys_execute` dispatcher.
+- **Resources** (`cursortoys://…`): config snapshot, kanban columns/cards, notepads, HTTP files, anchors, assets, plans, hooks, clipboard history.
+- **Prompts**: `kanban-workflow`, `http-test-suite`, `project-inventory`, `share-and-import`, `anchor-navigation`, `notepad-scratchpad`.
+- Security: destructive ops require `confirm: true`; secrets redacted; optional audit log at `.cursortoys/mcp-audit.log`.
+- **Install skill**: CursorToys Settings → MCP Server → **Install MCP Skill**, command palette, or MCP tool `mcp_install_skill` (bundled template → `.{baseFolder}/skills/cursor-toys-mcp/`).
 
 ### 📦 MCPB Packages
 
