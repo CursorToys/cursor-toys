@@ -67,6 +67,17 @@ import { CursorToysUtilsTreeProvider } from './utilsTreeProvider';
 import { injectTextToChat, notifyPasteWithoutSubmit, removeLegacyRemoteChatSkill } from './chatInjection';
 import * as fs from 'fs';
 import { syncExplorerViewVisibility, syncSidebarViewVisibility } from './sidebarVisibility';
+import { ProjectRegistry } from './projects/projectRegistry';
+import { ProjectsTreeProvider } from './projects/projectsTreeProvider';
+import {
+  registerProjectsCommands,
+  recordCurrentWorkspaceIfEnabled,
+} from './projects/projectsCommands';
+import {
+  syncProjectsContext,
+  shouldOpenProjectsDashboardOnStartup,
+} from './projects/projectsConfig';
+import { ProjectsDashboardPanel } from './projects/projectsDashboardPanel';
 import { CodeAnchorsManager } from './codeAnchorsManager';
 import { CodeAnchorsDecorationProvider } from './codeAnchorsDecorationProvider';
 import { CodeAnchorsTreeProvider } from './codeAnchorsTreeProvider';
@@ -207,6 +218,7 @@ async function generateShareableWithPathValidation(
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   await syncSidebarViewVisibility();
   await syncExplorerViewVisibility();
+  await syncProjectsContext();
   await syncClipboardKeybindingContext();
 
   // Register URI Handler early so cursor:// or vscode:// links open the panel as soon as the extension activates
@@ -1966,6 +1978,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     showCollapseAll: false,
   });
 
+  const projectRegistry = ProjectRegistry.getInstance();
+  const projectsTreeProvider = new ProjectsTreeProvider(projectRegistry);
+  const refreshProjectsViews = (): void => {
+    projectsTreeProvider.refresh();
+  };
+  void projectRegistry.initialize().then((registryDisposable) => {
+    context.subscriptions.push(registryDisposable);
+  });
+  registerProjectsCommands(context, refreshProjectsViews);
+  const userProjectsTreeView = vscode.window.createTreeView('cursor-toys.userProjects', {
+    treeDataProvider: projectsTreeProvider,
+    showCollapseAll: true,
+  });
+
   const userClipboardTreeProvider = new UserClipboardTreeProvider();
   const userClipboardTreeView = vscode.window.createTreeView('cursor-toys.userClipboard', {
     treeDataProvider: userClipboardTreeProvider,
@@ -2051,6 +2077,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const userKanbanExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userKanban', {
     treeDataProvider: userKanbanTreeProvider,
     showCollapseAll: false,
+  });
+  const userProjectsExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userProjects', {
+    treeDataProvider: projectsTreeProvider,
+    showCollapseAll: true,
   });
   const userClipboardExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userClipboard', {
     treeDataProvider: userClipboardTreeProvider,
@@ -4825,6 +4855,11 @@ Detailed instructions for the agent.
       void syncSidebarViewVisibility();
       void syncExplorerViewVisibility();
     }
+    if (e.affectsConfiguration('cursorToys.projects')) {
+      void syncProjectsContext();
+      refreshProjectsViews();
+      void recordCurrentWorkspaceIfEnabled();
+    }
     if (
       e.affectsConfiguration('cursorToys.commandsFolder') ||
       e.affectsConfiguration('cursorToys.personalCommandsView')
@@ -4927,6 +4962,8 @@ Detailed instructions for the agent.
     refreshUserHttp,
     userNotepadsTreeView,
     userKanbanTreeView,
+    userProjectsTreeView,
+    userProjectsExplorerTreeView,
     userClipboardTreeView,
     userClipboardExplorerTreeView,
     openKanbanBoard,
@@ -5037,6 +5074,11 @@ Detailed instructions for the agent.
   context.subscriptions.push({
     dispose: () => decorationProvider.dispose()
   });
+
+  void recordCurrentWorkspaceIfEnabled();
+  if (shouldOpenProjectsDashboardOnStartup()) {
+    void ProjectsDashboardPanel.createOrShow();
+  }
 }
 
 export function deactivate() {

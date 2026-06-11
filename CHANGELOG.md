@@ -2,6 +2,15 @@
 
 ![](https://i.imgur.com/WdFjpJk.jpeg)
 
+## v2026.6.10-0 - Projects Workspace Launcher
+
+### Added
+
+- **Projects** (opt-in via `cursorToys.projects.enabled`): pin, categorize, and reopen frequent workspaces from a CursorToys sidebar view and **Projects Dashboard** webview.
+- Registry stored at `~/.cursortoys/projects/registry.json` with pinned metadata (label, category, color, notes) and extension-maintained recent list.
+- Commands: **Pin Current Workspace**, **Add Project from Folder**, **Open Projects Dashboard**, **Clear Recent Projects**.
+- Settings category under **CursorToys → Settings → Projects** (recent limit, open in new window, dashboard on startup).
+
 ## v2026.6.8-2 - CursorToys Command Palette
 
 ### Added

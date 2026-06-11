@@ -512,6 +512,39 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       });
       return;
 
+    case 'cursorToys.projects.enabled':
+      await pickBoolean(settingKey, false, {
+        on: 'Enable Projects workspace launcher',
+        off: 'Disable Projects workspace launcher',
+      });
+      return;
+
+    case 'cursorToys.projects.openInNewWindow':
+      await pickBoolean(settingKey, false, {
+        on: 'Open projects in a new window',
+        off: 'Open projects in the current window',
+      });
+      return;
+
+    case 'cursorToys.projects.openDashboardOnStartup':
+      await pickBoolean(settingKey, false, {
+        on: 'Open Projects dashboard on startup',
+        off: 'Do not open dashboard on startup',
+      });
+      return;
+
+    case 'cursorToys.projects.recentLimit':
+      await pickNumber(settingKey, 15, 'Recent projects list limit', (n) => {
+        if (n < 1) {
+          return 'Minimum 1';
+        }
+        if (n > 100) {
+          return 'Maximum 100';
+        }
+        return null;
+      });
+      return;
+
     case 'cursorToys.usageMonitor.openRouter.showInStatusBar':
       await pickBoolean(settingKey, false, {
         on: 'Show OpenRouter balance in status bar',

@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.8-2",
+  "version": "2026.6.10-0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -66,6 +66,7 @@
     "onView:cursor-toys.userPrompts",
     "onView:cursor-toys.userNotepads",
     "onView:cursor-toys.userKanban",
+    "onView:cursor-toys.userProjects",
     "onView:cursor-toys.userClipboard",
     "onView:cursor-toys.userSkills",
     "onView:cursor-toys.userHttp",
@@ -96,6 +97,7 @@
     "onView:cursor-toys.explorer.userPrompts",
     "onView:cursor-toys.explorer.userNotepads",
     "onView:cursor-toys.explorer.userKanban",
+    "onView:cursor-toys.explorer.userProjects",
     "onView:cursor-toys.explorer.userClipboard",
     "onView:cursor-toys.explorer.userPlans",
     "onView:cursor-toys.explorer.userSkills",
@@ -389,6 +391,55 @@
       {
         "command": "cursor-toys.refreshKanban",
         "title": "CursorToys: Refresh Kanban",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.projects.openDashboard",
+        "title": "CursorToys: Open Projects Dashboard",
+        "icon": "$(layout)"
+      },
+      {
+        "command": "cursor-toys.projects.pinCurrent",
+        "title": "CursorToys: Pin Current Workspace",
+        "icon": "$(pin)"
+      },
+      {
+        "command": "cursor-toys.projects.addFromFolder",
+        "title": "CursorToys: Add Project from Folder",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "cursor-toys.projects.open",
+        "title": "CursorToys: Open Project",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "cursor-toys.projects.edit",
+        "title": "CursorToys: Edit Project",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "cursor-toys.projects.unpin",
+        "title": "CursorToys: Unpin Project",
+        "icon": "$(pinned-dirty)"
+      },
+      {
+        "command": "cursor-toys.projects.remove",
+        "title": "CursorToys: Remove Project",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "cursor-toys.projects.pinEntry",
+        "title": "CursorToys: Pin Project",
+        "icon": "$(pin)"
+      },
+      {
+        "command": "cursor-toys.projects.clearRecent",
+        "title": "CursorToys: Clear Recent Projects"
+      },
+      {
+        "command": "cursor-toys.projects.refresh",
+        "title": "CursorToys: Refresh Projects",
         "icon": "$(refresh)"
       },
       {
@@ -907,6 +958,12 @@
           "visibility": "collapsed"
         },
         {
+          "id": "cursor-toys.userProjects",
+          "name": "Projects",
+          "when": "cursorToys.projects.enabled && cursorToys.sidebar.projectsVisible",
+          "visibility": "collapsed"
+        },
+        {
           "id": "cursor-toys.codeAnchors",
           "name": "Code Anchors",
           "when": "cursorToys.codeAnchorsEnabled",
@@ -948,6 +1005,11 @@
           "id": "cursor-toys.explorer.userKanban",
           "name": "Kanban",
           "when": "cursorToys.explorer.kanbanVisible"
+        },
+        {
+          "id": "cursor-toys.explorer.userProjects",
+          "name": "Projects",
+          "when": "cursorToys.projects.enabled && cursorToys.explorer.projectsVisible"
         },
         {
           "id": "cursor-toys.explorer.userClipboard",
@@ -1054,6 +1116,21 @@
           "command": "cursor-toys.refreshNotepads",
           "when": "view =~ /cursor-toys\\.(explorer\\.)?userNotepads/",
           "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.projects.openDashboard",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userProjects/",
+          "group": "navigation@1"
+        },
+        {
+          "command": "cursor-toys.projects.pinCurrent",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userProjects/",
+          "group": "navigation@2"
+        },
+        {
+          "command": "cursor-toys.projects.refresh",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userProjects/",
+          "group": "navigation@3"
         },
         {
           "command": "cursor-toys.openKanbanBoard",
@@ -1275,6 +1352,31 @@
         {
           "command": "cursor-toys.deleteKanbanCard",
           "when": "view =~ /cursor-toys\\.(explorer\\.)?userKanban/ && viewItem == userKanbanFile",
+          "group": "2_actions"
+        },
+        {
+          "command": "cursor-toys.projects.open",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userProjects/ && viewItem =~ /projects(Pinned|Recent)Item/",
+          "group": "inline"
+        },
+        {
+          "command": "cursor-toys.projects.edit",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userProjects/ && viewItem =~ /projects(Pinned|Recent)Item/",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.projects.unpin",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userProjects/ && viewItem == projectsPinnedItem",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.projects.pinEntry",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userProjects/ && viewItem == projectsRecentItem",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.projects.remove",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userProjects/ && viewItem =~ /projects(Pinned|Recent)Item/",
           "group": "2_actions"
         },
         {
@@ -1835,11 +1937,12 @@
                 "skills",
                 "hooks",
                 "mcpb",
-                "http"
+                "http",
+                "projects"
               ]
             },
             "default": [],
-            "markdownDescription": "Explorer sidebar sections to hide under CursorToys. Keys: `notepads`, `kanban`, `clipboard`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`. Empty list shows all sections. Command Palette and file actions still work for hidden resources."
+            "markdownDescription": "Explorer sidebar sections to hide under CursorToys. Keys: `notepads`, `kanban`, `clipboard`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`, `projects`. Empty list shows all sections. Command Palette and file actions still work for hidden resources."
           },
           "cursorToys.sidebar.explorerViews": {
             "type": "array",
@@ -1855,14 +1958,15 @@
                 "skills",
                 "hooks",
                 "mcpb",
-                "http"
+                "http",
+                "projects"
               ]
             },
             "default": [
               "skills",
               "plans"
             ],
-            "markdownDescription": "Explorer sidebar sections to also show in the Explorer (in addition to the CursorToys activity bar). Keys: `notepads`, `kanban`, `clipboard`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`. Default: `skills`, `plans`."
+            "markdownDescription": "Explorer sidebar sections to also show in the Explorer (in addition to the CursorToys activity bar). Keys: `notepads`, `kanban`, `clipboard`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`, `projects`. Default: `skills`, `plans`."
           },
           "cursorToys.httpRequestTimeout": {
             "type": "number",
@@ -2079,6 +2183,28 @@
             "type": "boolean",
             "default": false,
             "description": "Show a Notepads icon in the status bar to focus the Notepads sidebar view."
+          },
+          "cursorToys.projects.enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable the Projects sidebar and dashboard to pin, categorize, and reopen frequent workspaces."
+          },
+          "cursorToys.projects.recentLimit": {
+            "type": "number",
+            "default": 15,
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Maximum number of workspaces kept in the Recent list."
+          },
+          "cursorToys.projects.openInNewWindow": {
+            "type": "boolean",
+            "default": false,
+            "description": "Open projects in a new window instead of replacing the current window."
+          },
+          "cursorToys.projects.openDashboardOnStartup": {
+            "type": "boolean",
+            "default": false,
+            "description": "Open the Projects dashboard when Cursor starts (requires projects.enabled)."
           }
         }
       },
@@ -2246,6 +2372,7 @@
     "test:extension-data": "npm run compile && node out/utils.extensionData.test.js",
     "test:file-meta": "npm run compile && node out/httpRequestEditorFileMeta.test.js",
     "test:usage-monitor": "npm run compile && node out/providerUsage/openRouterCredits.test.js && node out/providerUsage/openRouterKeyInfo.test.js && node out/providerUsage/openRouterActivity.test.js && node out/providerUsage/usageMonitorPanelState.test.js && node out/providerUsage/deepInfraBilling.test.js",
+    "test:projects": "npm run compile && node out/projects/projectRegistry.test.js && node out/projects/projectPathUtils.test.js",
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
     "publish": "vsce publish"
