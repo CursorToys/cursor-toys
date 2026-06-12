@@ -496,8 +496,10 @@ export function isPlanFile(filePath: string): boolean {
   return fileName.endsWith('.plan.md');
 }
 
+import { getHttpResponseExtension, isHttpRequestExtension } from './httpRequestExtensions';
+
 /**
- * Checks if a file is an HTTP request file (.req or .request) in .{baseFolder}/http/ folder
+ * Checks if a file is an HTTP request file in .{baseFolder}/http/ folder
  * @param filePath The file path to check
  * @returns true if the file is an HTTP request file
  */
@@ -511,24 +513,20 @@ export function isHttpRequestFile(filePath: string): boolean {
     return false;
   }
   
-  // Check if extension is .req or .request
   const ext = getFileExtension(filePath).toLowerCase();
-  return ext === 'req' || ext === 'request';
+  return isHttpRequestExtension(ext);
 }
 
 /**
  * Gets the response file path for a given request file path
- * @param requestPath The path to the .req or .request file
- * @returns The path to the corresponding .res or .response file
+ * @param requestPath The path to the HTTP request file
+ * @returns The path to the corresponding response sidecar file
  */
 export function getHttpResponsePath(requestPath: string): string {
   const ext = getFileExtension(requestPath).toLowerCase();
   const dir = path.dirname(requestPath);
   const baseName = getFileNameWithoutExtension(requestPath);
-  
-  // Replace .req with .res or .request with .response
-  // .res naturally sorts after .req alphabetically
-  const responseExt = ext === 'req' ? 'res' : 'response';
+  const responseExt = getHttpResponseExtension(ext);
   return path.join(dir, `${baseName}.${responseExt}`);
 }
 

@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import { getFileTypeFromPath, sanitizeFileName, isAllowedExtension, getBaseFolderName, getProjectEnvRoot, listProjectEnvFileNames } from './utils';
+import { getFileTypeFromPath, sanitizeFileName, isAllowedExtension, getBaseFolderName, getProjectEnvRoot, listProjectEnvFileNames, getFileExtension } from './utils';
+import { isHttpRequestExtension } from './httpRequestExtensions';
 import { GistManager } from './gistManager';
 
 const MAX_CONTENT_SIZE = 50 * 1024 * 1024; // 50MB limit for safety
@@ -47,8 +48,8 @@ export async function generateShareable(
     // Validate file extension based on type
     if (fileType === 'http') {
       const ext = path.extname(filePath).substring(1).toLowerCase();
-      if (ext !== 'req' && ext !== 'request') {
-        vscode.window.showErrorMessage('HTTP files must have .req or .request extension');
+      if (!isHttpRequestExtension(getFileExtension(filePath))) {
+        vscode.window.showErrorMessage('HTTP files must have .req, .request, .http, or .rest extension');
         return null;
       }
     } else if (fileType === 'env') {
@@ -222,8 +223,8 @@ export async function generateShareableWithPath(
     // Validate file extension based on type
     if (fileType === 'http') {
       const ext = path.extname(filePath).substring(1).toLowerCase();
-      if (ext !== 'req' && ext !== 'request') {
-        vscode.window.showErrorMessage('HTTP files must have .req or .request extension');
+      if (!isHttpRequestExtension(getFileExtension(filePath))) {
+        vscode.window.showErrorMessage('HTTP files must have .req, .request, .http, or .rest extension');
         return null;
       }
     } else if (fileType === 'env') {
@@ -333,7 +334,7 @@ async function collectHttpFilesFromFolder(folderPath: string): Promise<string[]>
       } else if (type === vscode.FileType.File) {
         // Check if file has .req or .request extension
         const ext = path.extname(name).substring(1).toLowerCase();
-        if (ext === 'req' || ext === 'request') {
+        if (isHttpRequestExtension(ext)) {
           files.push(fullPath);
         }
       }
@@ -1339,8 +1340,8 @@ export async function generateGistShareable(
     // Validate file extension based on type
     if (fileType === 'http') {
       const ext = path.extname(filePath).substring(1).toLowerCase();
-      if (ext !== 'req' && ext !== 'request') {
-        vscode.window.showErrorMessage('HTTP files must have .req or .request extension');
+      if (!isHttpRequestExtension(getFileExtension(filePath))) {
+        vscode.window.showErrorMessage('HTTP files must have .req, .request, .http, or .rest extension');
         return null;
       }
     } else if (fileType === 'env') {

@@ -1,0 +1,85 @@
+{
+  "GET Request": {
+    "prefix": "get",
+    "body": [
+      "### ${1:Request name}",
+      "GET {{${2:BASE_URL}}}/${3:path}",
+      "Accept: application/json",
+      "",
+      "###"
+    ],
+    "description": "GET request block"
+  },
+  "POST Request": {
+    "prefix": "post",
+    "body": [
+      "### ${1:Request name}",
+      "POST {{${2:BASE_URL}}}/${3:path}",
+      "Content-Type: application/json",
+      "",
+      "{",
+      "  \"${4:key}\": \"${5:value}\"",
+      "}",
+      "",
+      "###"
+    ],
+    "description": "POST request with JSON body"
+  },
+  "PUT Request": {
+    "prefix": "put",
+    "body": [
+      "### ${1:Request name}",
+      "PUT {{${2:BASE_URL}}}/${3:path}",
+      "Content-Type: application/json",
+      "",
+      "{}",
+      "",
+      "###"
+    ],
+    "description": "PUT request block"
+  },
+  "PATCH Request": {
+    "prefix": "patch",
+    "body": [
+      "### ${1:Request name}",
+      "PATCH {{${2:BASE_URL}}}/${3:path}",
+      "Content-Type: application/json",
+      "",
+      "{}",
+      "",
+      "###"
+    ],
+    "description": "PATCH request block"
+  },
+  "DELETE Request": {
+    "prefix": "delete",
+    "body": [
+      "### ${1:Request name}",
+      "DELETE {{${2:BASE_URL}}}/${3:path}",
+      "Accept: application/json",
+      "",
+      "###"
+    ],
+    "description": "DELETE request block"
+  },
+  "HTTP Section": {
+    "prefix": "http",
+    "body": [
+      "## ${1:Section title}",
+      "",
+      "### ${2:First request}",
+      "GET {{${3:BASE_URL}}}/",
+      "",
+      "###",
+      "",
+      "### ${4:Second request}",
+      "POST {{${3:BASE_URL}}}/",
+      "Content-Type: application/json",
+      "",
+      "{}",
+      "",
+      "###"
+    ],
+    "description": "Section with multiple ###-delimited requests"
+  }
+}

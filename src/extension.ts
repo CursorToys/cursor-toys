@@ -44,7 +44,7 @@ import {
   toHttpFolderRelativePath,
 } from './httpCliRunner';
 import { EnvironmentManager } from './environmentManager';
-import { HttpVariableHoverProvider, HttpEnvironmentCompletionProvider, HttpEnvironmentDecorationProvider } from './httpEnvironmentProviders';
+import { HttpVariableHoverProvider, HttpEnvironmentCompletionProvider, HttpEnvironmentDecorationProvider, HttpRequestDefinitionProvider, HttpRequestDocumentFormattingProvider } from './httpEnvironmentProviders';
 import { minifyFile, formatMinificationStats, detectFileType } from './minifier';
 import { trimClipboardAuto, trimClipboardWithPrompt } from './clipboardProcessor';
 import { refineSelectedText, refineClipboard, refineAndGetText, processWithPrompt, configureGeminiApiKey, removeGeminiApiKey } from './textRefiner';
@@ -404,17 +404,33 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   
   // Register HTTP environment providers
+  const httpFileSelector: vscode.DocumentFilter[] = [
+    { pattern: '**/*.{req,request,http,rest}' },
+  ];
+
   const httpHoverProvider = new HttpVariableHoverProvider();
   const httpHoverDisposable = vscode.languages.registerHoverProvider(
-    { pattern: '**/*.{req,request}' },
+    httpFileSelector,
     httpHoverProvider
   );
 
   const httpCompletionProvider = new HttpEnvironmentCompletionProvider();
   const httpCompletionDisposable = vscode.languages.registerCompletionItemProvider(
-    { pattern: '**/*.{req,request}' },
+    httpFileSelector,
     httpCompletionProvider,
-    ' ' // Trigger on space after @env
+    ' ',
+    '{',
+    ':'
+  );
+
+  const httpDefinitionDisposable = vscode.languages.registerDefinitionProvider(
+    httpFileSelector,
+    new HttpRequestDefinitionProvider()
+  );
+
+  const httpFormatDisposable = vscode.languages.registerDocumentFormattingEditProvider(
+    { language: 'http-request' },
+    new HttpRequestDocumentFormattingProvider()
   );
 
   // Register environment decorator provider
@@ -4925,6 +4941,8 @@ Detailed instructions for the agent.
     envCodeLensDisposable,
     httpHoverDisposable,
     httpCompletionDisposable,
+    httpDefinitionDisposable,
+    httpFormatDisposable,
     activeEditorChangeDisposable,
     documentChangeDisposable,
     visibleEditorsChangeDisposable,

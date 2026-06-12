@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-/** A runnable HTTP block inside a .req / .request file (matches CodeLens send targets). */
+/** A runnable HTTP block inside an HTTP request file (matches CodeLens send targets). */
 export interface HttpRequestBlock {
   title: string;
   titleLine: number;
@@ -8,6 +8,79 @@ export interface HttpRequestBlock {
   endLine: number;
   envName: string | null;
   kind: 'section' | 'curl' | 'rest' | 'fallback';
+}
+
+const REST_METHOD_LINE =
+  /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(https?:\/\/|\{\{).+$/i;
+
+/**
+ * Splits a `##` section into per-request sub-blocks when multiple REST methods exist.
+ */
+export function expandSectionSubBlocks(
+  document: vscode.TextDocument,
+  section: HttpRequestBlock
+): HttpRequestBlock[] {
+  const lines = document.getText().split('\n');
+  const methodLines: number[] = [];
+
+  for (let i = section.startLine; i <= section.endLine; i++) {
+    if (REST_METHOD_LINE.test(lines[i].trim())) {
+      methodLines.push(i);
+    }
+  }
+
+  if (methodLines.length <= 1) {
+    return [section];
+  }
+
+  const subBlocks: HttpRequestBlock[] = [];
+
+  for (let m = 0; m < methodLines.length; m++) {
+    const startLine = methodLines[m];
+    let titleLine = startLine;
+    let title = section.title;
+
+    for (let k = startLine - 1; k >= section.startLine; k--) {
+      const t = lines[k].trim();
+      if (t === '###') {
+        continue;
+      }
+      const titleMatch = t.match(/^###\s+(.+)$/);
+      if (titleMatch?.[1]?.trim()) {
+        title = titleMatch[1].trim();
+        titleLine = k;
+        break;
+      }
+      if (REST_METHOD_LINE.test(t)) {
+        break;
+      }
+    }
+
+    let endLine = m + 1 < methodLines.length ? methodLines[m + 1] - 1 : section.endLine;
+    for (let j = startLine + 1; j <= endLine; j++) {
+      if (lines[j].trim() === '###') {
+        endLine = j - 1;
+        break;
+      }
+    }
+
+    const methodMatch = lines[startLine].trim().match(/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)/i);
+    const displayTitle =
+      title !== section.title && title !== methodMatch?.[1]?.toUpperCase()
+        ? title
+        : `${section.title}${methodMatch ? ` (${methodMatch[1].toUpperCase()})` : ''}`;
+
+    subBlocks.push({
+      title: displayTitle,
+      titleLine,
+      startLine,
+      endLine,
+      envName: section.envName,
+      kind: 'rest',
+    });
+  }
+
+  return subBlocks;
 }
 
 /**
@@ -243,9 +316,14 @@ export function findStandaloneRestClientBlocks(
  */
 export function getHttpRequestBlocks(document: vscode.TextDocument): HttpRequestBlock[] {
   const sections = parseRequestSections(document);
+  const expandedSections: HttpRequestBlock[] = [];
+  for (const section of sections) {
+    expandedSections.push(...expandSectionSubBlocks(document, section));
+  }
+
   const coveredLines = new Set<number>();
 
-  for (const section of sections) {
+  for (const section of expandedSections) {
     for (let i = section.startLine; i <= section.endLine; i++) {
       coveredLines.add(i);
     }
@@ -254,7 +332,7 @@ export function getHttpRequestBlocks(document: vscode.TextDocument): HttpRequest
   const curls = findStandaloneCurlBlocks(document, coveredLines);
   const restBlocks = findStandaloneRestClientBlocks(document, coveredLines);
 
-  const all = [...sections, ...curls, ...restBlocks];
+  const all = [...expandedSections, ...curls, ...restBlocks];
 
   if (all.length === 0) {
     return [

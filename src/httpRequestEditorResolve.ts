@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
-import { extractFileVariables, getEnvironmentForSection } from './httpRequestExecutor';
+import { mergeCustomVariables } from './httpRequestVariables';
+import { getEnvironmentForSection } from './httpRequestExecutor';
+import { resolveHttpVariables } from './httpVariableResolver';
 import { EnvironmentManager } from './environmentManager';
 import type {
   HttpRequestFormData,
@@ -42,7 +44,7 @@ export function buildVariablePreview(
   resolvedUrl: string;
   bindings: HttpRequestVariableBinding[];
 } {
-  const fileVars = extractFileVariables(document, blockStartLine);
+  const fileVars = mergeCustomVariables(document, blockStartLine);
   const blockEnv = getEnvironmentForSection(document, blockStartLine);
   const globalEnv = getEnvironmentForSection(document, 0);
 
@@ -104,10 +106,18 @@ export function buildVariablePreview(
   }
 
   let resolvedUrl = form.url;
-  resolvedUrl = replaceFilePlaceholders(resolvedUrl, fileVars);
-  if (workspacePath && effectiveEnv) {
-    resolvedUrl = envManager.replaceVariables(resolvedUrl, effectiveEnv, workspacePath);
-  }
+  const dotenvVariables =
+    workspacePath && effectiveEnv
+      ? envManager.loadEnvironment(effectiveEnv, workspacePath) ?? undefined
+      : undefined;
+  resolvedUrl = resolveHttpVariables({
+    content: resolvedUrl,
+    workspacePath,
+    envName: effectiveEnv || null,
+    customVariables: fileVars,
+    dotenvVariables: dotenvVariables ?? undefined,
+    resolveDynamic: false,
+  });
 
   bindings.sort((a, b) => a.name.localeCompare(b.name));
 

@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import * as child_process from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import { mergeCustomVariables } from './httpRequestVariables';
+import { resolveHttpVariables } from './httpVariableResolver';
 import { getHttpResponsePath } from './utils';
 import { EnvironmentManager } from './environmentManager';
 import {
@@ -1171,123 +1173,7 @@ export function extractFileVariables(
   document: vscode.TextDocument,
   startLine?: number
 ): Map<string, string> {
-  const variables = new Map<string, string>();
-  
-  // Determine search range
-  let searchStart = 0;
-  let searchEnd = document.lineCount;
-  
-  if (startLine !== undefined) {
-    // For section-based, find the section header and search from there
-    let sectionHeaderLine = startLine;
-    for (let i = startLine; i >= 0; i--) {
-      const line = document.lineAt(i).text.trim();
-      if (line.startsWith('##')) {
-        sectionHeaderLine = i;
-        break;
-      }
-    }
-    searchStart = sectionHeaderLine;
-    
-    // Find end of section (next ## or end of file)
-    for (let i = startLine + 1; i < document.lineCount; i++) {
-      const line = document.lineAt(i).text.trim();
-      if (line.startsWith('##')) {
-        searchEnd = i;
-        break;
-      }
-    }
-  }
-  
-  // First, collect global variables (before first ### separator)
-  // Note: ### with text (decorative) is ignored. Only ### alone on a line is treated as separator.
-  let globalVarsEndLine = document.lineCount;
-  for (let i = 0; i < document.lineCount; i++) {
-    const line = document.lineAt(i).text.trim();
-    if (line === '###') {
-      globalVarsEndLine = i;
-      break;
-    }
-  }
-  
-  for (let i = 0; i < globalVarsEndLine; i++) {
-    const line = document.lineAt(i).text.trim();
-    
-    // Skip ## headers - they don't end the global variable section
-    if (line.startsWith('##')) {
-      continue;
-    }
-    
-    // Match: # @var VAR_NAME=value or # @var VAR_NAME value
-    const match = line.match(/^#\s*@var\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:=\s*)?(.+)?$/i);
-    if (match) {
-      const varName = match[1];
-      const value = match[2] ? match[2].trim() : '';
-      // Remove quotes if present
-      const cleanValue = value.replace(/^["']|["']$/g, '');
-      variables.set(varName, cleanValue);
-    }
-  }
-  
-  // Collect variables from blocks between global section and current section (cascade effect)
-  // This implements variable override in cascade: variables after ### override previous ones
-  if (startLine !== undefined) {
-    let currentBlockStart = 0;
-    
-    // Find all ### separators and blocks before the current line
-    for (let i = 0; i < startLine; i++) {
-      const line = document.lineAt(i).text.trim();
-      
-      // When we find a ### separator, process variables in the block that just ended
-      if (line === '###') {
-        // Process variables from currentBlockStart to i
-        for (let j = currentBlockStart; j < i; j++) {
-          const blockLine = document.lineAt(j).text.trim();
-          const match = blockLine.match(/^#\s*@var\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:=\s*)?(.+)?$/i);
-          if (match) {
-            const varName = match[1];
-            const value = match[2] ? match[2].trim() : '';
-            const cleanValue = value.replace(/^["']|["']$/g, '');
-            // Override previous value (cascade effect)
-            variables.set(varName, cleanValue);
-          }
-        }
-        currentBlockStart = i + 1;
-      }
-    }
-    
-    // Process variables in the final block (from last ### to current line)
-    for (let j = currentBlockStart; j < startLine; j++) {
-      const blockLine = document.lineAt(j).text.trim();
-      const match = blockLine.match(/^#\s*@var\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:=\s*)?(.+)?$/i);
-      if (match) {
-        const varName = match[1];
-        const value = match[2] ? match[2].trim() : '';
-        const cleanValue = value.replace(/^["']|["']$/g, '');
-        variables.set(varName, cleanValue);
-      }
-    }
-  }
-  
-  // Then, collect section-specific variables (override global and cascade)
-  if (startLine !== undefined) {
-    for (let i = searchStart; i < searchEnd; i++) {
-      const line = document.lineAt(i).text.trim();
-      
-      // Match: # @var VAR_NAME=value or # @var VAR_NAME value
-      const match = line.match(/^#\s*@var\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*(?:=\s*)?(.+)?$/i);
-      if (match) {
-        const varName = match[1];
-        const value = match[2] ? match[2].trim() : '';
-        // Remove quotes if present
-        const cleanValue = value.replace(/^["']|["']$/g, '');
-        // Section-specific variables override global ones
-        variables.set(varName, cleanValue);
-      }
-    }
-  }
-  
-  return variables;
+  return mergeCustomVariables(document, startLine);
 }
 
 /**
@@ -1389,20 +1275,8 @@ export async function executeHttpRequestFromFile(
       content = replacePromptExpressions(content, allValues);
     }
     
-    // Process file-level variables (# @var VAR_NAME=value) second
+    // Process file-level and request-scoped variables (# @var)
     const fileVariables = extractFileVariables(document, startLine);
-    if (fileVariables.size > 0) {
-      // Replace file variables with their defined values
-      content = replaceFileVariables(content, fileVariables);
-    }
-    
-    // Extract assertions from content (BEFORE removing comment blocks)
-    const { extractAssertions, removeAssertionBlocks } = require('./assertionParser');
-    const assertions = extractAssertions(content);
-    console.log(`[DEBUG] Extracted ${assertions.length} assertions from content`);
-    
-    // Remove assertion blocks from content before parsing the request
-    content = removeAssertionBlocks(content);
     
     // Detect environment decorator for this section
     let envName: string | null = null;
@@ -1411,29 +1285,38 @@ export async function executeHttpRequestFromFile(
     if (startLine !== undefined) {
       envName = getEnvironmentForSection(document, startLine);
     } else {
-      // For full file execution, check from the beginning
       envName = getEnvironmentForSection(document, 0);
     }
-    
-    // If environment decorator is present, process variables
-    if (envName) {
-      const workspaceFolders = vscode.workspace.workspaceFolders;
-      if (workspaceFolders && workspaceFolders.length > 0) {
-        const workspacePath = workspaceFolders[0].uri.fsPath;
-        const envManager = EnvironmentManager.getInstance();
-        
-        // Validate variables
+
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    const workspacePath = workspaceFolders?.[0]?.uri.fsPath;
+    const envManager = EnvironmentManager.getInstance();
+    const dotenvVariables = envName && workspacePath
+      ? envManager.loadEnvironment(envName, workspacePath) ?? undefined
+      : undefined;
+
+    if (fileVariables.size > 0 || envName || dotenvVariables) {
+      content = resolveHttpVariables({
+        content,
+        workspacePath,
+        envName,
+        customVariables: fileVariables,
+        dotenvVariables: dotenvVariables ?? undefined,
+      });
+      if (envName && workspacePath) {
         const unresolvedVars = envManager.validateVariables(content, envName, workspacePath);
         if (unresolvedVars.length > 0) {
-          const message = `Unresolved variables in environment '${envName}': ${unresolvedVars.join(', ')}`;
-          vscode.window.showWarningMessage(message);
+          vscode.window.showWarningMessage(
+            `Unresolved variables in environment '${envName}': ${unresolvedVars.join(', ')}`
+          );
         }
-        
-        // Replace variables
-        content = envManager.replaceVariables(content, envName, workspacePath);
         envUsed = true;
       }
     }
+
+    const { extractAssertions, removeAssertionBlocks } = require('./assertionParser');
+    const assertions = extractAssertions(content);
+    content = removeAssertionBlocks(content);
     
     // Parse request
     const config = parseHttpRequest(content);
@@ -1719,32 +1602,28 @@ export async function copyCurlCommand(
     
     // Process file-level variables (# @var VAR_NAME=value) second
     const fileVariables = extractFileVariables(document, startLine);
-    if (fileVariables.size > 0) {
-      // Replace file variables with their defined values
-      content = replaceFileVariables(content, fileVariables);
-    }
-    
-    // Detect environment decorator for this section
     let envName: string | null = null;
-    
+
     if (startLine !== undefined) {
       envName = getEnvironmentForSection(document, startLine);
     } else {
-      // For full file execution, check from the beginning
       envName = getEnvironmentForSection(document, 0);
     }
-    
-    // If environment decorator is present, process variables
-    if (envName) {
-      const workspaceFolders = vscode.workspace.workspaceFolders;
-      if (workspaceFolders && workspaceFolders.length > 0) {
-        const workspacePath = workspaceFolders[0].uri.fsPath;
-        const envManager = EnvironmentManager.getInstance();
-        
-        // Replace variables
-        content = envManager.replaceVariables(content, envName, workspacePath);
-      }
-    }
+
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    const workspacePath = workspaceFolders?.[0]?.uri.fsPath;
+    const envManager = EnvironmentManager.getInstance();
+    const dotenvVariables = envName && workspacePath
+      ? envManager.loadEnvironment(envName, workspacePath) ?? undefined
+      : undefined;
+
+    content = resolveHttpVariables({
+      content,
+      workspacePath,
+      envName,
+      customVariables: fileVariables,
+      dotenvVariables: dotenvVariables ?? undefined,
+    });
     
     // Convert to curl if it's REST Client format
     let curlCommand: string;

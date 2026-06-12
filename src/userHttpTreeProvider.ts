@@ -32,7 +32,7 @@ export interface HttpTreeItem {
   envName?: string;
 }
 
-const HTTP_FILE_EXTENSIONS = ['req', 'request'];
+const HTTP_FILE_EXTENSIONS = ['req', 'request', 'http', 'rest'];
 
 function isHttpTreeFile(filePath: string): boolean {
   const ext = path.extname(filePath).slice(1).toLowerCase();

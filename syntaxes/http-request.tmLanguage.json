@@ -150,6 +150,10 @@
       }
     },
     {
+      "match": "^(//.*)$",
+      "name": "comment.line.double-slash.http-request"
+    },
+    {
       "match": "^(#(?!\\s*@env)(?!\\s*@var)(?!\\s*@getter)(?!\\s*@GETTER)(?!##).*)$",
       "name": "comment.line.number-sign.http-request"
     },

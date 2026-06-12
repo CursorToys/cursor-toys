@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.11-6",
+  "version": "2026.6.12-0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -2262,10 +2262,16 @@
       "workbench.editorAssociations": {
         "**/.cursor/http/**/*.req": "cursorToys.httpRequest",
         "**/.cursor/http/**/*.request": "cursorToys.httpRequest",
+        "**/.cursor/http/**/*.http": "cursorToys.httpRequest",
+        "**/.cursor/http/**/*.rest": "cursorToys.httpRequest",
         "**/.vscode/http/**/*.req": "cursorToys.httpRequest",
         "**/.vscode/http/**/*.request": "cursorToys.httpRequest",
+        "**/.vscode/http/**/*.http": "cursorToys.httpRequest",
+        "**/.vscode/http/**/*.rest": "cursorToys.httpRequest",
         "**/.ai/http/**/*.req": "cursorToys.httpRequest",
-        "**/.ai/http/**/*.request": "cursorToys.httpRequest"
+        "**/.ai/http/**/*.request": "cursorToys.httpRequest",
+        "**/.ai/http/**/*.http": "cursorToys.httpRequest",
+        "**/.ai/http/**/*.rest": "cursorToys.httpRequest"
       }
     },
     "customEditors": [
@@ -2278,6 +2284,12 @@
           },
           {
             "filenamePattern": "*.request"
+          },
+          {
+            "filenamePattern": "*.http"
+          },
+          {
+            "filenamePattern": "*.rest"
           }
         ],
         "priority": "default"
@@ -2292,8 +2304,11 @@
         ],
         "extensions": [
           ".req",
-          ".request"
-        ]
+          ".request",
+          ".http",
+          ".rest"
+        ],
+        "configuration": "./language-configuration.json"
       },
       {
         "id": "http-response",
@@ -2303,8 +2318,16 @@
         ],
         "extensions": [
           ".res",
-          ".response"
+          ".response",
+          ".http.res",
+          ".rest.res"
         ]
+      }
+    ],
+    "snippets": [
+      {
+        "language": "http-request",
+        "path": "./snippets/http-request.json"
       }
     ],
     "grammars": [
@@ -2416,6 +2439,7 @@
     "test:command-palette": "npm run compile && node out/cursorToysCommandPalette.test.js",
     "test:extension-data": "npm run compile && node out/utils.extensionData.test.js",
     "test:file-meta": "npm run compile && node out/httpRequestEditorFileMeta.test.js",
+    "test:http": "npm run compile && node out/httpDynamicVariables.test.js && node out/httpRequestExtensions.test.js && node out/httpRequestVariables.test.js && node out/httpVariableResolver.test.js && node out/httpRequestParser.test.js",
     "test:usage-monitor": "npm run compile && node out/providerUsage/openRouterCredits.test.js && node out/providerUsage/openRouterKeyInfo.test.js && node out/providerUsage/openRouterActivity.test.js && node out/providerUsage/usageMonitorPanelState.test.js && node out/providerUsage/deepInfraBilling.test.js",
     "test:mcp": "npm run compile && node out/mcp/security.test.js && node out/mcp/commandRegistry.test.js && node out/mcp/mcpWave4.test.js",
     "test:projects": "npm run compile && node out/projects/projectRegistry.test.js && node out/projects/projectPathUtils.test.js",

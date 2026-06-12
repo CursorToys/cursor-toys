@@ -6,7 +6,8 @@
 
 ### Added
 
-- **Install MCP Skill**: same flow as HTTP skill — bundled `resources/skills/cursor-toys-mcp/`, UI action in MCP settings, command palette, and `mcp_install_skill` MCP tool.
+- **HTTP improvements (REST Client parity)**: `.http` and `.rest` file support; system dynamic variables (`{{$guid}}`, `{{$randomInt}}`, `{{$timestamp}}`, `{{$datetime}}`, `{{$localDatetime}}`, `{{$processEnv}}`, `{{$dotenv}}`); request-scoped `# @var` between `###` blocks; unified variable resolution; IntelliSense for methods, headers, MIME types, and variables; hover with source hints; go-to-definition for `# @var`; JSON body format-on-save; snippets (GET/POST/PUT/PATCH/DELETE); `//` line comments; per-request CodeLens inside `##` sections with multiple `###` blocks.
+ same flow as HTTP skill — bundled `resources/skills/cursor-toys-mcp/`, UI action in MCP settings, command palette, and `mcp_install_skill` MCP tool.
 - **Projects** (opt-in via `cursorToys.projects.enabled`): pin, categorize, and reopen frequent workspaces from a CursorToys sidebar view and **Projects Dashboard** webview.
 - Registry stored at `~/.cursortoys/projects/registry.json` with pinned metadata (label, category, color, notes) and extension-maintained recent list.
 - Commands: **Pin Current Workspace**, **Add Project from Folder**, **Open Projects Dashboard**, **Clear Recent Projects**.
