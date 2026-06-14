@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { buildKanbanBoardHtml } from './kanbanBoardHtml';
-import { buildKanbanBoardState, resolveKanbanBoardScopes } from './kanbanBoardModel';
+import { configurePanelWebview, getExtensionUri } from './webviewUi';
+import { buildKanbanBoardState, isKanbanScopeEmpty, resolveKanbanBoardScopes } from './kanbanBoardModel';
 import { KanbanBoardInboundMessage, KanbanBoardScope } from './kanbanBoardTypes';
 import {
   createKanbanCardFile,
@@ -36,6 +37,10 @@ export class KanbanBoardPanel {
     this.currentScope = initialScope;
     this.onFilesystemChange = onFilesystemChange;
     this.panel.webview.options = { enableScripts: true };
+    const extensionUri = getExtensionUri();
+    if (extensionUri) {
+      configurePanelWebview(this.panel.webview, extensionUri);
+    }
     this.pushState();
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
@@ -51,13 +56,36 @@ export class KanbanBoardPanel {
   public static async createOrShow(onFilesystemChange?: () => void): Promise<void> {
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     const workspacePath = workspaceFolder?.uri.fsPath;
-    const { availableScopes, defaultScope } = resolveKanbanBoardScopes(workspacePath);
+    let { availableScopes, defaultScope } = resolveKanbanBoardScopes(workspacePath);
 
     if (availableScopes.length === 0) {
-      vscode.window.showErrorMessage(
-        'No Kanban board found. Open a workspace or create personal cards under ~/.cursortoys/kanban/.'
+      const choice = await vscode.window.showInformationMessage(
+        'No Kanban board found. Create your first card to initialize a personal Kanban folder?',
+        'Create card',
+        'Cancel'
       );
+      if (choice === 'Create card') {
+        await vscode.commands.executeCommand('cursor-toys.createKanbanCard');
+      }
       return;
+    }
+
+    if (workspacePath && defaultScope === 'workspace' && (await isKanbanScopeEmpty(workspacePath, 'workspace'))) {
+      const personalReady =
+        availableScopes.includes('personal') && !(await isKanbanScopeEmpty(undefined, 'personal'));
+      if (!personalReady) {
+        const choice = await vscode.window.showInformationMessage(
+          'No project Kanban board yet. Create your first card to initialize the Kanban folder in this workspace?',
+          'Create card',
+          'Cancel'
+        );
+        if (choice !== 'Create card') {
+          return;
+        }
+        await vscode.commands.executeCommand('cursor-toys.createKanbanCard');
+        return;
+      }
+      defaultScope = 'personal';
     }
 
     const column = vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
@@ -143,7 +171,12 @@ export class KanbanBoardPanel {
       this.panel.webview.postMessage({ type: 'init', state });
       return;
     }
-    this.panel.webview.html = buildKanbanBoardHtml(state);
+    const extensionUri = getExtensionUri();
+    const ui =
+      extensionUri && !this.boardHtmlLoaded
+        ? { webview: this.panel.webview, extensionUri }
+        : undefined;
+    this.panel.webview.html = buildKanbanBoardHtml(state, ui);
     this.boardHtmlLoaded = true;
   }
 

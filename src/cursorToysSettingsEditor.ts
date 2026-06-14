@@ -583,6 +583,13 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       });
       return;
 
+    case 'cursorToys.releaseNotes.showOnStartup':
+      await pickBoolean(settingKey, true, {
+        on: "Show What's New after install or update",
+        off: "Don't show What's New on startup",
+      });
+      return;
+
     case 'cursorToys.projects.recentLimit':
       await pickNumber(settingKey, 15, 'Recent projects list limit', (n) => {
         if (n < 1) {

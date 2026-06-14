@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.14-0",
+  "version": "2026.6.14-1",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -1768,6 +1768,11 @@
       {
         "title": "Cursor Toys",
         "properties": {
+          "cursorToys.releaseNotes.showOnStartup": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show the What's New panel automatically after install or when the extension is updated. You can still open it from the command palette."
+          },
           "cursorToys.linkType": {
             "type": "string",
             "enum": [

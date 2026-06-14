@@ -1,4 +1,11 @@
+import * as vscode from 'vscode';
 import { ProjectEntry } from './types';
+import { buildPanelHeader, buildStylesheetLinks } from '../webviewUi';
+
+export interface ProjectsDashboardUiContext {
+  webview: vscode.Webview;
+  extensionUri: vscode.Uri;
+}
 
 export interface ProjectsDashboardState {
   projects: ProjectEntry[];
@@ -19,8 +26,13 @@ const COLOR_STRIPE: Record<string, string> = {
 /**
  * Builds HTML for the Projects dashboard webview.
  */
-export function buildProjectsDashboardHtml(state: ProjectsDashboardState): string {
+export function buildProjectsDashboardHtml(
+  state: ProjectsDashboardState,
+  ui?: ProjectsDashboardUiContext
+): string {
   const stateJson = JSON.stringify(state).replace(/</g, '\\u003c');
+  const stylesheetLinks = ui ? buildStylesheetLinks(ui.webview, ui.extensionUri) : '';
+  const header = buildPanelHeader({ title: 'CursorToys', subtitle: 'Projects dashboard' });
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -29,16 +41,18 @@ export function buildProjectsDashboardHtml(state: ProjectsDashboardState): strin
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Projects Dashboard</title>
+  ${stylesheetLinks}
   <style>
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      padding: 16px;
+      padding: 0;
       font-family: var(--vscode-font-family);
       font-size: var(--vscode-font-size);
       color: var(--vscode-foreground);
       background: var(--vscode-editor-background);
     }
+    .dash-body { padding: 12px 14px 20px; }
     .toolbar {
       display: flex;
       gap: 8px;
@@ -46,29 +60,28 @@ export function buildProjectsDashboardHtml(state: ProjectsDashboardState): strin
       margin-bottom: 16px;
       align-items: center;
     }
-    .toolbar h1 {
-      margin: 0;
-      font-size: 1.2em;
-      flex: 1;
-      min-width: 160px;
-    }
-    input, select, button {
+    input, select {
       font: inherit;
       color: var(--vscode-foreground);
       background: var(--vscode-input-background);
-      border: 1px solid var(--vscode-input-border, transparent);
-      border-radius: 4px;
-      padding: 6px 10px;
+      border: 1px solid var(--ct-hair, var(--vscode-input-border));
+      border-radius: 8px;
+      padding: 7px 10px;
     }
     button {
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      border: none;
+      appearance: none;
+      font-size: 12px;
+      padding: 7px 14px;
+      border-radius: 7px;
+      border: 1px solid var(--ct-accent, transparent);
+      background: var(--ct-accent, var(--vscode-button-background));
+      color: #fff;
       cursor: pointer;
     }
     button.secondary {
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
+      background: transparent;
+      border-color: var(--ct-hair, rgba(128,128,128,0.25));
+      color: var(--vscode-foreground);
     }
     .grid {
       display: grid;
@@ -76,8 +89,8 @@ export function buildProjectsDashboardHtml(state: ProjectsDashboardState): strin
       gap: 12px;
     }
     .card {
-      border: 1px solid var(--vscode-panel-border);
-      border-radius: 8px;
+      border: 1px solid var(--ct-hair, var(--vscode-panel-border));
+      border-radius: 9px;
       background: var(--vscode-editor-background);
       overflow: hidden;
       display: flex;
@@ -122,16 +135,18 @@ export function buildProjectsDashboardHtml(state: ProjectsDashboardState): strin
     }
   </style>
 </head>
-<body>
+<body class="ct-panel">
+  ${header}
+  <div class="dash-body fade-in">
   <div class="toolbar">
-    <h1>Projects</h1>
-    <input id="search" type="search" placeholder="Search label or path…" />
-    <select id="categoryFilter">
+    <input id="search" class="ct-input" type="search" placeholder="Search label or path…" style="flex:1;min-width:160px" />
+    <select id="categoryFilter" class="ct-input" style="width:auto">
       <option value="">All categories</option>
     </select>
-    <button id="refresh" class="secondary">Refresh</button>
+    <button id="refresh" class="secondary" type="button">Refresh</button>
   </div>
   <div id="grid" class="grid"></div>
+  </div>
   <script>
     const vscode = acquireVsCodeApi();
     const state = ${stateJson};

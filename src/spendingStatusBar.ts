@@ -10,6 +10,11 @@ import {
   resolveSessionCookieValue,
   type PlanUsage,
 } from './cursorUsage';
+import {
+  buildPanelHeader,
+  buildWebviewDocument,
+  configurePanelWebview,
+} from './webviewUi';
 
 export type { PlanUsage } from './cursorUsage';
 
@@ -20,6 +25,7 @@ const PROGRESS_EMPTY = '\u2591';
 
 let statusBarItem: vscode.StatusBarItem | undefined;
 let refreshIntervalId: ReturnType<typeof setInterval> | undefined;
+let extensionUri: vscode.Uri | undefined;
 
 function getConfig(): vscode.WorkspaceConfiguration {
   return vscode.workspace.getConfiguration('cursorToys');
@@ -266,117 +272,56 @@ function applySpendingEnabled(enabled: boolean): void {
   }
 }
 
-function getNonce(): string {
-  let text = '';
-  const possible =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
-}
+function getTokenSetupWebviewContent(webview: vscode.Webview, dashboardLink: string): string {
+  const body =
+    buildPanelHeader({ title: 'CursorToys', subtitle: 'Spending session token' }) +
+    `<div class="ct-body fade-in">` +
+    `<p class="hint">Usage is read automatically from your local Cursor login (<code>state.vscdb</code>) when <strong>auto-detect</strong> is enabled. Use the field below only if auto-detect fails.</p>` +
+    `<p class="hint">Optional override: paste the <strong>WorkosCursorSessionToken</strong> cookie from the browser:</p>` +
+    `<ol class="hint" style="margin: 0.5rem 0 1rem 1.25rem;">` +
+    `<li>Open the <a href="${dashboardLink}" id="dashboard-link">Cursor dashboard</a> and log in.</li>` +
+    `<li>Open DevTools (F12 or Cmd+Option+I) → Application → Cookies → cursor.com.</li>` +
+    `<li>Copy the value of <strong>WorkosCursorSessionToken</strong> (or paste the JWT only).</li>` +
+    `</ol>` +
+    `<label class="ct-label" for="token-input">Manual session token (optional)</label>` +
+    `<input type="text" class="ct-input" id="token-input" placeholder="Leave empty if auto-detect works" />` +
+    `<div class="button-row">` +
+    `<button type="button" class="ct-btn primary" id="save-btn">Save</button>` +
+    `</div></div>`;
 
-function getTokenSetupWebviewContent(dashboardLink: string, nonce: string): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline';">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cursor Spending – Session Token</title>
-  <style>
-    body {
-      font-family: var(--vscode-font-family);
-      font-size: var(--vscode-font-size);
-      color: var(--vscode-foreground);
-      padding: 1rem 1.5rem;
-      box-sizing: border-box;
-    }
-    p {
-      margin: 0 0 1rem 0;
-      line-height: 1.5;
-    }
-    label {
-      display: block;
-      margin-bottom: 0.25rem;
-      font-weight: 500;
-    }
-    input[type="text"] {
-      width: 100%;
-      padding: 0.5rem;
-      margin-bottom: 1rem;
-      border: 1px solid var(--vscode-input-border);
-      background: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      font-family: inherit;
-      font-size: inherit;
-      box-sizing: border-box;
-    }
-    input[type="text"]:focus {
-      outline: 1px solid var(--vscode-focusBorder);
-    }
-    a {
-      color: var(--vscode-textLink-foreground);
-    }
-    a:hover {
-      color: var(--vscode-textLink-activeForeground);
-    }
-    .button-row {
-      margin-top: 1.25rem;
-    }
-    button {
-      padding: 0.5rem 1rem;
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      border: none;
-      font-family: inherit;
-      font-size: inherit;
-      cursor: pointer;
-    }
-    button:hover {
-      background: var(--vscode-button-hoverBackground);
-    }
-  </style>
-</head>
-<body>
-  <p>Usage is read automatically from your local Cursor login (<code>state.vscdb</code>) when <strong>auto-detect</strong> is enabled. Use the field below only if auto-detect fails.</p>
-  <p>Optional override: paste the <strong>WorkosCursorSessionToken</strong> cookie from the browser:</p>
-  <ol style="margin: 0.5rem 0 1rem 1.25rem;">
-    <li>Open the <a href="${dashboardLink}" id="dashboard-link">Cursor dashboard</a> and log in.</li>
-    <li>Open DevTools (F12 or Cmd+Option+I) → Application → Cookies → cursor.com.</li>
-    <li>Copy the value of <strong>WorkosCursorSessionToken</strong> (or paste the JWT only).</li>
-  </ol>
-  <label for="token-input">Manual session token (optional)</label>
-  <input type="text" id="token-input" placeholder="Leave empty if auto-detect works" />
-  <div class="button-row">
-    <button id="save-btn">Save</button>
-  </div>
-  <script nonce="${nonce}">
+  if (!extensionUri) {
+    return `<!DOCTYPE html><html><body>${body}</body></html>`;
+  }
+
+  return buildWebviewDocument({
+    webview,
+    extensionUri,
+    title: 'Cursor Spending – Session Token',
+    body,
+    scripts: `
     const vscode = acquireVsCodeApi();
     const input = document.getElementById('token-input');
     const saveBtn = document.getElementById('save-btn');
     const dashboardLinkEl = document.getElementById('dashboard-link');
 
-    dashboardLinkEl.addEventListener('click', function(e) {
+    dashboardLinkEl?.addEventListener('click', function(e) {
       e.preventDefault();
-      vscode.postMessage({ type: 'openLink', url: '${dashboardLink}' });
+      vscode.postMessage({ type: 'openLink', url: ${JSON.stringify(dashboardLink)} });
     });
 
-    saveBtn.addEventListener('click', function() {
-      const token = input.value.trim();
-      if (token) {
-        vscode.postMessage({ type: 'save', token: token });
+    saveBtn?.addEventListener('click', function() {
+      const token = input?.value ?? '';
+      if (token.trim()) {
+        vscode.postMessage({ type: 'save', token: token.trim() });
       }
     });
 
-    input.addEventListener('keydown', function(e) {
+    input?.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
-        saveBtn.click();
+        saveBtn?.click();
       }
-    });
-  </script>
-</body>
-</html>`;
+    });`,
+  });
 }
 
 function openTokenSetupPanel(): void {
@@ -386,8 +331,10 @@ function openTokenSetupPanel(): void {
     vscode.ViewColumn.One,
     { enableScripts: true }
   );
-  const nonce = getNonce();
-  panel.webview.html = getTokenSetupWebviewContent(DASHBOARD_URL, nonce);
+  if (extensionUri) {
+    configurePanelWebview(panel.webview, extensionUri);
+  }
+  panel.webview.html = getTokenSetupWebviewContent(panel.webview, DASHBOARD_URL);
   panel.webview.onDidReceiveMessage(async (message: { type: string; token?: string; url?: string }) => {
     if (message.type === 'save' && typeof message.token === 'string') {
       const trimmed = message.token.trim();
@@ -431,6 +378,7 @@ export function refreshSpending(): void {
  * Commands are registered in extension.ts so they are available even when spending is disabled.
  */
 export function initSpendingStatusBar(context: vscode.ExtensionContext): void {
+  extensionUri = context.extensionUri;
   statusBarItem = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Left,
     99

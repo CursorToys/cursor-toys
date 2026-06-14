@@ -1,17 +1,32 @@
+import * as vscode from 'vscode';
+import { buildStylesheetLinks } from './webviewUi';
+
+export interface HttpRequestEditorUiContext {
+  webview: vscode.Webview;
+  extensionUri: vscode.Uri;
+}
+
 /**
  * Builds the HTTP request editor webview HTML (tabbed Postman-style layout).
  */
-export function buildHttpRequestEditorHtml(initJson: string): string {
+export function buildHttpRequestEditorHtml(
+  initJson: string,
+  ui?: HttpRequestEditorUiContext
+): string {
   const safeJson = initJson
     .replace(/</g, '\\u003c')
     .replace(/>/g, '\\u003e')
     .replace(/&/g, '\\u0026');
 
+  const stylesheetLinks = ui ? buildStylesheetLinks(ui.webview, ui.extensionUri) : '';
+  const styleCsp = ui ? `${ui.webview.cspSource} 'unsafe-inline'` : `'unsafe-inline'`;
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${styleCsp}; script-src 'unsafe-inline';" />
+  ${stylesheetLinks}
   <style>
     * { box-sizing: border-box; }
     html, body {
@@ -36,7 +51,7 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       width: 100%;
       max-width: none;
       margin: 0;
-      padding: 12px 16px 16px;
+      padding: 12px 14px 16px;
       min-height: 0;
     }
     .toolbar {
@@ -46,59 +61,37 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       align-items: center;
       margin-bottom: 10px;
       padding-bottom: 10px;
-      border-bottom: 1px solid var(--vscode-panel-border, #333);
+      border-bottom: 1px solid var(--ct-hair, rgba(128,128,128,0.25));
       flex-shrink: 0;
     }
-    .toolbar .file { flex: 1; min-width: 140px; font-weight: 600; font-size: 1.05em; }
-    .toolbar .sub { font-size: 0.78em; opacity: 0.7; font-weight: normal; display: block; margin-top: 2px; }
+    .toolbar .file { flex: 1; min-width: 140px; font-weight: 600; font-size: 12px; }
+    .toolbar .sub { font-size: 10px; font-family: var(--ct-mono, monospace); color: var(--ct-mute2, inherit); font-weight: normal; display: block; margin-top: 2px; }
     button {
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      border: none;
-      border-radius: 4px;
-      padding: 6px 12px;
+      appearance: none;
+      font-family: var(--vscode-font-family);
+      font-size: 12px;
+      padding: 7px 14px;
+      border-radius: 7px;
+      border: 1px solid var(--ct-hair, rgba(128,128,128,0.25));
+      background: transparent;
+      color: var(--vscode-foreground);
       cursor: pointer;
-      font: inherit;
     }
-    button:hover { background: var(--vscode-button-hoverBackground); }
-    button.primary { font-weight: 600; }
-    button.send-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: #1f6feb;
-      color: #ffffff;
-      font-weight: 600;
-      padding: 6px 14px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-    }
-    button.send-btn:hover {
-      background: #388bfd;
-      box-shadow: 0 2px 6px rgba(31, 111, 235, 0.35);
-    }
-    button.send-btn:active {
-      background: #1158c7;
-      box-shadow: none;
-    }
-    button.send-btn .send-icon {
-      flex-shrink: 0;
-      opacity: 0.95;
-    }
-    button.secondary, button.ghost {
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
-    }
-    button.icon-btn { padding: 4px 8px; font-size: 0.85em; }
-    button.danger { background: #f8514933; color: #f85149; }
-    label.field-label { display: block; font-size: 0.8em; margin-bottom: 4px; opacity: 0.85; }
+    button:hover { border-color: var(--ct-accent-dim, #6366f133); background: var(--ct-accent-soft, rgba(99,102,241,0.09)); color: var(--ct-accent, #6366f1); }
+    button.primary, button.send-btn { background: var(--ct-accent, #6366f1); border-color: var(--ct-accent, #6366f1); color: #fff; font-weight: 600; }
+    button.primary:hover, button.send-btn:hover { filter: brightness(1.08); color: #fff; }
+    button.send-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; }
+    button.secondary, button.ghost { background: transparent; color: var(--ct-mute, inherit); }
+    button.danger { background: color-mix(in srgb, #e0706b 15%, transparent); border-color: color-mix(in srgb, #e0706b 35%, transparent); color: #e0706b; }
+    label.field-label { display: block; font-family: var(--ct-mono, monospace); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ct-mute2, inherit); margin-bottom: 4px; }
     select, input, textarea {
       width: 100%;
       font: inherit;
       color: var(--vscode-input-foreground);
       background: var(--vscode-input-background);
-      border: 1px solid var(--vscode-input-border, transparent);
-      border-radius: 4px;
-      padding: 6px 8px;
+      border: 1px solid var(--ct-hair, var(--vscode-input-border));
+      border-radius: 8px;
+      padding: 7px 10px;
     }
     textarea {
       resize: vertical;
@@ -112,68 +105,52 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
     .dirty { font-size: 0.8em; color: var(--vscode-editorWarning-foreground, #cca700); }
     .hint { font-size: 0.78em; opacity: 0.72; margin: 8px 0 0; }
 
-    .env-banner {
+    .env-pane-summary {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 10px 14px;
-      padding: 10px 14px;
-      margin-bottom: 12px;
-      border-radius: 8px;
-      border: 1px solid var(--vscode-focusBorder, #007fd4);
-      background: linear-gradient(90deg, rgba(0,127,212,0.12), transparent);
-      flex-shrink: 0;
+      gap: 8px 12px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      border-radius: 7px;
+      border: 1px solid var(--ct-hair, rgba(128,128,128,0.25));
+      background: var(--ct-accent-soft, rgba(99,102,241,0.06));
     }
-    .env-banner-main {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-    }
-    .env-banner-picker {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 6px;
-      flex: 1;
-      min-width: 180px;
-    }
-    .env-banner-label,
-    .env-banner-picker-label {
-      font-size: 0.78em;
+    .env-pane-label {
+      font-size: 10px;
+      font-family: var(--ct-mono, monospace);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      opacity: 0.75;
+      letter-spacing: 0.08em;
+      color: var(--ct-mute2, inherit);
     }
-    .env-banner-picker-label { text-transform: none; letter-spacing: normal; }
-    .env-banner-effective {
-      font-size: 1.05em;
-      font-weight: 700;
-      padding: 4px 12px;
-      border-radius: 999px;
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
+    .env-pane-effective {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--vscode-foreground);
     }
-    .env-banner-effective.empty {
+    .env-pane-effective.empty {
       font-weight: 500;
-      background: transparent;
-      color: var(--vscode-descriptionForeground, inherit);
-      opacity: 0.75;
-      padding-left: 0;
+      color: var(--ct-mute, inherit);
     }
-    .env-source-tag[hidden] { display: none; }
-    .env-banner-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      align-items: center;
-    }
-    .env-banner-meta {
+    .env-pane-meta {
       flex-basis: 100%;
       font-size: 0.82em;
-      opacity: 0.8;
+      color: var(--ct-mute, inherit);
+      line-height: 1.4;
     }
-    .env-banner-meta[hidden] { display: none; }
+    .env-pane-meta[hidden] { display: none; }
+    .env-pane-section {
+      margin-bottom: 18px;
+    }
+    .env-pane-section .subheading {
+      font-size: 10px;
+      font-family: var(--ct-mono, monospace);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ct-mute2, inherit);
+      margin: 0 0 8px;
+    }
+    .env-source-tag[hidden] { display: none; }
     .env-source-tag {
       font-size: 0.72em;
       padding: 2px 8px;
@@ -224,57 +201,89 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
     .request-tabs {
       display: flex;
       flex-wrap: nowrap;
+      gap: 6px;
       overflow-x: auto;
-      border-bottom: 1px solid var(--vscode-panel-border, #333);
-      background: var(--vscode-tab-inactiveBackground, transparent);
+      padding: 10px 12px 4px;
       flex-shrink: 0;
+      scrollbar-width: thin;
     }
     .request-tabs[hidden] { display: none; }
     .request-tab {
+      appearance: none;
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 8px 14px;
-      border: none;
-      border-right: 1px solid var(--vscode-panel-border, #333);
-      border-bottom: 2px solid transparent;
+      padding: 7px 12px;
+      border: 1px solid var(--ct-hair, rgba(128,128,128,0.25));
+      border-radius: 7px;
       background: transparent;
-      color: var(--vscode-tab-inactiveForeground, inherit);
+      color: var(--ct-mute, var(--vscode-descriptionForeground, inherit));
       cursor: pointer;
-      font: inherit;
-      font-size: 0.88em;
+      font-family: var(--vscode-font-family);
+      font-size: 12px;
       white-space: nowrap;
       flex-shrink: 0;
+      transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
     }
-    .request-tab:hover { background: var(--vscode-list-hoverBackground); }
+    .request-tab:hover {
+      color: var(--vscode-foreground);
+      border-color: var(--ct-mute2, rgba(128,128,128,0.45));
+      background: var(--ct-accent-soft, rgba(99,102,241,0.06));
+    }
     .request-tab.active {
-      background: var(--vscode-tab-activeBackground, var(--vscode-editor-background));
-      color: var(--vscode-tab-activeForeground, inherit);
-      border-bottom-color: var(--vscode-focusBorder);
+      color: var(--ct-accent, #6366f1);
+      border-color: var(--ct-accent, #6366f1);
+      background: var(--ct-accent-soft, rgba(99,102,241,0.09));
       font-weight: 600;
     }
 
     .detail-tabs {
       display: flex;
-      border-bottom: 1px solid var(--vscode-panel-border, #333);
-      background: var(--vscode-editor-background);
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 8px 12px 12px;
       flex-shrink: 0;
     }
     .detail-tab {
-      padding: 8px 16px;
-      border: none;
-      border-bottom: 2px solid transparent;
+      appearance: none;
+      padding: 7px 14px;
+      border: 1px solid var(--ct-hair, rgba(128,128,128,0.25));
+      border-radius: 7px;
       background: transparent;
-      color: var(--vscode-tab-inactiveForeground, inherit);
+      color: var(--ct-mute, var(--vscode-descriptionForeground, inherit));
       cursor: pointer;
-      font: inherit;
-      font-size: 0.85em;
+      font-family: var(--vscode-font-family);
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
     }
-    .detail-tab:hover { background: var(--vscode-list-hoverBackground); }
+    .detail-tab:hover {
+      color: var(--vscode-foreground);
+      border-color: var(--ct-mute2, rgba(128,128,128,0.45));
+      background: var(--ct-accent-soft, rgba(99,102,241,0.06));
+    }
     .detail-tab.active {
-      color: var(--vscode-tab-activeForeground, inherit);
-      border-bottom-color: var(--vscode-focusBorder);
+      color: var(--ct-accent, #6366f1);
+      border-color: var(--ct-accent, #6366f1);
+      background: var(--ct-accent-soft, rgba(99,102,241,0.09));
       font-weight: 600;
+    }
+    .detail-tab.detail-tab-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .detail-tab-ic {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+    .detail-tab-ic svg {
+      width: 14px;
+      height: 14px;
     }
     .detail-tab .badge {
       display: inline-block;
@@ -534,7 +543,7 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
     .empty-state { font-size: 0.85em; opacity: 0.65; font-style: italic; }
   </style>
 </head>
-<body>
+<body class="ct-panel-fill">
   <div class="page">
     <div class="toolbar">
       <div class="file">
@@ -551,35 +560,16 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       </button>
     </div>
 
-    <div class="env-banner" id="envBanner">
-      <div class="env-banner-main">
-        <span class="env-banner-label">Active environment</span>
-        <span class="env-banner-effective" id="envBannerEffective">—</span>
-        <span class="env-source-tag" id="envBannerSource">workspace</span>
-      </div>
-      <div class="env-banner-picker collapsible-section collapsed" id="envBannerPickerSection">
-        <button type="button" class="collapse-toggle" id="envBannerPickerToggle" aria-expanded="false">
-          <span class="collapse-chevron" aria-hidden="true">▶</span>
-          <span>Workspace environments</span>
-        </button>
-        <div class="collapse-body" id="envBannerPickerBody" hidden>
-          <div class="env-row">
-            <div class="env-banner-pills env-row" id="envBannerPills"></div>
-            <button type="button" class="ghost icon-btn" id="envBannerMoreBtn" title="Pick environment">⋯</button>
-            <button type="button" class="ghost icon-btn" id="envBannerCreateBtn" title="Create .env file">+</button>
-          </div>
-        </div>
-      </div>
-      <span class="env-banner-meta" id="envBannerMeta" hidden></span>
-    </div>
-
     <div class="workspace-card">
       <div class="request-tabs" id="requestTabs"></div>
       <div class="detail-tabs" role="tablist">
         <button type="button" class="detail-tab active" data-detail="request">Request</button>
         <button type="button" class="detail-tab" data-detail="headers">Headers</button>
-        <button type="button" class="detail-tab" data-detail="environment">Environment</button>
         <button type="button" class="detail-tab" data-detail="tests">Tests <span class="badge" id="testsBadge" hidden>0</span></button>
+        <button type="button" class="detail-tab detail-tab-icon" data-detail="environment">
+          <span class="detail-tab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.8 7.8 0 0 0 .1-3l1.7-1.3-1.8-3.1-2 .8a7.6 7.6 0 0 0-2.6-1.5l-.3-2.1H8.5l-.3 2.1c-1 .3-1.8.8-2.6 1.5l-2-.8L1.8 9.2l1.7 1.3a7.8 7.8 0 0 0 0 3l-1.7 1.3 1.8 3.1 2-.8c.8.7 1.6 1.2 2.6 1.5l.3 2.1h3.6l.3-2.1c1-.3 1.8-.8 2.6-1.5l2 .8 1.8-3.1z"/></svg></span>
+          Env
+        </button>
       </div>
       <div class="detail-body">
         <div class="detail-pane active" id="pane-request" data-detail="request">
@@ -614,41 +604,37 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
         </div>
 
         <div class="detail-pane" id="pane-environment" data-detail="environment">
-          <div class="collapsible-section collapsed" id="localVarsSection">
-            <button type="button" class="collapse-toggle" id="localVarsToggle" aria-expanded="false">
-              <span class="collapse-chevron" aria-hidden="true">▶</span>
-              <span>Local variables (# @var)</span>
-            </button>
-            <div class="collapse-body" id="localVarsBody" hidden>
-              <div id="fileVarTags"></div>
-              <div class="inline-form">
-                <input type="text" id="newVarKey" placeholder="KEY" />
-                <input type="text" id="newVarVal" placeholder="value" />
-                <button type="button" class="secondary" id="addVarBtn">Add # @var</button>
-              </div>
-            </div>
+          <div class="env-pane-summary">
+            <span class="env-pane-label">Active</span>
+            <span class="env-pane-effective" id="envBannerEffective">—</span>
+            <span class="env-source-tag" id="envBannerSource">workspace</span>
+            <span class="env-pane-meta" id="envBannerMeta" hidden></span>
           </div>
-          <div class="collapsible-section collapsed" id="workspaceEnvSection">
-            <button type="button" class="collapse-toggle" id="workspaceEnvToggle" aria-expanded="false">
-              <span class="collapse-chevron" aria-hidden="true">▶</span>
-              <span>Workspace / file (.env at project root)</span>
-            </button>
-            <div class="collapse-body" id="workspaceEnvBody" hidden>
-              <div class="env-row">
-                <span id="projectEnvPills"></span>
-                <button type="button" class="ghost icon-btn" id="selectEnvBtn" title="Pick environment">⋯</button>
-                <button type="button" class="ghost icon-btn" id="createEnvBtn" title="Create .env file">+ env</button>
-              </div>
-              <div class="env-row" id="fileEnvRow" hidden>
-                <span style="font-size:0.85em;opacity:0.8;">File # @env:</span>
-                <span id="fileEnvBadge"></span>
-              </div>
-              <div class="env-row" id="blockEnvRow" hidden>
-                <span style="font-size:0.85em;opacity:0.8;">Block # @env:</span>
-                <span id="blockEnvBadge"></span>
-              </div>
-              <p class="subheading" style="margin-top:8px;">Keys from active .env</p>
-              <div class="env-row" id="envVarTags"></div>
+          <div class="env-pane-section">
+            <p class="subheading">Workspace / file (.env at project root)</p>
+            <div class="env-row">
+              <span id="projectEnvPills"></span>
+              <button type="button" class="ghost icon-btn" id="selectEnvBtn" title="Pick environment">⋯</button>
+              <button type="button" class="ghost icon-btn" id="createEnvBtn" title="Create .env file">+ env</button>
+            </div>
+            <div class="env-row" id="fileEnvRow" hidden>
+              <span style="font-size:0.85em;opacity:0.8;">File # @env:</span>
+              <span id="fileEnvBadge"></span>
+            </div>
+            <div class="env-row" id="blockEnvRow" hidden>
+              <span style="font-size:0.85em;opacity:0.8;">Block # @env:</span>
+              <span id="blockEnvBadge"></span>
+            </div>
+            <p class="subheading" style="margin-top:12px;">Keys from active .env</p>
+            <div class="env-row" id="envVarTags"></div>
+          </div>
+          <div class="env-pane-section">
+            <p class="subheading">Local variables (# @var)</p>
+            <div id="fileVarTags"></div>
+            <div class="inline-form">
+              <input type="text" id="newVarKey" placeholder="KEY" />
+              <input type="text" id="newVarVal" placeholder="value" />
+              <button type="button" class="secondary" id="addVarBtn">Add # @var</button>
             </div>
           </div>
         </div>
@@ -684,7 +670,6 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
     const vscode = acquireVsCodeApi();
     const INIT = ${safeJson};
     const OPS_NO_VALUE = new Set(['isNull','isNotNull','isEmpty','isNotEmpty','isDefined','isUndefined','isTruthy','isFalsy','isNumber','isString','isBoolean','isArray','isJson']);
-    const persistedUi = (vscode.getState() && vscode.getState().collapsed) || {};
 
     let state = {
       blocks: INIT.blocks || [],
@@ -704,11 +689,6 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       blockEnv: INIT.blockEnv,
       helperSuggestions: INIT.helperSuggestions || [],
       editingAssertionIndex: -1,
-      collapsed: {
-        bannerPicker: persistedUi.bannerPicker !== false,
-        localVars: persistedUi.localVars !== false,
-        workspaceEnv: persistedUi.workspaceEnv !== false,
-      },
     };
 
     const els = {
@@ -716,9 +696,6 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       filePath: document.getElementById('filePath'),
       dirtyLabel: document.getElementById('dirtyLabel'),
       envBannerEffective: document.getElementById('envBannerEffective'),
-      envBannerPills: document.getElementById('envBannerPills'),
-      envBannerMoreBtn: document.getElementById('envBannerMoreBtn'),
-      envBannerCreateBtn: document.getElementById('envBannerCreateBtn'),
       envBannerSource: document.getElementById('envBannerSource'),
       envBannerMeta: document.getElementById('envBannerMeta'),
       requestTabs: document.getElementById('requestTabs'),
@@ -742,15 +719,6 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       assertExpected: document.getElementById('assertExpected'),
       addAssertBtn: document.getElementById('addAssertBtn'),
       cancelAssertBtn: document.getElementById('cancelAssertBtn'),
-      envBannerPickerSection: document.getElementById('envBannerPickerSection'),
-      envBannerPickerToggle: document.getElementById('envBannerPickerToggle'),
-      envBannerPickerBody: document.getElementById('envBannerPickerBody'),
-      localVarsSection: document.getElementById('localVarsSection'),
-      localVarsToggle: document.getElementById('localVarsToggle'),
-      localVarsBody: document.getElementById('localVarsBody'),
-      workspaceEnvSection: document.getElementById('workspaceEnvSection'),
-      workspaceEnvToggle: document.getElementById('workspaceEnvToggle'),
-      workspaceEnvBody: document.getElementById('workspaceEnvBody'),
       assertOperatorsList: document.getElementById('assertOperators'),
       assertExpressionsList: document.getElementById('assertExpressions'),
       method: document.getElementById('method'),
@@ -777,28 +745,6 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
     function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
     function escHtml(s) { return escAttr(s); }
     function post(command, extra) { vscode.postMessage(Object.assign({ command }, extra || {})); }
-
-    function persistCollapsedState() {
-      vscode.setState({ collapsed: state.collapsed });
-    }
-
-    function setSectionCollapsed(sectionEl, bodyEl, toggleEl, key, collapsed) {
-      if (!sectionEl || !bodyEl || !toggleEl) return;
-      state.collapsed[key] = collapsed;
-      sectionEl.classList.toggle('collapsed', collapsed);
-      bodyEl.hidden = collapsed;
-      toggleEl.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-      persistCollapsedState();
-    }
-
-    function bindCollapsible(sectionEl, bodyEl, toggleEl, key) {
-      if (!sectionEl || !bodyEl || !toggleEl) return;
-      const collapsed = !!state.collapsed[key];
-      setSectionCollapsed(sectionEl, bodyEl, toggleEl, key, collapsed);
-      toggleEl.addEventListener('click', () => {
-        setSectionCollapsed(sectionEl, bodyEl, toggleEl, key, !state.collapsed[key]);
-      });
-    }
 
     function isSecretVarKey(key) {
       return /token|secret|password|api_key|apikey/i.test(key);
@@ -1133,9 +1079,6 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       }
       els.envBannerMeta.textContent = meta;
       els.envBannerMeta.hidden = !meta;
-      if (els.envBannerMoreBtn) {
-        els.envBannerMoreBtn.hidden = !hasWorkspaceEnvs();
-      }
     }
 
     function fillProjectEnvPills(container) {
@@ -1231,7 +1174,6 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
 
     function renderEnvPills() {
       fillProjectEnvPills(els.projectEnvPills);
-      fillProjectEnvPills(els.envBannerPills);
       if (state.globalFileEnv) {
         els.fileEnvRow.hidden = false;
         els.fileEnvBadge.innerHTML = '<span class="env-pill effective">#' + escHtml(state.globalFileEnv) + '</span>';
@@ -1467,8 +1409,6 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       els.openTextBtn.addEventListener('click', () => post('openAsText'));
       els.selectEnvBtn.addEventListener('click', () => post('selectEnvironment'));
       els.createEnvBtn.addEventListener('click', () => post('createEnvironment'));
-      els.envBannerMoreBtn.addEventListener('click', () => post('selectEnvironment'));
-      els.envBannerCreateBtn.addEventListener('click', () => post('createEnvironment'));
       els.addHeaderBtn.addEventListener('click', () => {
         const f = readForm();
         f.headers.push({ key: '', value: '' });
@@ -1480,9 +1420,6 @@ export function buildHttpRequestEditorHtml(initJson: string): string {
       els.addVarBtn.addEventListener('click', () => { const k = els.newVarKey.value.trim(); const v = els.newVarVal.value.trim(); if (!k) return; post('addFileVar', { key: k, value: v }); els.newVarKey.value = ''; els.newVarVal.value = ''; });
       els.addAssertBtn.addEventListener('click', () => commitAssertionFromForm());
       els.cancelAssertBtn.addEventListener('click', () => clearAssertForm());
-      bindCollapsible(els.envBannerPickerSection, els.envBannerPickerBody, els.envBannerPickerToggle, 'bannerPicker');
-      bindCollapsible(els.localVarsSection, els.localVarsBody, els.localVarsToggle, 'localVars');
-      bindCollapsible(els.workspaceEnvSection, els.workspaceEnvBody, els.workspaceEnvToggle, 'workspaceEnv');
     }
 
     window.addEventListener('message', (e) => { if (e.data?.type === 'init') applyInit(e.data); });

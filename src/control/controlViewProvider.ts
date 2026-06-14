@@ -1,5 +1,5 @@
-import * as crypto from 'crypto';
 import * as vscode from 'vscode';
+import { generateWebviewNonce, getControlResourceRoots } from '../webviewUi';
 import { refreshSpending } from '../spendingStatusBar';
 import { refreshUsageMonitorStatusBar } from '../providerUsage/usageMonitorStatusBar';
 import { buildControlModel } from './controlModel';
@@ -54,7 +54,7 @@ class ControlViewProvider implements vscode.WebviewViewProvider {
     this.view = webviewView;
     webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [vscode.Uri.joinPath(this.context.extensionUri, 'media', 'control')],
+      localResourceRoots: getControlResourceRoots(this.context.extensionUri),
     };
     webviewView.webview.html = this.getHtml(webviewView.webview);
 
@@ -169,7 +169,10 @@ class ControlViewProvider implements vscode.WebviewViewProvider {
   private getHtml(webview: vscode.Webview): string {
     const uri = (file: string) =>
       webview.asWebviewUri(vscode.Uri.joinPath(this.context.extensionUri, 'media', 'control', file));
-    const nonce = crypto.randomBytes(16).toString('base64');
+    const themeUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'ui', 'theme.css')
+    );
+    const nonce = generateWebviewNonce();
     const csp =
       `default-src 'none'; img-src ${webview.cspSource} data:; ` +
       `style-src ${webview.cspSource} 'unsafe-inline'; ` +
@@ -180,6 +183,7 @@ class ControlViewProvider implements vscode.WebviewViewProvider {
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="${themeUri}" rel="stylesheet" />
   <link href="${uri('main.css')}" rel="stylesheet" />
 </head>
 <body>

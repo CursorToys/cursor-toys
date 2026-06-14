@@ -6,6 +6,7 @@ import {
 import { mergeRequestFormIntoFile } from './httpRequestEditorSerializer';
 import { mergeAssertionsIntoBlock } from './httpRequestEditorAssertions';
 import { buildHttpRequestEditorHtml } from './httpRequestEditorHtml';
+import { configurePanelWebview, getExtensionUri } from './webviewUi';
 import { buildHttpRequestEditorState } from './httpRequestEditorModel';
 import {
   setBlockEnvInFile,
@@ -64,10 +65,12 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
       return;
     }
 
-    webviewPanel.webview.options = {
-      enableScripts: true,
-      localResourceRoots: [],
-    };
+    const extensionUri = getExtensionUri();
+    if (extensionUri) {
+      configurePanelWebview(webviewPanel.webview, extensionUri);
+    } else {
+      webviewPanel.webview.options = { enableScripts: true, localResourceRoots: [] };
+    }
 
     const state = {
       activeBlockIndex: 0,
@@ -84,9 +87,10 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
       );
       state.activeBlockIndex = init.activeBlockIndex;
       if (!state.htmlReady) {
-        webviewPanel.webview.html = buildHttpRequestEditorHtml(
-          JSON.stringify(init)
-        );
+        const ui = extensionUri
+          ? { webview: webviewPanel.webview, extensionUri }
+          : undefined;
+        webviewPanel.webview.html = buildHttpRequestEditorHtml(JSON.stringify(init), ui);
         state.htmlReady = true;
       } else {
         void webviewPanel.webview.postMessage(init);

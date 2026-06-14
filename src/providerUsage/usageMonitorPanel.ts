@@ -1,5 +1,11 @@
 import * as vscode from 'vscode';
 import {
+  buildPanelHeader,
+  buildRefreshButton,
+  buildWebviewDocument,
+  configurePanelWebview,
+} from '../webviewUi';
+import {
   DEEPINFRA_BILLING_URL,
   DEEPINFRA_KEYS_URL,
   OPENROUTER_KEYS_URL,
@@ -236,63 +242,34 @@ function renderTabs(activeTab: 'openRouter' | 'deepInfra'): string {
   </nav>`;
 }
 
-function panelStyles(): string {
-  return `
-    body { font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); color: var(--vscode-foreground); padding: 1rem 1.5rem; margin: 0; }
-    h1 { font-size: 1.25rem; margin: 0 0 1rem 0; }
-    h2 { font-size: 1rem; margin: 0; }
-    h3.section-title { font-size: 0.95rem; margin: 1.25rem 0 0.65rem 0; font-weight: 600; }
-    .toolbar { margin-bottom: 1rem; }
-    .provider-card { border: 1px solid var(--vscode-panel-border); border-radius: 8px; padding: 1rem 1.15rem; margin-bottom: 1rem; }
-    .card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; }
-    .key-label { font-size: 0.85em; color: var(--vscode-descriptionForeground); }
-    .summary-grid, .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; }
-    .summary-card, .metric-card { border: 1px solid var(--vscode-widget-border); border-radius: 6px; padding: 0.75rem; background: var(--vscode-editor-background); }
-    .highlight-card { border-color: var(--vscode-focusBorder); }
-    .metric-label { display: block; font-size: 0.85em; color: var(--vscode-descriptionForeground); margin-bottom: 0.25rem; }
-    .metric-value { font-size: 1.1rem; font-weight: 600; }
-    .metric-value-lg { font-size: 1.25rem; font-weight: 600; }
-    .limit-block { margin-top: 1rem; }
-    .limit-header { display: flex; justify-content: space-between; font-size: 0.85em; color: var(--vscode-descriptionForeground); margin-bottom: 0.35rem; }
-    .progress-track { height: 6px; border-radius: 3px; background: var(--vscode-progressBar-background); overflow: hidden; }
-    .progress-fill { height: 100%; background: var(--vscode-progressBar-foreground, var(--vscode-button-background)); }
-    .models-table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top: 0.35rem; }
-    .models-table th, .models-table td { text-align: left; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--vscode-panel-border); }
-    .models-table th { color: var(--vscode-descriptionForeground); font-weight: 500; }
-    .empty-state { text-align: center; padding: 3rem 1rem; max-width: 420px; margin: 2rem auto; }
-    .empty-actions { display: flex; flex-direction: column; gap: 0.65rem; margin-top: 1.25rem; }
-    .add-provider { margin-top: 0.5rem; text-align: right; }
-    .add-provider-btn { background: none; border: none; color: var(--vscode-textLink-foreground); cursor: pointer; font: inherit; padding: 0; }
-    .add-provider-btn:hover { text-decoration: underline; }
-    .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--vscode-panel-border); margin-bottom: 1rem; }
-    .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; color: var(--vscode-descriptionForeground); cursor: pointer; font: inherit; padding: 0.5rem 1rem; margin: 0; }
-    .tab-btn.active { color: var(--vscode-foreground); border-bottom-color: var(--vscode-focusBorder); }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
-    .status-badge { font-size: 0.8em; padding: 0.15rem 0.5rem; border-radius: 999px; }
-    .status-active { background: var(--vscode-testing-iconPassed); color: var(--vscode-editor-background); }
-    .status-inactive { background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); }
-    .field-label { display: block; font-size: 0.85em; color: var(--vscode-descriptionForeground); margin-bottom: 0.35rem; }
-    .key-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.85rem; }
-    .key-input { flex: 1; padding: 0.4rem 0.6rem; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); font: inherit; }
-    .usage-line { margin-bottom: 1rem; }
-    .usage-value { display: block; margin-top: 0.25rem; font-weight: 500; }
-    .muted { color: var(--vscode-descriptionForeground); line-height: 1.5; }
-    .warn { font-size: 0.9em; }
-    .error { color: var(--vscode-errorForeground); }
-    button { padding: 0.4rem 0.85rem; background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; cursor: pointer; font: inherit; margin-right: 0.5rem; }
-    button.primary { min-width: 200px; }
-    button:hover { background: var(--vscode-button-hoverBackground); }
-    .toggle-key-btn { margin: 0; }
-    a.ext-link { color: var(--vscode-textLink-foreground); font-size: 0.9em; }
-    .card-actions { margin-top: 1rem; }
-    .hidden { display: none !important; }
-  `;
-}
+const USAGE_DASHBOARD_STYLES = `
+  .card-header { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; }
+  .card-header h2 { font-size: 12px; margin: 0; font-weight: 600; }
+  .key-label { font-size: 10px; font-family: var(--ct-mono); color: var(--ct-mute2); }
+  .summary-grid, .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; }
+  .summary-card, .metric-card { border: 1px solid var(--ct-hair); border-radius: 8px; padding: 0.75rem; background: var(--ct-hair-soft); }
+  .metric-value { font-size: 1.1rem; font-weight: 600; }
+  .metric-value-lg { font-size: 1.25rem; font-weight: 600; }
+  .limit-block { margin-top: 1rem; }
+  .limit-header { display: flex; justify-content: space-between; font-size: 10px; font-family: var(--ct-mono); color: var(--ct-mute2); margin-bottom: 0.35rem; }
+  .models-table { margin-top: 0.35rem; }
+  .empty-state { text-align: center; padding: 2rem 1rem; max-width: 420px; margin: 1rem auto; }
+  .empty-actions { display: flex; flex-direction: column; gap: 0.65rem; margin-top: 1.25rem; align-items: center; }
+  .add-provider { margin-top: 0.5rem; text-align: right; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .status-badge { font-size: 10px; font-family: var(--ct-mono); padding: 2px 8px; border-radius: 20px; border: 1px solid var(--ct-hair); }
+  .status-active { color: var(--ct-success); border-color: color-mix(in srgb, var(--ct-success) 40%, transparent); }
+  .key-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.85rem; }
+  .key-input { flex: 1; }
+  .usage-line { margin-bottom: 1rem; }
+  .usage-value { display: block; margin-top: 0.25rem; font-weight: 500; }
+  .hidden { display: none !important; }
+  h3.section-title { font-size: 11px; font-family: var(--ct-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ct-mute2); margin: 1rem 0 0.65rem; }
+`;
 
-function panelScripts(nonce: string, initialTab: 'openRouter' | 'deepInfra'): string {
+function panelScripts(initialTab: 'openRouter' | 'deepInfra'): string {
   return `
-  <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     let activeTab = ${JSON.stringify(initialTab)};
 
@@ -335,20 +312,20 @@ function panelScripts(nonce: string, initialTab: 'openRouter' | 'deepInfra'): st
         e.preventDefault();
         vscode.postMessage({ type: 'openLink', url: a.getAttribute('href') });
       });
-    });
-  </script>`;
+    });`;
 }
 
 interface PanelHtmlInput {
+  webview: vscode.Webview;
+  extensionUri: vscode.Uri;
   snapshots: ProviderUsageSnapshot[];
   state: UsageMonitorPanelState;
   openRouterKey: string | null;
   deepInfraKey: string | null;
-  nonce: string;
 }
 
 function getPanelHtml(input: PanelHtmlInput): string {
-  const { snapshots, state, openRouterKey, deepInfraKey, nonce } = input;
+  const { webview, extensionUri, snapshots, state, openRouterKey, deepInfraKey } = input;
   const openRouter = snapshots.find((s) => s.provider === 'openRouter')!;
   const deepInfra = snapshots.find((s) => s.provider === 'deepInfra')!;
 
@@ -376,24 +353,22 @@ function getPanelHtml(input: PanelHtmlInput): string {
       break;
   }
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline';">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Usage Monitor</title>
-  <style>${panelStyles()}</style>
-</head>
-<body>
-  <h1>Usage Monitor</h1>
-  <div class="toolbar">
-    <button id="refresh-btn">Refresh</button>
-  </div>
-  ${bodyContent}
-  ${panelScripts(nonce, 'openRouter')}
-</body>
-</html>`;
+  const body =
+    buildPanelHeader({
+      title: 'CursorToys',
+      subtitle: 'Usage monitor',
+      toolbarHtml: buildRefreshButton('refresh-btn'),
+    }) +
+    `<div class="ct-body fade-in">${bodyContent}</div>`;
+
+  return buildWebviewDocument({
+    webview,
+    extensionUri,
+    title: 'Usage Monitor',
+    body,
+    extraStyles: USAGE_DASHBOARD_STYLES,
+    scripts: panelScripts('openRouter'),
+  });
 }
 
 async function refreshPanelContent(): Promise<void> {
@@ -409,14 +384,14 @@ async function refreshPanelContent(): Promise<void> {
   const state = resolveUsageMonitorPanelState(keyFlags);
   const openRouterKey = await getProviderApiKey(extensionContext, 'openRouter');
   const deepInfraKey = await getProviderApiKey(extensionContext, 'deepInfra');
-  const nonce = String(Date.now());
 
   panel.webview.html = getPanelHtml({
+    webview: panel.webview,
+    extensionUri: extensionContext.extensionUri,
     snapshots,
     state,
     openRouterKey,
     deepInfraKey,
-    nonce,
   });
 }
 
@@ -435,6 +410,8 @@ export function openUsageMonitorPanel(context: vscode.ExtensionContext): void {
     vscode.ViewColumn.One,
     { enableScripts: true, retainContextWhenHidden: true }
   );
+
+  configurePanelWebview(panel.webview, context.extensionUri);
 
   panel.onDidDispose(() => {
     panel = undefined;

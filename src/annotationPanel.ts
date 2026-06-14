@@ -1,6 +1,13 @@
 import * as vscode from 'vscode';
 import { saveContentAsCommandPromptOrSkill } from './deeplinkImporter';
 import { sendToChat } from './sendToChat';
+import {
+  buildPanelHeader,
+  buildWebviewDocument,
+  configurePanelWebview,
+  escapeWebviewHtml,
+  getExtensionUri,
+} from './webviewUi';
 
 export interface AnnotationParams {
   id?: string;
@@ -48,6 +55,11 @@ export class AnnotationPanel {
         retainContextWhenHidden: true
       }
     );
+
+    const extensionUri = getExtensionUri();
+    if (extensionUri) {
+      configurePanelWebview(panel.webview, extensionUri);
+    }
 
     AnnotationPanel.currentPanel = new AnnotationPanel(panel, params);
   }
@@ -130,114 +142,55 @@ export class AnnotationPanel {
   }
 
   private getWebviewContent(params: AnnotationParams): string {
-    const code = params.code || 'Nenhum código fornecido';
+    const code = params.code || 'No code provided';
     const hasSourceUrl = Boolean(params.sourceUrl);
-    const message = params.message || (hasSourceUrl ? 'Content from web page' : 'Sem mensagem');
-    const file = params.file || (hasSourceUrl ? 'Web page' : 'Arquivo desconhecido');
+    const message = params.message || (hasSourceUrl ? 'Content from web page' : 'No message');
+    const file = params.file || (hasSourceUrl ? 'Web page' : 'Unknown file');
     const line = params.line || (hasSourceUrl ? '—' : '?');
 
     const sourceUrlBlock = hasSourceUrl
-      ? `<strong>Source URL:</strong> <a href="${this.escapeHtml(params.sourceUrl ?? '')}" title="${this.escapeHtml(params.sourceUrl ?? '')}">${this.escapeHtml(params.sourceUrl ?? '')}</a><br>${params.sourceTitle ? `<strong>Source title:</strong> ${this.escapeHtml(params.sourceTitle)}<br>` : ''}`
+      ? `<strong>Source URL:</strong> <a href="${escapeWebviewHtml(params.sourceUrl ?? '')}" title="${escapeWebviewHtml(params.sourceUrl ?? '')}">${escapeWebviewHtml(params.sourceUrl ?? '')}</a><br>${params.sourceTitle ? `<strong>Source title:</strong> ${escapeWebviewHtml(params.sourceTitle)}<br>` : ''}`
       : '';
 
-    return `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cursor Toys - Annotation</title>
-    <style>
-        body {
-            font-family: var(--vscode-font-family);
-            padding: 20px;
-            color: var(--vscode-foreground);
-            background-color: var(--vscode-editor-background);
-        }
-        .header {
-            margin-bottom: 20px;
-        }
-        .code-block {
-            background: var(--vscode-textCodeBlock-background);
-            padding: 15px;
-            border-radius: 4px;
-            margin: 15px 0;
-            font-family: var(--vscode-editor-font-family);
-            font-size: var(--vscode-editor-font-size);
-            overflow-x: auto;
-        }
-        .info {
-            margin: 10px 0;
-            padding: 10px;
-            background: var(--vscode-input-background);
-            border-radius: 4px;
-        }
-        .info a {
-            color: var(--vscode-textLink-foreground);
-        }
-        .fix-button {
-            background: var(--vscode-button-background);
-            color: var(--vscode-button-foreground);
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .fix-button:hover {
-            background: var(--vscode-button-hoverBackground);
-        }
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h2>Cursor Toys - Annotation</h2>
-    </div>
+    const extensionUri = getExtensionUri();
+    const body =
+      buildPanelHeader({ title: 'CursorToys', subtitle: 'Annotation' }) +
+      `<div class="ct-body fade-in">` +
+      `<div class="info">` +
+      sourceUrlBlock +
+      `<strong>File:</strong> ${escapeWebviewHtml(file)}<br>` +
+      `<strong>Line:</strong> ${line}<br>` +
+      `<strong>Message:</strong> ${escapeWebviewHtml(message)}` +
+      `</div>` +
+      `<div class="buttons">` +
+      `<button type="button" class="ct-btn primary" id="fixInChatBtn">Send to Chat</button>` +
+      `<button type="button" class="ct-btn secondary" id="saveAsBtn">Save as…</button>` +
+      `</div>` +
+      `<pre class="code-block"><code>${escapeWebviewHtml(code)}</code></pre>` +
+      `</div>`;
 
-    
-    <div class="info">
-        ${sourceUrlBlock}
-        <strong>File:</strong> ${this.escapeHtml(file)}<br>
-        <strong>Line:</strong> ${line}<br>
-        <strong>Message:</strong> ${this.escapeHtml(message)}
-    </div>
-    <div class="button-group">
-        <button class="fix-button" onclick="fixInChat()">Send to Chat</button>
-        <button class="fix-button" onclick="saveAs()">Save as...</button>
-    </div>
-    <div class="code-block">
-        <pre><code>${this.escapeHtml(code)}</code></pre>
-    </div>
-    
-    <script>
+    if (!extensionUri) {
+      return `<!DOCTYPE html><html><body>${body}</body></html>`;
+    }
+
+    return buildWebviewDocument({
+      webview: this._panel.webview,
+      extensionUri,
+      title: 'CursorToys - Annotation',
+      body,
+      scripts: `
         const vscode = acquireVsCodeApi();
-        
-        function fixInChat() {
-            vscode.postMessage({
-                command: 'fixInChat'
-            });
-        }
-        function saveAs() {
-            vscode.postMessage({
-                command: 'saveAs'
-            });
-        }
-    </script>
-</body>
-</html>`;
+        document.getElementById('fixInChatBtn')?.addEventListener('click', () => {
+          vscode.postMessage({ command: 'fixInChat' });
+        });
+        document.getElementById('saveAsBtn')?.addEventListener('click', () => {
+          vscode.postMessage({ command: 'saveAs' });
+        });`,
+    });
   }
 
   private escapeHtml(text: string): string {
-    return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+    return escapeWebviewHtml(text);
   }
 
   public dispose() {

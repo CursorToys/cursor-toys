@@ -74,6 +74,27 @@ function toView(card: KanbanCardData, modifiedAt?: number): KanbanBoardCardView 
 }
 
 /**
+ * Returns true when a Kanban scope has no folder or no card files yet.
+ */
+export async function isKanbanScopeEmpty(
+  workspacePath: string | undefined,
+  scope: KanbanBoardScope
+): Promise<boolean> {
+  const isPersonal = scope === 'personal';
+  const kanbanPath = getKanbanPath(workspacePath, isPersonal);
+  try {
+    await vscode.workspace.fs.stat(vscode.Uri.file(kanbanPath));
+  } catch {
+    return true;
+  }
+
+  const config = vscode.workspace.getConfiguration('cursorToys');
+  const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+  const fileEntries = await listKanbanCardPaths(kanbanPath, allowedExtensions);
+  return fileEntries.length === 0;
+}
+
+/**
  * Resolves which board scopes are available for the current workspace context.
  */
 export function resolveKanbanBoardScopes(workspacePath: string | undefined): {

@@ -45,33 +45,37 @@
       '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="5" r="1.4"/><circle cx="15" cy="5" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="19" r="1.4"/><circle cx="15" cy="19" r="1.4"/></svg>',
   };
 
+  const COLLAPSED_STATE_VERSION = 2;
+  const COLLAPSED_DEFAULTS = {
+    'cfg-shortcuts': true,
+    'p-cmd': true,
+    'p-prm': true,
+    'p-skl': true,
+    'p-note': true,
+    'p-kanban': true,
+    'p-plans': true,
+    'p-hooks': true,
+    'p-mcpb': true,
+    'p-clip-hist': true,
+    'p-clip-slots': true,
+    'p-clip-global': true,
+    'p-clip-ws': true,
+    'p-projects': true,
+    'p-anchors': true,
+    'p-rules': true,
+  };
+
   const _state = vscode.getState() || {};
-  let collapsed = Object.assign(
-    {
-      'cfg-shortcuts': false,
-      'p-cmd': true,
-      'p-prm': true,
-      'p-skl': true,
-      'p-note': true,
-      'p-kanban': true,
-      'p-plans': true,
-      'p-hooks': true,
-      'p-mcpb': true,
-      'p-clip-hist': true,
-      'p-clip-slots': true,
-      'p-clip-global': true,
-      'p-clip-ws': true,
-      'p-projects': false,
-      'p-anchors': true,
-      'p-rules': true,
-    },
-    _state.collapsed || {}
-  );
+  const hasCurrentCollapsedState =
+    _state.collapsedStateVersion === COLLAPSED_STATE_VERSION && _state.collapsed;
+  let collapsed = hasCurrentCollapsedState
+    ? Object.assign({}, COLLAPSED_DEFAULTS, _state.collapsed)
+    : Object.assign({}, COLLAPSED_DEFAULTS);
   const TABS = ['personal', 'project', 'usage', 'config'];
   let activeTab = TABS.includes(_state.activeTab) ? _state.activeTab : 'personal';
 
   function saveState() {
-    vscode.setState({ collapsed, activeTab });
+    vscode.setState({ collapsed, activeTab, collapsedStateVersion: COLLAPSED_STATE_VERSION });
   }
 
   let currentModel = null;
@@ -90,8 +94,7 @@
   }
 
   function section(id, icon, title, count, bodyHtml) {
-    const defaultCol = id.startsWith('cfg-') && id !== 'cfg-shortcuts';
-    const isCol = collapsed[id] !== undefined ? !!collapsed[id] : defaultCol;
+    const isCol = collapsed[id] !== undefined ? !!collapsed[id] : true;
     return (
       `<div class="sec ${isCol ? 'collapsed' : ''}" data-secwrap="${id}">` +
       `<div class="sec-h" data-sec="${id}">` +
@@ -558,6 +561,8 @@
   }
 
   let clickBound = false;
+  let dragBound = false;
+
   function bind() {
     const r = document.getElementById('refresh');
     if (r) {
@@ -579,56 +584,68 @@
       app.addEventListener('click', onClick);
       clickBound = true;
     }
-    bindDragReorder();
+    if (!dragBound) {
+      app.addEventListener('dragstart', onDragStart);
+      app.addEventListener('dragend', onDragEnd);
+      app.addEventListener('dragover', onDragOver);
+      app.addEventListener('dragleave', onDragLeave);
+      app.addEventListener('drop', onDrop);
+      dragBound = true;
+    }
   }
 
-  function bindDragReorder() {
-    app.querySelectorAll('.drag').forEach((handle) => {
-      handle.addEventListener('dragstart', (e) => {
-        const row = handle.closest('[data-reorder-id]');
-        if (!row) return;
-        dragState = {
-          id: row.getAttribute('data-reorder-id'),
-          scope: row.getAttribute('data-reorder-scope'),
-        };
-        row.classList.add('dragging');
-        if (e.dataTransfer) {
-          e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/plain', dragState.id);
-        }
-      });
-      handle.addEventListener('dragend', () => {
-        app.querySelectorAll('.dragging,.drag-over').forEach((el) => {
-          el.classList.remove('dragging', 'drag-over');
-        });
-        dragState = null;
-      });
-    });
+  function onDragStart(e) {
+    const handle = e.target.closest('.drag');
+    if (!handle || !app.contains(handle)) return;
+    const row = handle.closest('[data-reorder-id]');
+    if (!row) return;
+    dragState = {
+      id: row.getAttribute('data-reorder-id'),
+      scope: row.getAttribute('data-reorder-scope'),
+    };
+    row.classList.add('dragging');
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', dragState.id);
+    }
+  }
 
-    app.querySelectorAll('[data-reorder-id]').forEach((row) => {
-      row.addEventListener('dragover', (e) => {
-        if (!dragState || dragState.scope !== row.getAttribute('data-reorder-scope')) return;
-        e.preventDefault();
-        row.classList.add('drag-over');
-      });
-      row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-      row.addEventListener('drop', (e) => {
-        e.preventDefault();
-        row.classList.remove('drag-over');
-        if (!dragState || dragState.scope !== row.getAttribute('data-reorder-scope')) return;
-        const targetId = row.getAttribute('data-reorder-id');
-        if (!targetId || dragState.id === targetId) return;
-        const scope = dragState.scope;
-        const rows = [...app.querySelectorAll(`[data-reorder-scope="${scope}"]`)];
-        const ids = rows.map((r) => r.getAttribute('data-reorder-id')).filter(Boolean);
-        const from = ids.indexOf(dragState.id);
-        const to = ids.indexOf(targetId);
-        if (from < 0 || to < 0) return;
-        ids.splice(from, 1);
-        ids.splice(to, 0, dragState.id);
-        vscode.postMessage({ type: 'reorder', scope, orderedIds: ids });
-      });
+  function onDragEnd() {
+    app.querySelectorAll('.dragging,.drag-over').forEach((el) => {
+      el.classList.remove('dragging', 'drag-over');
     });
+    dragState = null;
+  }
+
+  function onDragOver(e) {
+    const row = e.target.closest('[data-reorder-id]');
+    if (!row || !dragState || dragState.scope !== row.getAttribute('data-reorder-scope')) return;
+    e.preventDefault();
+    row.classList.add('drag-over');
+  }
+
+  function onDragLeave(e) {
+    const row = e.target.closest('[data-reorder-id]');
+    if (row) row.classList.remove('drag-over');
+  }
+
+  function onDrop(e) {
+    const row = e.target.closest('[data-reorder-id]');
+    if (!row) return;
+    e.preventDefault();
+    row.classList.remove('drag-over');
+    if (!dragState || dragState.scope !== row.getAttribute('data-reorder-scope')) return;
+    const targetId = row.getAttribute('data-reorder-id');
+    if (!targetId || dragState.id === targetId) return;
+    const scope = dragState.scope;
+    const rows = [...app.querySelectorAll(`[data-reorder-scope="${scope}"]`)];
+    const ids = rows.map((r) => r.getAttribute('data-reorder-id')).filter(Boolean);
+    const from = ids.indexOf(dragState.id);
+    const to = ids.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    ids.splice(from, 1);
+    ids.splice(to, 0, dragState.id);
+    vscode.postMessage({ type: 'reorder', scope, orderedIds: ids });
   }
 
   function onClick(e) {
@@ -654,7 +671,7 @@
     }
     const act = e.target.closest('[data-act]');
     if (act && app.contains(act)) {
-      if (act.classList.contains('drag')) return;
+      if (act.classList.contains('drag') || e.target.closest('.drag')) return;
       const type = act.getAttribute('data-act');
       if (type === 'open') {
         vscode.postMessage({ type: 'open', path: act.getAttribute('data-path') });

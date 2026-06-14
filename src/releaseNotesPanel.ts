@@ -4,6 +4,12 @@
  */
 
 import * as vscode from 'vscode';
+import {
+  buildPanelHeader,
+  buildWebviewDocument,
+  configurePanelWebview,
+  getExtensionUri,
+} from './webviewUi';
 
 const LAST_SEEN_VERSION_KEY = 'cursorToys.lastSeenVersion';
 
@@ -60,25 +66,65 @@ function escapeHtml(s: string): string {
 }
 
 /**
- * Simple markdown to HTML for changelog (headers, lists, bold, code, images).
- * Escapes HTML in content first, then applies markdown patterns.
- * Images: only https? URLs are allowed for security.
+ * Simple markdown to HTML for changelog blocks (headers, lists, bold, code, images).
  */
 function markdownToHtml(md: string): string {
-  const escaped = escapeHtml(md);
+  const blocks = md.split(/\n{2,}/);
+  const parts: string[] = [];
+
+  for (const rawBlock of blocks) {
+    const block = rawBlock.trim();
+    if (!block) {
+      continue;
+    }
+
+    if (/^#### /.test(block)) {
+      parts.push(`<h4>${inlineMarkdown(block.replace(/^#### /, ''))}</h4>`);
+      continue;
+    }
+    if (/^### /.test(block)) {
+      parts.push(`<h3>${inlineMarkdown(block.replace(/^### /, ''))}</h3>`);
+      continue;
+    }
+    if (/^## /.test(block)) {
+      parts.push(`<h2>${inlineMarkdown(block.replace(/^## /, ''))}</h2>`);
+      continue;
+    }
+    if (/^# /.test(block)) {
+      parts.push(`<h1>${inlineMarkdown(block.replace(/^# /, ''))}</h1>`);
+      continue;
+    }
+
+    const lines = block.split('\n');
+    if (lines.every((line) => /^- /.test(line.trim()))) {
+      const items = lines
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .map((line) => `<li>${inlineMarkdown(line.replace(/^- /, ''))}</li>`)
+        .join('');
+      parts.push(`<ul>${items}</ul>`);
+      continue;
+    }
+
+    if (/^!\[[^\]]*\]\(https?:\/\//.test(block)) {
+      parts.push(inlineMarkdown(block));
+      continue;
+    }
+
+    const paragraph = lines.map((line) => line.trim()).join(' ');
+    parts.push(`<p>${inlineMarkdown(paragraph)}</p>`);
+  }
+
+  return parts.join('\n');
+}
+
+function inlineMarkdown(text: string): string {
+  const escaped = escapeHtml(text);
   const withImages = replaceMarkdownImages(escaped);
   const withLinks = replaceMarkdownLinks(withImages);
-  const withHeaders = withLinks
-    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-    .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
+  return withLinks
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/`([^`]+)`/g, '<code>$1</code>');
-  const withListItems = withHeaders.replace(/^- (.+)$/gm, '<li>$1</li>');
-  const withLists = withListItems.replace(/(<li>.*?<\/li>\n?)+/g, (m) => '<ul>' + m.trim() + '</ul>');
-  const withParas = withLists.replace(/\n\n+/g, '</p><p>').replace(/\n/g, '<br>');
-  return '<p>' + withParas + '</p>';
 }
 
 /** Replace ![](url) and ![alt](url) with <img>. Only allows https? URLs. */
@@ -153,6 +199,7 @@ export class ReleaseNotesPanel {
     private readonly changelogHtml: string
   ) {
     this.panel = panel;
+    configurePanelWebview(this.panel.webview, this.context.extensionUri);
     this.panel.webview.html = this.getWebviewContent();
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
     this.panel.webview.onDidReceiveMessage(
@@ -202,83 +249,40 @@ export class ReleaseNotesPanel {
   }
 
   private getWebviewContent(): string {
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CursorToys - What's New</title>
-  <style>
-    body {
-      font-family: var(--vscode-font-family);
-      padding: 24px;
-      color: var(--vscode-foreground);
-      background-color: var(--vscode-editor-background);
-      line-height: 1.6;
-    }
-    .header {
-      margin-bottom: 20px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid var(--vscode-widget-border);
-    }
-    .header h1 {
-      font-size: 1.5em;
-      margin: 0 0 8px 0;
-      color: var(--vscode-foreground);
-    }
-    .header .version {
-      font-size: 0.9em;
-      color: var(--vscode-descriptionForeground);
-    }
+    const body =
+      buildPanelHeader({
+        title: 'CursorToys',
+        subtitle: `What's New · v${this.version}`,
+      }) +
+      `<div class="ct-body fade-in">` +
+      `<div class="content">${this.changelogHtml}</div>` +
+      `<div class="footer">` +
+      `<a href="#" data-url="https://github.com/CursorToys/cursor-toys/blob/main/CHANGELOG.md">Full changelog on GitHub</a>` +
+      `</div></div>`;
+
+    return buildWebviewDocument({
+      webview: this.panel.webview,
+      extensionUri: this.context.extensionUri,
+      title: "CursorToys - What's New",
+      body,
+      allowHttpsImages: true,
+      extraStyles: `
+    .content { line-height: 1.5; }
+    .content h2 { margin: 14px 0 6px; font-size: 1.05em; }
+    .content h3 { margin: 12px 0 4px; font-size: 1em; }
+    .content h4 { margin: 10px 0 4px; font-size: 0.95em; }
+    .content p { margin: 6px 0; }
+    .content ul { margin: 6px 0 8px; }
+    .content li { margin: 2px 0; }
     .changelog-version {
-      font-size: 0.85em;
-      color: var(--vscode-descriptionForeground);
-      margin-bottom: 16px;
-    }
-    .content {
-      font-size: 13px;
-    }
-    .content h3 { font-size: 1.1em; margin: 16px 0 8px 0; }
-    .content h4 { font-size: 1em; margin: 12px 0 6px 0; }
-    .content ul { margin: 8px 0; padding-left: 20px; }
-    .content li { margin: 4px 0; }
-    .content code {
-      background: var(--vscode-textCodeBlock-background);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.9em;
-    }
-    .content strong { font-weight: 600; }
-    .content a { color: var(--vscode-textLink-foreground); }
-    .content a:hover { text-decoration: underline; }
-    .content img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 6px;
-      margin: 8px 0;
-    }
-    .footer {
-      margin-top: 24px;
-      padding-top: 16px;
-      border-top: 1px solid var(--vscode-widget-border);
-    }
-    .footer a {
-      color: var(--vscode-textLink-foreground);
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>What's New in CursorToys</h1>
-    <span class="version">Version ${escapeHtml(this.version)}</span>
-  </div>
-  <div class="content">
-    ${this.changelogHtml}
-  </div>
-  <div class="footer">
-    <a href="#" data-url="https://github.com/CursorToys/cursor-toys/blob/main/CHANGELOG.md">Full changelog on GitHub</a>
-  </div>
-  <script>
+      margin: 12px 0 8px;
+      font-family: var(--ct-mono, monospace);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ct-accent, #6366f1);
+    }`,
+      scripts: `
     (function() {
       const vscode = acquireVsCodeApi();
       document.querySelectorAll('[data-url]').forEach(function(el) {
@@ -293,10 +297,8 @@ export class ReleaseNotesPanel {
           vscode.postMessage({ command: 'openExternal', url: el.getAttribute('href') });
         });
       });
-    })();
-  </script>
-</body>
-</html>`;
+    })();`,
+    });
   }
 }
 
@@ -311,7 +313,11 @@ export async function checkAndShowReleaseNotes(context: vscode.ExtensionContext)
   const isFirstRun = lastSeen === undefined;
   const isUpdate = lastSeen !== undefined && compareVersions(currentVersion, lastSeen) > 0;
 
-  if (isFirstRun || isUpdate) {
+  const showOnStartup = vscode.workspace
+    .getConfiguration('cursorToys')
+    .get<boolean>('releaseNotes.showOnStartup', true);
+
+  if (showOnStartup && (isFirstRun || isUpdate)) {
     const changelogHtml = await loadChangelogSection(context);
     ReleaseNotesPanel.createOrShow(context, currentVersion, changelogHtml);
   }

@@ -1,17 +1,17 @@
 /* CursorToys Control — cockpit panel (inspired by Claude Control layout). */
 
 :root {
-  --accent: #6366f1;
-  --accent-dim: #6366f133;
-  --accent-soft: #6366f118;
-  --led-on: #4ec98a;
-  --led-off: #5a5a5a;
-  --hair: color-mix(in srgb, var(--vscode-foreground) 14%, transparent);
-  --hair-soft: color-mix(in srgb, var(--vscode-foreground) 8%, transparent);
-  --row-hover: color-mix(in srgb, var(--vscode-foreground) 7%, transparent);
-  --mute: color-mix(in srgb, var(--vscode-foreground) 55%, transparent);
-  --mute2: color-mix(in srgb, var(--vscode-foreground) 38%, transparent);
-  --mono: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+  --accent: var(--ct-accent);
+  --accent-dim: var(--ct-accent-dim);
+  --accent-soft: var(--ct-accent-soft);
+  --led-on: var(--ct-led-on);
+  --led-off: var(--ct-led-off);
+  --hair: var(--ct-hair);
+  --hair-soft: var(--ct-hair-soft);
+  --row-hover: var(--ct-row-hover);
+  --mute: var(--ct-mute);
+  --mute2: var(--ct-mute2);
+  --mono: var(--ct-mono);
 }
 
 * { box-sizing: border-box; }

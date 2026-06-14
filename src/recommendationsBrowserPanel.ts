@@ -4,6 +4,11 @@
  */
 
 import * as vscode from 'vscode';
+import {
+  buildPanelHeader,
+  buildStylesheetLinks,
+  configurePanelWebview,
+} from './webviewUi';
 import { RecommendationsManager } from './recommendationsManager';
 
 interface SkillItem {
@@ -29,6 +34,7 @@ export class RecommendationsBrowserPanel {
     private readonly manager: RecommendationsManager
   ) {
     this.panel = panel;
+    configurePanelWebview(this.panel.webview, this.context.extensionUri);
 
     // Set up webview content
     this.panel.webview.html = this.getWebviewContent();
@@ -174,12 +180,22 @@ export class RecommendationsBrowserPanel {
   }
 
   private getWebviewContent(): string {
+    const stylesheetLinks = buildStylesheetLinks(
+      this.panel.webview,
+      this.context.extensionUri
+    );
+    const header = buildPanelHeader({
+      title: 'CursorToys',
+      subtitle: 'Skills marketplace',
+    });
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agent Skills Marketplace</title>
+  ${stylesheetLinks}
   <style>
     * {
       box-sizing: border-box;
@@ -187,118 +203,23 @@ export class RecommendationsBrowserPanel {
       padding: 0;
     }
 
-    body {
-      font-family: var(--vscode-font-family);
-      color: var(--vscode-foreground);
-      background-color: var(--vscode-editor-background);
-      padding: 20px;
+    .market-body {
+      padding: 12px 14px 24px;
     }
 
-    .header {
-      margin-bottom: 8px;
-      text-align: center;
-    }
-
-    .header h1 {
-      font-size: 32px;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-
-    .header-subtitle {
-      font-size: 16px;
-      color: var(--vscode-descriptionForeground);
+    .market-subtitle {
+      font-size: 12px;
+      color: var(--ct-mute);
       margin-bottom: 4px;
     }
 
-    .header-disclaimer {
-      font-size: 12px;
-      color: var(--vscode-descriptionForeground);
-      margin-bottom: 20px;
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      margin-bottom: 20px;
-    }
-
-    .search-bar {
-      width: 100%;
-      max-width: 600px;
-      margin: 0 auto 20px;
-      padding: 10px 16px;
-      background: var(--vscode-input-background);
-      color: var(--vscode-input-foreground);
-      border: 1px solid var(--vscode-input-border);
-      border-radius: 6px;
-      font-size: 14px;
-      display: block;
-    }
-
-    .search-bar:focus {
-      outline: none;
-      border-color: var(--vscode-focusBorder);
-    }
-
-    .filters {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-      justify-content: center;
-      max-width: 100%;
-      overflow-x: auto;
-      padding: 8px 0;
-    }
-
-    .filter-button {
-      padding: 8px 16px;
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
-      border: none;
-      border-radius: 20px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-
-    .filter-button:hover {
-      background: var(--vscode-button-secondaryHoverBackground);
-      transform: translateY(-1px);
-    }
-
-    .filter-button.active {
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    }
-
-    .button {
-      padding: 8px 16px;
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 13px;
-      transition: background-color 0.2s;
-    }
-
-    .button:hover {
-      background: var(--vscode-button-hoverBackground);
-    }
-
-    .button-secondary {
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
-    }
-
-    .button-secondary:hover {
-      background: var(--vscode-button-secondaryHoverBackground);
+    .market-disclaimer {
+      font-size: 10px;
+      font-family: var(--ct-mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ct-mute2);
+      margin-bottom: 16px;
     }
 
     .skills-grid {
@@ -309,16 +230,16 @@ export class RecommendationsBrowserPanel {
     }
 
     .skill-card {
-      background: var(--vscode-editor-background);
-      border: 1px solid var(--vscode-panel-border);
-      border-radius: 8px;
+      background: color-mix(in srgb, var(--vscode-editor-background) 92%, var(--ct-accent-soft));
+      border: 1px solid var(--ct-hair);
+      border-radius: 9px;
       padding: 20px;
       transition: all 0.2s;
     }
 
     .skill-card:hover {
-      border-color: var(--vscode-focusBorder);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      border-color: var(--ct-accent-dim);
+      box-shadow: 0 4px 12px var(--ct-accent-soft);
       transform: translateY(-2px);
     }
 
@@ -488,31 +409,27 @@ export class RecommendationsBrowserPanel {
     }
   </style>
 </head>
-<body>
-  <div class="header">
-    <h1>Browse Skills</h1>
-    <div class="header-subtitle" id="subtitle">
-      Explore our collection of agent skills
-    </div>
-    <div class="header-disclaimer">
-      Powered by Tech Leads Club
-    </div>
+<body class="ct-panel">
+  ${header}
+  <div class="market-body fade-in">
+    <div class="market-subtitle" id="subtitle">Explore our collection of agent skills</div>
+    <div class="market-disclaimer">Powered by Tech Leads Club</div>
     <div class="header-actions">
-      <button class="button-secondary button" onclick="refreshSkills()">Refresh</button>
-      <button class="button-secondary button" onclick="clearCache()">Clear Cache</button>
+      <button type="button" class="ct-btn secondary" onclick="refreshSkills()">Refresh</button>
+      <button type="button" class="ct-btn secondary" onclick="clearCache()">Clear Cache</button>
     </div>
-  </div>
 
-  <input 
-    type="text" 
-    class="search-bar" 
-    id="searchInput" 
+  <input
+    type="text"
+    class="search-bar ct-input"
+    id="searchInput"
     placeholder="Search skills by name or description..."
     oninput="filterSkills()"
+    style="max-width:600px;margin:0 auto 20px;display:block"
   />
 
   <div class="filters" id="filters">
-    <button class="filter-button active" data-filter="all" onclick="setFilter('all')">All</button>
+    <button type="button" class="filter-button active" data-filter="all" onclick="setFilter('all')">All</button>
   </div>
 
   <div id="content">
@@ -520,6 +437,7 @@ export class RecommendationsBrowserPanel {
       <h2>Loading skills...</h2>
       <p>Please wait while we fetch the latest skills from Tech Leads Club.</p>
     </div>
+  </div>
   </div>
 
   <script>

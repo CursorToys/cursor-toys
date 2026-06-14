@@ -40,7 +40,7 @@ import {
 import { createNewHttpRequest } from './httpRequestEditorCommands';
 import {
   runHttpCliTests,
-  getHttpTestWorkspaceContext,
+  requireHttpTestWorkspaceContext,
   toHttpFolderRelativePath,
 } from './httpCliRunner';
 import { EnvironmentManager } from './environmentManager';
@@ -3845,7 +3845,7 @@ Detailed instructions for the agent.
         requestUri = editor.document.uri;
       }
 
-      const ctx = getHttpTestWorkspaceContext();
+      const ctx = requireHttpTestWorkspaceContext();
       if (!ctx) {
         return;
       }
@@ -3868,7 +3868,7 @@ Detailed instructions for the agent.
           vscode.window.showErrorMessage('No HTTP request file selected');
           return;
         }
-        const ctx = getHttpTestWorkspaceContext();
+        const ctx = requireHttpTestWorkspaceContext();
         if (!ctx) {
           return;
         }
@@ -3880,7 +3880,7 @@ Detailed instructions for the agent.
         return;
       }
 
-      const ctx = getHttpTestWorkspaceContext();
+      const ctx = requireHttpTestWorkspaceContext();
       if (!ctx) {
         return;
       }
@@ -3895,7 +3895,7 @@ Detailed instructions for the agent.
   const runHttpTestsFolder = vscode.commands.registerCommand(
     'cursor-toys.runHttpTestsFolder',
     async (arg?: HttpTreeItem) => {
-      const ctx = getHttpTestWorkspaceContext();
+      const ctx = requireHttpTestWorkspaceContext();
       if (!ctx) {
         return;
       }
@@ -3921,7 +3921,7 @@ Detailed instructions for the agent.
   const runHttpTestsAll = vscode.commands.registerCommand(
     'cursor-toys.runHttpTestsAll',
     async () => {
-      const ctx = getHttpTestWorkspaceContext();
+      const ctx = requireHttpTestWorkspaceContext();
       if (!ctx) {
         return;
       }

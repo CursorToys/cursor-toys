@@ -40,6 +40,14 @@ export const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
         commandId: 'cursor-toys.showReleaseNotes',
       },
       {
+        id: 'release-notes-startup',
+        label: "Show What's New on startup",
+        kind: 'setting',
+        iconId: 'megaphone',
+        settingKey: 'cursorToys.releaseNotes.showOnStartup',
+        description: 'After install or extension update',
+      },
+      {
         id: 'base-folder',
         label: 'Base Folder',
         kind: 'setting',

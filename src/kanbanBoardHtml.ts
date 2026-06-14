@@ -1,20 +1,30 @@
+import * as vscode from 'vscode';
 import { KanbanBoardState } from './kanbanBoardTypes';
+import { buildStylesheetLinks } from './webviewUi';
 
 const CARD_HEIGHT_PX = 168;
+
+export interface KanbanBoardUiContext {
+  webview: vscode.Webview;
+  extensionUri: vscode.Uri;
+}
 
 /**
  * Builds HTML for the Kanban board webview.
  */
-export function buildKanbanBoardHtml(state: KanbanBoardState): string {
+export function buildKanbanBoardHtml(state: KanbanBoardState, ui?: KanbanBoardUiContext): string {
   const stateJson = JSON.stringify(state).replace(/</g, '\\u003c');
+  const stylesheetLinks = ui ? buildStylesheetLinks(ui.webview, ui.extensionUri) : '';
+  const styleCsp = ui ? `${ui.webview.cspSource} 'unsafe-inline'` : `'unsafe-inline'`;
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${styleCsp}; script-src 'unsafe-inline';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kanban Board</title>
+  ${stylesheetLinks}
   <style>
     * { box-sizing: border-box; }
     html, body {
@@ -24,12 +34,19 @@ export function buildKanbanBoardHtml(state: KanbanBoardState): string {
     body {
       display: flex;
       flex-direction: column;
-      padding: 12px 16px 16px;
+      padding: 0;
       font-family: var(--vscode-font-family);
       font-size: var(--vscode-font-size);
       color: var(--vscode-foreground);
       background: var(--vscode-editor-background);
       overflow: hidden;
+    }
+    .kanban-main {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 0 14px 16px;
     }
     .toolbar {
       display: flex;
@@ -39,42 +56,47 @@ export function buildKanbanBoardHtml(state: KanbanBoardState): string {
       flex-wrap: wrap;
       flex-shrink: 0;
     }
-    .toolbar h1 {
-      margin: 0;
-      font-size: 1.1em;
-      font-weight: 600;
-      flex: 1;
-      min-width: 120px;
-    }
     .scope-tabs {
       display: flex;
-      gap: 4px;
+      gap: 5px;
       align-items: center;
     }
     .scope-tabs button.scope-tab {
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
-      padding: 4px 10px;
-      font-size: 0.9em;
+      appearance: none;
+      background: transparent;
+      border: 1px solid var(--ct-hair, rgba(128,128,128,0.25));
+      color: var(--ct-mute, inherit);
+      font-family: var(--ct-mono, monospace);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 5px 10px;
+      border-radius: 7px;
+      cursor: pointer;
     }
     .scope-tabs button.scope-tab.active {
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
+      color: var(--ct-accent, #6366f1);
+      border-color: var(--ct-accent, #6366f1);
+      background: var(--ct-accent-soft, rgba(99,102,241,0.09));
     }
     button {
-      background: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      border: none;
-      padding: 6px 12px;
-      border-radius: 2px;
+      appearance: none;
+      font-family: var(--vscode-font-family);
+      font-size: 12px;
+      padding: 7px 14px;
+      border-radius: 7px;
+      border: 1px solid var(--ct-hair, rgba(128,128,128,0.25));
+      background: var(--ct-accent, var(--vscode-button-background));
+      border-color: var(--ct-accent, transparent);
+      color: #fff;
       cursor: pointer;
-      font-size: var(--vscode-font-size);
     }
     button.secondary {
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
+      background: transparent;
+      border-color: var(--ct-hair, rgba(128,128,128,0.25));
+      color: var(--vscode-foreground);
     }
-    button:hover { opacity: 0.9; }
+    button:hover { filter: brightness(1.05); }
     .board {
       flex: 1;
       min-height: 0;
@@ -91,8 +113,8 @@ export function buildKanbanBoardHtml(state: KanbanBoardState): string {
     }
     .column {
       background: var(--vscode-sideBar-background);
-      border: 1px solid var(--vscode-panel-border);
-      border-radius: 4px;
+      border: 1px solid var(--ct-hair, var(--vscode-panel-border));
+      border-radius: 9px;
       height: 100%;
       min-height: 0;
       display: flex;
@@ -280,15 +302,17 @@ export function buildKanbanBoardHtml(state: KanbanBoardState): string {
     }
   </style>
 </head>
-<body>
+<body class="ct-panel-fill">
+  <div class="kanban-main">
   <div id="error" class="error-banner"></div>
   <div class="toolbar">
-    <h1>Kanban Board</h1>
+    <span class="ct-spacer"></span>
     <div class="scope-tabs" id="scope-tabs" hidden></div>
-    <button type="button" id="btn-add">Add card</button>
-    <button type="button" class="secondary" id="btn-refresh">Refresh</button>
+    <button type="button" class="ct-btn primary" id="btn-add">Add card</button>
+    <button type="button" class="ct-btn secondary" id="btn-refresh">Refresh</button>
   </div>
   <div class="board" id="board"></div>
+  </div>
 
   <dialog id="create-dialog">
     <form method="dialog" id="create-form">

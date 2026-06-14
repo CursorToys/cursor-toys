@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { buildProjectsDashboardHtml, buildProjectsDashboardState } from './projectsDashboardHtml';
+import { configurePanelWebview, getExtensionUri } from '../webviewUi';
 import { ProjectRegistry } from './projectRegistry';
 import { openProjectEntry } from './projectsCommands';
 import { trackProjectsEvent } from './projectsTelemetry';
@@ -21,6 +22,10 @@ export class ProjectsDashboardPanel {
     private readonly registry: ProjectRegistry
   ) {
     this.panel.webview.options = { enableScripts: true };
+    const extensionUri = getExtensionUri();
+    if (extensionUri) {
+      configurePanelWebview(this.panel.webview, extensionUri);
+    }
     this.pushState();
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
@@ -60,7 +65,9 @@ export class ProjectsDashboardPanel {
       this.registry.getPinned(),
       this.registry.getRecent()
     );
-    this.panel.webview.html = buildProjectsDashboardHtml(state);
+    const extensionUri = getExtensionUri();
+    const ui = extensionUri ? { webview: this.panel.webview, extensionUri } : undefined;
+    this.panel.webview.html = buildProjectsDashboardHtml(state, ui);
     this.panel.webview.postMessage({
       type: 'state',
       projects: state.projects,

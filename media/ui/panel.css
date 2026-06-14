@@ -1,0 +1,676 @@
+/* CursorToys shared panel components — matches Control panel visual language. */
+
+/* ── Header ── */
+.ct-top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--ct-surface);
+  border-bottom: 1px solid var(--ct-hair);
+  backdrop-filter: blur(6px);
+}
+
+.ct-hdr {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 14px 10px;
+}
+
+.ct-mark {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  color: var(--ct-accent);
+  filter: drop-shadow(0 0 6px var(--ct-accent-dim));
+  display: grid;
+  place-items: center;
+}
+
+.ct-mark svg {
+  width: 22px;
+  height: 22px;
+}
+
+.ct-title {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;
+}
+
+.ct-title b {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 650;
+}
+
+.ct-title span {
+  font-family: var(--ct-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: var(--ct-mute2);
+}
+
+.ct-spacer {
+  flex: 1;
+}
+
+.ct-body {
+  padding: 12px 14px 20px;
+}
+
+.ct-body-fill {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px 16px;
+  overflow: hidden;
+}
+
+/* ── Scope labels ── */
+.ct-scope {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 2px 6px;
+  font-family: var(--ct-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ct-mute2);
+}
+
+.ct-scope .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ct-accent);
+  box-shadow: 0 0 5px var(--ct-accent);
+}
+
+/* ── Tabs ── */
+.ct-tabs {
+  display: flex;
+  gap: 5px;
+  padding: 0 11px 9px;
+}
+
+.ct-tab {
+  appearance: none;
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--ct-hair);
+  color: var(--ct-mute);
+  cursor: pointer;
+  font-family: var(--ct-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 4px;
+  border-radius: 7px;
+  transition: all 0.14s ease;
+}
+
+.ct-tab:hover {
+  color: var(--vscode-foreground);
+  border-color: var(--ct-mute2);
+}
+
+.ct-tab.on,
+.ct-tab.active {
+  color: var(--ct-accent);
+  border-color: var(--ct-accent);
+  background: var(--ct-accent-soft);
+}
+
+.ct-tab-panel {
+  display: none;
+}
+
+.ct-tab-panel.active {
+  display: block;
+}
+
+/* Legacy tab aliases used by some panels */
+.tab-btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid var(--ct-hair);
+  color: var(--ct-mute);
+  cursor: pointer;
+  font-family: var(--ct-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: 7px;
+  margin: 0 4px 0 0;
+  transition: all 0.14s ease;
+}
+
+.tab-btn:hover {
+  color: var(--vscode-foreground);
+  border-color: var(--ct-mute2);
+}
+
+.tab-btn.active {
+  color: var(--ct-accent);
+  border-color: var(--ct-accent);
+  background: var(--ct-accent-soft);
+}
+
+.tabs {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+/* ── Buttons ── */
+.ct-btn,
+button.ct-btn {
+  appearance: none;
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--ct-hair);
+  background: transparent;
+  color: var(--vscode-foreground);
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.ct-btn:hover {
+  border-color: var(--ct-accent-dim);
+  background: var(--ct-accent-soft);
+  color: var(--ct-accent);
+}
+
+.ct-btn.primary,
+button.primary {
+  background: var(--ct-accent);
+  border-color: var(--ct-accent);
+  color: #fff;
+  font-weight: 550;
+}
+
+.ct-btn.primary:hover,
+button.primary:hover {
+  filter: brightness(1.08);
+  color: #fff;
+}
+
+.ct-btn.secondary,
+button.secondary {
+  background: transparent;
+  border-color: var(--ct-hair);
+  color: var(--ct-mute);
+}
+
+.ct-btn.secondary:hover,
+button.secondary:hover {
+  color: var(--vscode-foreground);
+  border-color: var(--ct-mute2);
+}
+
+.ct-btn.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ct-mute);
+}
+
+.ct-btn.danger {
+  background: color-mix(in srgb, var(--ct-error) 15%, transparent);
+  border-color: color-mix(in srgb, var(--ct-error) 35%, transparent);
+  color: var(--ct-error);
+}
+
+.ct-iconbtn {
+  appearance: none;
+  border: 1px solid var(--ct-hair);
+  background: transparent;
+  color: var(--ct-mute);
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.ct-iconbtn:hover {
+  color: var(--ct-accent);
+  border-color: var(--ct-accent-dim);
+  background: var(--ct-accent-soft);
+}
+
+.ct-iconbtn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Map generic buttons to theme when inside ct-panel */
+body.ct-panel button:not(.ct-tab):not(.tab-btn):not(.detail-tab):not(.scope-tab):not(.filter-button):not(.ct-btn):not(.ct-iconbtn):not(.ct-pill) {
+  appearance: none;
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--ct-hair);
+  background: var(--ct-accent);
+  border-color: var(--ct-accent);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+body.ct-panel button.secondary:not(.ct-tab):not(.tab-btn) {
+  background: transparent;
+  border-color: var(--ct-hair);
+  color: var(--ct-mute);
+}
+
+body.ct-panel button.configure-btn,
+body.ct-panel button.add-provider-btn {
+  background: transparent;
+  border-color: var(--ct-accent-dim);
+  color: var(--ct-accent);
+}
+
+/* ── Pills / filters ── */
+.ct-pill,
+.filter-button {
+  appearance: none;
+  padding: 6px 14px;
+  background: transparent;
+  color: var(--ct-mute);
+  border: 1px solid var(--ct-hair);
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: var(--ct-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: all 0.14s ease;
+  white-space: nowrap;
+}
+
+.ct-pill:hover,
+.filter-button:hover {
+  color: var(--vscode-foreground);
+  border-color: var(--ct-mute2);
+}
+
+.ct-pill.on,
+.ct-pill.active,
+.filter-button.active {
+  color: var(--ct-accent);
+  border-color: var(--ct-accent);
+  background: var(--ct-accent-soft);
+}
+
+/* ── Cards & sections ── */
+.ct-card,
+.provider-card,
+.skill-card,
+.card {
+  border: 1px solid var(--ct-hair);
+  border-radius: 9px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: color-mix(in srgb, var(--vscode-editor-background) 92%, var(--ct-accent-soft));
+}
+
+.ct-card.highlight,
+.highlight-card {
+  border-color: var(--ct-accent-dim);
+  box-shadow: inset 0 0 0 1px var(--ct-accent-soft);
+}
+
+.ct-sec {
+  margin: 0 0 8px;
+  border-radius: 9px;
+  overflow: hidden;
+  border: 1px solid var(--ct-hair-soft);
+}
+
+.section {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--ct-hair);
+  border-radius: 9px;
+  background: var(--ct-hair-soft);
+}
+
+.section h2 {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-family: var(--ct-mono);
+  color: var(--ct-mute);
+  margin: 0 0 10px;
+  font-weight: 600;
+}
+
+/* ── Forms ── */
+.ct-input,
+input[type="text"],
+input[type="search"],
+input[type="number"],
+select,
+textarea,
+.search-bar {
+  appearance: none;
+  font-family: var(--vscode-font-family);
+  font-size: 12px;
+  color: var(--vscode-input-foreground);
+  background: var(--vscode-input-background);
+  border: 1px solid var(--ct-hair);
+  border-radius: 8px;
+  padding: 7px 10px;
+  transition: border-color 0.14s ease;
+  width: 100%;
+}
+
+.ct-input:focus,
+input:focus,
+select:focus,
+textarea:focus,
+.search-bar:focus {
+  outline: none;
+  border-color: var(--ct-accent-dim);
+}
+
+.ct-label,
+label.field-label,
+.field-label {
+  display: block;
+  font-family: var(--ct-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ct-mute2);
+  margin-bottom: 5px;
+}
+
+.ct-searchwrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 12px;
+  padding: 0 9px;
+  border: 1px solid var(--ct-hair);
+  border-radius: 8px;
+  background: var(--ct-hair-soft);
+}
+
+.ct-searchwrap:focus-within {
+  border-color: var(--ct-accent-dim);
+}
+
+/* ── Toolbar ── */
+.ct-toolbar,
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.ct-toolbar h1,
+.toolbar h1 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  flex: 1;
+  min-width: 120px;
+}
+
+/* ── Progress bars ── */
+.ct-progress,
+.progress-track,
+.ubar {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--ct-hair);
+  overflow: hidden;
+}
+
+.ct-progress-fill,
+.progress-fill,
+.ufill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--ct-accent);
+  transition: width 0.45s ease;
+}
+
+.ct-urow,
+.urow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 5px 0;
+}
+
+/* ── Tables ── */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+th {
+  font-family: var(--ct-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ct-mute2);
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ct-hair);
+}
+
+td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ct-hair-soft);
+  vertical-align: top;
+}
+
+/* ── Code blocks ── */
+pre,
+pre.code-block,
+.code-block {
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  background: var(--ct-hair-soft);
+  border: 1px solid var(--ct-hair);
+  border-radius: 8px;
+  font-family: var(--vscode-editor-font-family, var(--ct-mono));
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+code {
+  font-family: var(--vscode-editor-font-family, var(--ct-mono));
+  font-size: 11px;
+  background: var(--ct-hair-soft);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.info {
+  margin: 10px 0;
+  padding: 12px 14px;
+  background: var(--ct-hair-soft);
+  border: 1px solid var(--ct-hair);
+  border-radius: 9px;
+}
+
+/* ── Status badges ── */
+.ct-badge,
+.badge {
+  display: inline-block;
+  font-family: var(--ct-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--ct-hair);
+  background: var(--ct-hair-soft);
+}
+
+.status-2xx,
+.badge-pass {
+  background: color-mix(in srgb, var(--ct-success) 18%, transparent);
+  color: var(--ct-success);
+  border-color: color-mix(in srgb, var(--ct-success) 35%, transparent);
+}
+
+.status-4xx {
+  background: color-mix(in srgb, var(--ct-warn) 18%, transparent);
+  color: var(--ct-warn);
+  border-color: color-mix(in srgb, var(--ct-warn) 35%, transparent);
+}
+
+.status-5xx,
+.status-error,
+.badge-fail {
+  background: color-mix(in srgb, var(--ct-error) 18%, transparent);
+  color: var(--ct-error);
+  border-color: color-mix(in srgb, var(--ct-error) 35%, transparent);
+}
+
+/* ── Text utilities ── */
+.ct-empty,
+.empty,
+.empty-state {
+  padding: 12px 4px;
+  font-size: 11px;
+  color: var(--ct-mute2);
+  font-style: italic;
+  text-align: center;
+}
+
+.ct-hint,
+.hint,
+.muted {
+  font-size: 11px;
+  color: var(--ct-mute2);
+  line-height: 1.5;
+}
+
+.ct-error,
+.error {
+  color: var(--ct-error);
+  font-size: 11px;
+}
+
+a,
+a.ext-link {
+  color: var(--ct-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.ct-divider,
+.divider {
+  height: 1px;
+  background: var(--ct-hair-soft);
+  margin: 10px 0;
+}
+
+.button-row,
+.buttons,
+.card-actions,
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+/* ── Content (release notes, markdown) ── */
+.ct-content,
+.content {
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.ct-content h3,
+.content h3 {
+  font-size: 1.05em;
+  margin: 16px 0 8px;
+  color: var(--vscode-foreground);
+}
+
+.ct-content h4,
+.content h4 {
+  font-size: 0.95em;
+  margin: 12px 0 6px;
+}
+
+.ct-content ul,
+.content ul {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.ct-content li,
+.content li {
+  margin: 4px 0;
+}
+
+.ct-content img,
+.content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 8px 0;
+  border: 1px solid var(--ct-hair);
+}
+
+.ct-footer,
+.footer {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ct-hair);
+  font-size: 12px;
+}
+
+.fade-in {
+  animation: ctFade 0.25s ease;
+}
+
+@keyframes ctFade {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.boot {
+  padding: 18px;
+  color: var(--ct-mute);
+  font-family: var(--ct-mono);
+  font-size: 11px;
+}

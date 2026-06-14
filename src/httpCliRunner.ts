@@ -76,13 +76,26 @@ export function getHttpTestWorkspaceContext(): {
 } | null {
   const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
   if (!workspaceFolder) {
-    vscode.window.showErrorMessage('No workspace folder open');
     return null;
   }
 
   const workspacePath = workspaceFolder.uri.fsPath;
   const httpPath = getHttpPath(workspacePath);
   return { workspacePath, httpPath };
+}
+
+/**
+ * Returns HTTP test context or shows an error when no workspace is open.
+ */
+export function requireHttpTestWorkspaceContext(): {
+  workspacePath: string;
+  httpPath: string;
+} | null {
+  const ctx = getHttpTestWorkspaceContext();
+  if (!ctx) {
+    vscode.window.showErrorMessage('No workspace folder open');
+  }
+  return ctx;
 }
 
 /**
