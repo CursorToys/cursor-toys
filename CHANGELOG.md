@@ -2,6 +2,27 @@
 
 ![](https://i.imgur.com/hLjssCU.jpeg)
 
+## v2026.6.14-1 - Unified UI and Control Panel polish
+
+### Added
+
+- **Shared webview UI** — `media/ui/theme.css`, `media/ui/panel.css`, and `src/webviewUi.ts` (panel header, CSP helpers, document builder) for a consistent CursorToys look across webviews.
+- **`cursorToys.releaseNotes.showOnStartup`** — disable automatic **What's New** on install/update (command palette entry still opens release notes manually).
+
+### Changed
+
+- **Webviews restyled** to match the Control Panel: release notes, annotation, MCPB preview, spending token setup, usage monitor, HTTP response, recommendations browser, projects dashboard, Kanban board, and HTTP request editor.
+- **HTTP request editor** — detail tabs use pill-style buttons (like Control Panel); **Env** is the last tab (gear icon + label) with environment content in the pane; removed the large top environment banner.
+- **Control panel** — all sections start **collapsed** by default; persisted expand/collapse uses a state version so older “everything open” webview state resets once.
+
+### Fixed
+
+- No **No workspace folder open** toast on startup when no folder is open (HTTP test context is silent until a command needs a workspace).
+- Control panel **drag-and-drop reorder** (Config shortcuts/settings) — fixed duplicate listeners breaking reorder.
+- **What's New** — CHANGELOG images load over `https:`; markdown layout and spacing improved (less excessive line breaks).
+- **Kanban board** — when the project has no Kanban folder, prompts to create the first card instead of an empty board with a broken header; removed redundant oversized panel header.
+- **HTTP editor** — removed redundant oversized header; CSP allows shared UI stylesheets.
+
 ## v2026.6.14-0 - Unified Control Panel
 
 ### Added
