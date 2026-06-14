@@ -1,13 +1,35 @@
 # CursorToys
 
-![](https://i.imgur.com/sx9BPuJ.jpeg)
+![](https://i.imgur.com/hLjssCU.jpeg)
+
+## v2026.6.14-0 - Unified Control Panel
+
+### Added
+
+- **CursorToys Control Panel** — single webview in the CursorToys activity bar (`cursor-toys.controlView`) replacing the previous stack of separate sidebar trees.
+- **Four tabs**: **Personal** (commands, prompts, skills, rules, notepads, kanban, plans, hooks, MCPB, clipboard, projects, code anchors, utils), **Project** (per-workspace assets), **Usage** (Cursor plan Auto/API %, OpenRouter, DeepInfra with progress bars and auto-refresh), and **Config** (shortcuts + full settings tree with inline boolean toggles).
+- **Search/filter** on Personal, Project, and Config tabs.
+- **Drag-and-drop reorder** for sections and items; order persisted in extension global state.
+- Commands: **CursorToys: Refresh control panel**, **CursorToys: Open Cursor spending dashboard**.
+- View title actions: Refresh, Open settings.json, Configure keys, Command Palette.
+
+### Changed
+
+- CursorToys activity bar now shows one **CursorToys** webview instead of separate Commands, Prompts, Skills, HTTP, Notepads, Kanban, Clipboard, Hooks, MCPB, Projects, Code Anchors, Utils, and Settings trees.
+- **Spending** and **Usage Monitor** status bar items now focus the Control panel (Usage tab area) instead of opening external URLs directly.
+- `cursor-toys.focusHttp`, `cursor-toys.focusMcpb`, and `cursor-toys.focusUtils` now focus the Control panel.
+- Explorer sidebar trees (`cursorToys.sidebar.explorerViews` / `hiddenViews`) unchanged — optional duplicate views in the Files sidebar still work.
+
+### Fixed
+
+- `hooks.json` parsing no longer shows an error when the file does not exist yet (returns `null` quietly).
 
 ## v2026.6.11 - Built-in MCP Server and Projects Worspace Launcher
 
 ### Added
 
 - **HTTP improvements (REST Client parity)**: `.http` and `.rest` file support; system dynamic variables (`{{$guid}}`, `{{$randomInt}}`, `{{$timestamp}}`, `{{$datetime}}`, `{{$localDatetime}}`, `{{$processEnv}}`, `{{$dotenv}}`); request-scoped `# @var` between `###` blocks; unified variable resolution; IntelliSense for methods, headers, MIME types, and variables; hover with source hints; go-to-definition for `# @var`; JSON body format-on-save; snippets (GET/POST/PUT/PATCH/DELETE); `//` line comments; per-request CodeLens inside `##` sections with multiple `###` blocks.
- same flow as HTTP skill — bundled `resources/skills/cursor-toys-mcp/`, UI action in MCP settings, command palette, and `mcp_install_skill` MCP tool.
+- **MCP skill install** — same flow as HTTP skill: bundled `resources/skills/cursor-toys-mcp/`, UI action in MCP settings, command palette, and `mcp_install_skill` MCP tool.
 - **Projects** (opt-in via `cursorToys.projects.enabled`): pin, categorize, and reopen frequent workspaces from a CursorToys sidebar view and **Projects Dashboard** webview.
 - Registry stored at `~/.cursortoys/projects/registry.json` with pinned metadata (label, category, color, notes) and extension-maintained recent list.
 - Commands: **Pin Current Workspace**, **Add Project from Folder**, **Open Projects Dashboard**, **Clear Recent Projects**.

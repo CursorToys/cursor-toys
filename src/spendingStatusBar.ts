@@ -133,11 +133,7 @@ function setStatusBarUsage(item: vscode.StatusBarItem, planUsage: PlanUsage): vo
       : '$(cloud) API: —';
   item.text = `${autoText}  ${apiText}`;
   item.tooltip = buildUsageTooltip(planUsage);
-  item.command = {
-    title: 'Open Cursor Dashboard',
-    command: 'vscode.open',
-    arguments: [vscode.Uri.parse(DASHBOARD_URL)]
-  };
+  item.command = 'cursor-toys.controlView.focus';
 }
 
 function setStatusBarNoToken(

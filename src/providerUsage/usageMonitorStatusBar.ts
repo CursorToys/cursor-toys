@@ -62,7 +62,7 @@ async function updateOpenRouterBar(): Promise<void> {
       `**OpenRouter** — remaining $${formatUsd(credits.remaining)} · used $${formatUsd(credits.totalUsage)} / $${formatUsd(credits.totalCredits)} purchased\n\n[Refresh](command:cursor-toys.usageMonitor.refresh) · [Monitor](command:cursor-toys.usageMonitor.open)`
     );
     openRouterItem.tooltip = md;
-    openRouterItem.command = 'cursor-toys.usageMonitor.refresh';
+    openRouterItem.command = 'cursor-toys.controlView.focus';
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     openRouterItem.text = '$(error) OR';
@@ -106,7 +106,7 @@ async function updateDeepInfraBar(): Promise<void> {
       );
     }
     deepInfraItem.tooltip = md;
-    deepInfraItem.command = 'cursor-toys.usageMonitor.refresh';
+    deepInfraItem.command = 'cursor-toys.controlView.focus';
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     deepInfraItem.text = '$(error) DI';

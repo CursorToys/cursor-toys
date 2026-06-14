@@ -176,9 +176,20 @@ export async function parseHooksFile(filePath: string): Promise<HooksConfig | nu
 
     return config;
   } catch (error) {
+    if (isHooksFileNotFoundError(error)) {
+      return null;
+    }
     vscode.window.showErrorMessage(`Error parsing hooks.json: ${error}`);
     return null;
   }
+}
+
+function isHooksFileNotFoundError(error: unknown): boolean {
+  if (error instanceof vscode.FileSystemError) {
+    return error.code === 'FileNotFound' || error.code === 'EntryNotFound';
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes('ENOENT') || message.includes('EntryNotFound');
 }
 
 /**

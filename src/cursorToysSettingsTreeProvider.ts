@@ -17,7 +17,7 @@ export interface CursorToysSettingsTreeItem {
   children?: CursorToysSettingsTreeItem[];
 }
 
-const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
+export const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
   {
     id: 'general',
     label: 'General',
@@ -699,6 +699,107 @@ const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
     ],
   },
 ];
+
+export interface ControlSettingsItem {
+  id: string;
+  label: string;
+  kind: CursorToysSettingsItemKind;
+  description?: string;
+  commandId?: string;
+  settingKey?: string;
+  /** Present for kind=setting when resolved from workspace config. */
+  settingType?: 'boolean' | 'number' | 'string' | 'array';
+  boolValue?: boolean;
+  children?: ControlSettingsItem[];
+}
+
+/** Settings categories hidden from the Control Config tab (managed elsewhere). */
+const CONFIG_EXCLUDED_CATEGORY_IDS = new Set(['spending', 'usage-monitor']);
+
+/**
+ * Serializes the settings tree for the Control webview Config tab.
+ */
+export function toControlSettingsItems(
+  items: CursorToysSettingsTreeItem[] = SETTINGS_ITEMS
+): ControlSettingsItem[] {
+  return items.map((item) => ({
+    id: item.id,
+    label: item.label,
+    kind: item.kind,
+    description: item.description,
+    commandId: item.commandId,
+    settingKey: item.settingKey,
+    children: item.children?.length ? toControlSettingsItems(item.children) : undefined,
+  }));
+}
+
+function enrichSettingsWithValues(
+  items: ControlSettingsItem[],
+  cfg: vscode.WorkspaceConfiguration
+): ControlSettingsItem[] {
+  return items.map((item) => {
+    if (item.kind === 'setting' && item.settingKey) {
+      const subKey = item.settingKey.replace(/^cursorToys\./, '');
+      const value = cfg.get<unknown>(subKey);
+      const enriched: ControlSettingsItem = { ...item };
+      if (typeof value === 'boolean') {
+        enriched.settingType = 'boolean';
+        enriched.boolValue = value;
+      } else if (typeof value === 'number') {
+        enriched.settingType = 'number';
+      } else if (Array.isArray(value)) {
+        enriched.settingType = 'array';
+      } else {
+        enriched.settingType = 'string';
+      }
+      return enriched;
+    }
+    if (item.children?.length) {
+      return { ...item, children: enrichSettingsWithValues(item.children, cfg) };
+    }
+    return item;
+  });
+}
+
+/**
+ * Builds the settings tree for the Control Config tab with live values.
+ */
+export function buildConfigSettingsItems(
+  cfg: vscode.WorkspaceConfiguration = vscode.workspace.getConfiguration('cursorToys')
+): ControlSettingsItem[] {
+  const filtered = SETTINGS_ITEMS.filter((item) => !CONFIG_EXCLUDED_CATEGORY_IDS.has(item.id));
+  return enrichSettingsWithValues(toControlSettingsItems(filtered), cfg);
+}
+
+export interface ControlSettingsAction {
+  id: string;
+  label: string;
+  description?: string;
+  commandId: string;
+}
+
+/**
+ * Flattens settings tree action items for the Control webview.
+ */
+export function flattenSettingsActions(
+  items: CursorToysSettingsTreeItem[] = SETTINGS_ITEMS
+): ControlSettingsAction[] {
+  const out: ControlSettingsAction[] = [];
+  for (const item of items) {
+    if (item.kind === 'action' && item.commandId) {
+      out.push({
+        id: item.id,
+        label: item.label,
+        description: item.description,
+        commandId: item.commandId,
+      });
+    }
+    if (item.children?.length) {
+      out.push(...flattenSettingsActions(item.children));
+    }
+  }
+  return out;
+}
 
 /**
  * Tree data provider for CursorToys settings shortcuts in the activity bar panel.

@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.12-0",
+  "version": "2026.6.14-0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -62,16 +62,7 @@
     "onCommand:cursor-toys.save-as-user-skill",
     "onCommand:cursor-toys.shareUserCommandAsCursorToys",
     "onCommand:cursor-toys.shareUserPromptAsCursorToys",
-    "onView:cursor-toys.userCommands",
-    "onView:cursor-toys.userPrompts",
-    "onView:cursor-toys.userNotepads",
-    "onView:cursor-toys.userKanban",
-    "onView:cursor-toys.userProjects",
-    "onView:cursor-toys.userClipboard",
-    "onView:cursor-toys.userSkills",
-    "onView:cursor-toys.userHttp",
-    "onView:cursor-toys.settings",
-    "onView:cursor-toys.utils",
+    "onView:cursor-toys.controlView",
     "onCommand:cursor-toys.sendToChat",
     "onCommand:cursor-toys.sendSelectionToChat",
     "onCommand:cursor-toys.openChatWithPrompt",
@@ -87,14 +78,11 @@
     "onCommand:cursor-toys.configureGeminiApiKey",
     "onCommand:cursor-toys.removeGeminiApiKey",
     "onCommand:cursor-toys.installMcpb",
-    "onView:cursor-toys.userMcpb",
-    "onView:cursor-toys.codeAnchors",
     "onCommand:cursor-toys.toggleAnchor",
     "onCommand:cursor-toys.nextAnchor",
     "onCommand:cursor-toys.prevAnchor",
     "onCommand:cursor-toys.clearAnchors",
     "onView:cursor-toys.explorer.userCommands",
-    "onView:cursor-toys.explorer.userPrompts",
     "onView:cursor-toys.explorer.userNotepads",
     "onView:cursor-toys.explorer.userKanban",
     "onView:cursor-toys.explorer.userProjects",
@@ -774,6 +762,15 @@
         "title": "CursorToys: Configure DeepInfra API key"
       },
       {
+        "command": "cursor-toys.control.refresh",
+        "title": "CursorToys: Refresh control panel",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.control.openCursorDashboard",
+        "title": "CursorToys: Open Cursor spending dashboard"
+      },
+      {
         "command": "cursorInject.send",
         "title": "Inject text into Cursor Chat"
       },
@@ -913,86 +910,10 @@
     "views": {
       "cursor-toys": [
         {
-          "id": "cursor-toys.userSkills",
-          "name": "Skills",
-          "when": "cursorToys.sidebar.skillsVisible",
-          "visibility": "collapsed"
-        },
-        {
-          "id": "cursor-toys.userPlans",
-          "name": "Cursor Plans",
-          "when": "cursorToys.sidebar.plansVisible",
-          "visibility": "collapsed"
-        },
-        {
-          "id": "cursor-toys.userHttp",
-          "name": "HTTP Requests",
-          "when": "cursorToys.sidebar.httpVisible",
-          "visibility": "collapsed"
-        },
-        {
-          "id": "cursor-toys.userCommands",
-          "name": "Commands",
-          "when": "cursorToys.sidebar.commandsVisible",
-          "visibility": "collapsed"
-        },
-        {
-          "id": "cursor-toys.userPrompts",
-          "name": "Prompts",
-          "when": "cursorToys.sidebar.promptsVisible",
-          "visibility": "collapsed"
-        },
-        {
-          "id": "cursor-toys.userNotepads",
-          "name": "Notepads",
-          "when": "cursorToys.sidebar.notepadsVisible",
-          "visibility": "collapsed"
-        },
-        {
-          "id": "cursor-toys.userKanban",
-          "name": "Kanban",
-          "when": "cursorToys.sidebar.kanbanVisible",
-          "visibility": "collapsed"
-        },
-        {
-          "id": "cursor-toys.userClipboard",
-          "name": "Clipboard",
-          "when": "cursorToys.sidebar.clipboardVisible",
-          "visibility": "collapsed"
-        },
-        {
-          "id": "cursor-toys.userHooks",
-          "name": "Cursor Hooks",
-          "when": "cursorToys.sidebar.hooksVisible",
-          "visibility": "collapsed"
-        },
-        {
-          "id": "cursor-toys.userMcpb",
-          "name": "MCPB Packages",
-          "when": "cursorToys.sidebar.mcpbVisible",
-          "visibility": "collapsed"
-        },
-        {
-          "id": "cursor-toys.userProjects",
-          "name": "Projects",
-          "when": "cursorToys.projects.enabled && cursorToys.sidebar.projectsVisible",
-          "visibility": "collapsed"
-        },
-        {
-          "id": "cursor-toys.codeAnchors",
-          "name": "Code Anchors",
-          "when": "cursorToys.codeAnchorsEnabled",
-          "visibility": "collapsed"
-        },
-        {
-          "id": "cursor-toys.utils",
-          "name": "Utils",
-          "visibility": "collapsed"
-        },
-        {
-          "id": "cursor-toys.settings",
-          "name": "Settings",
-          "visibility": "collapsed"
+          "type": "webview",
+          "id": "cursor-toys.controlView",
+          "name": "CursorToys",
+          "icon": "$(dashboard)"
         }
       ],
       "explorer": [
@@ -1073,34 +994,24 @@
       ],
       "view/title": [
         {
-          "command": "cursor-toys.settings.openSettingsJson",
-          "when": "view == cursor-toys.settings",
+          "command": "cursor-toys.control.refresh",
+          "when": "view == cursor-toys.controlView",
           "group": "navigation@0"
         },
         {
-          "command": "cursor-toys.settings.configureKeys",
-          "when": "view == cursor-toys.settings",
+          "command": "cursor-toys.settings.openSettingsJson",
+          "when": "view == cursor-toys.controlView",
           "group": "navigation@1"
         },
         {
-          "command": "cursor-toys.focusHttp",
-          "when": "view == cursor-toys.settings",
+          "command": "cursor-toys.settings.configureKeys",
+          "when": "view == cursor-toys.controlView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "cursor-toys.showMenu",
+          "when": "view == cursor-toys.controlView",
           "group": "navigation@3"
-        },
-        {
-          "command": "cursor-toys.focusMcpb",
-          "when": "view == cursor-toys.settings",
-          "group": "navigation@4"
-        },
-        {
-          "command": "cursor-toys.focusUtils",
-          "when": "view == cursor-toys.settings",
-          "group": "navigation@5"
-        },
-        {
-          "command": "cursor-toys.settings.refresh",
-          "when": "view == cursor-toys.settings",
-          "group": "navigation@9"
         },
         {
           "command": "cursor-toys.refreshUserCommands",

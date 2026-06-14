@@ -12,7 +12,7 @@ export interface UtilsTreeItemModel {
   children?: UtilsTreeItemModel[];
 }
 
-const UTILS_ITEMS: UtilsTreeItemModel[] = [
+export const UTILS_ITEMS: UtilsTreeItemModel[] = [
   {
     id: 'text',
     label: 'Text',

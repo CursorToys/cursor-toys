@@ -13,6 +13,15 @@
 [![Open VSX Downloads](https://img.shields.io/open-vsx/dt/godrix/cursor-toys?label=Open%20VSX%20downloads)](https://open-vsx.org/extension/godrix/cursor-toys)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+<p align="center">
+  <img src="./.github/assets/cursortoys_control_panel_personal.png" width="280" alt="CursorToys Control Panel — Personal tab" />
+  &nbsp;
+  <img src="./.github/assets/cursortoys_control_panel_project.png" width="280" alt="CursorToys Control Panel — Project tab" />
+  &nbsp;
+  <img src="./.github/assets/cursortoys_control_panel_usage.png" width="280" alt="CursorToys Control Panel — Usage tab" />
+</p>
+<p align="center"><sub>Control panel — Personal · Project · Usage</sub></p>
+
 <h3 align="center">
   <a href="#-installation">Installation</a>
   <span> · </span>
@@ -30,7 +39,7 @@ CursorToys is built around a simple DX idea: **the best workflow is the one you 
 - **When you need to see your project structure** → right-click any folder and generate a formatted tree for docs or AI context.
 - **When you need to hit an API** → write a `.req` file, click Send Request, assert the response.
 - **When you want to share a command** → generate a link; your teammate imports with `Cmd+Shift+I`.
-- **When you organize AI assets** → browse commands, prompts, skills, and hooks in sidebar trees.
+- **When you organize AI assets** → browse commands, prompts, skills, and hooks in the **Control panel** (CursorToys activity bar).
 - **When you need a CursorToys action fast** → `Ctrl+T` / `Cmd+T` opens the **CursorToys Command Palette** (sorted by your most-used actions).
 
 Everything below follows that pattern: short path from intent to action, progressive detail when you need it.
@@ -39,6 +48,7 @@ Everything below follows that pattern: short path from intent to action, progres
 
 | Utility | What it does |
 |:--------|:-------------|
+| [🎛️ Control Panel](#️-control-panel) | Unified CursorToys sidebar — Personal, Project, Usage, and Config in one webview. |
 | [⚡ CursorToys Command Palette](#-cursortoys-command-palette) | `Ctrl+T` / `Cmd+T` — quick actions sorted by usage. |
 | [🌳 Project Tree Generation](#-project-tree-generation) | Generate formatted directory trees for documentation or AI context. |
 | [🌐 In-Editor API Testing](#-in-editor-api-testing) | Run and assert HTTP requests from `.req` files without leaving Cursor. |
@@ -50,7 +60,7 @@ Everything below follows that pattern: short path from intent to action, progres
 | [📓 Notepads](#-notepads) | Personal and project markdown notes in `.cursortoys/notepads/`. |
 | [📋 Kanban Board](#-kanban-board) | File-backed board in `.cursortoys/kanban/` (personal + workspace). |
 | [📎 Clipboard Manager](#-clipboard-manager) | Copy/cut history, snippet slots (`clip01`), saved terminal commands. |
-| [🪝 Cursor Hooks](#-cursor-hooks) | Manage personal and project `hooks.json` from the sidebar. |
+| [🪝 Cursor Hooks](#-cursor-hooks) | Manage personal and project `hooks.json` from the Control panel. |
 | [💬 Chat Integration](#-chat-integration) | Send selections and prompts to Cursor chat faster. |
 | [🗜️ File Minification](#️-file-minification) | Minify JSON, HTML, CSS, JS, and more — files or clipboard. |
 | [🌐 GitHub Gist Integration](#-github-gist-integration) | Share and import via Gist for browser-friendly links. |
@@ -59,6 +69,21 @@ Everything below follows that pattern: short path from intent to action, progres
 | [📊 Spending (API usage)](#-spending-cursor-api-usage) | See Cursor Auto/API usage % in the status bar. |
 | [🧪 DeepSpec](#-deepspec) | Spec-driven dev — install the separate **DeepSpec** extension (`godrix.deepspec`). |
 | [Explorer sidebar visibility](#explorer-sidebar-visibility) | Hide individual CursorToys trees in the Explorer. |
+
+### 🎛️ Control Panel
+
+**One place for all CursorToys assets and settings** — open the **CursorToys** view in the activity bar.
+
+- **Personal** — commands, prompts, skills, rules, notepads, kanban, plans, hooks, MCPB packages, clipboard (history, snippet slots, saved commands), pinned/recent projects, code anchors, and utils (minify, trim, tree generation, etc.).
+- **Project** — same asset categories scoped to each open workspace folder (commands, prompts, rules, skills, HTTP, notepads, kanban, plans, hooks).
+- **Usage** — live progress bars for Cursor plan (Auto % and API %), OpenRouter credits, and DeepInfra balance; refresh actions and dashboard links; auto-polls on the configured interval.
+- **Config** — shortcuts (settings.json, Command Palette, What's New) plus the full CursorToys settings tree with inline boolean toggles and edit actions for other types.
+- **Search** — filter items on Personal, Project, and Config tabs.
+- **Reorder** — drag sections and rows; order is saved across sessions.
+- **Status bar** — Spending and Usage Monitor items focus the Control panel.
+- Title bar: Refresh, Open settings.json, Configure keys, Command Palette.
+
+Explorer sidebar trees (`cursorToys.sidebar.explorerViews`) remain available for users who prefer duplicate views under Files.
 
 ### ⚡ CursorToys Command Palette
 
@@ -83,7 +108,7 @@ Everything below follows that pattern: short path from intent to action, progres
 **Test APIs where you code** — REST client with environments, helpers, and `@assert()` automation.
 
 - Run requests from `.req` / `.request` files via CodeLens (cURL or `METHOD URL` syntax).
-- **Visual request editor** (Postman-style): open `.req` files from the HTTP sidebar to edit method, URL, headers, and body; Send, Copy cURL, and create new requests (blank, paste cURL, or paste HTTP). Use **Open as text** or disable via `cursorToys.httpRequestEditor.enabled`.
+- **Visual request editor** (Postman-style): open `.req` files from the Control panel (Project tab) or Explorer HTTP tree to edit method, URL, headers, and body; Send, Copy cURL, and create new requests (blank, paste cURL, or paste HTTP). Use **Open as text** or disable via `cursorToys.httpRequestEditor.enabled`.
 - Use `{{variableName}}` from project-root `.env*` files; switch environments instantly.
 - Dynamic helpers: `{{@uuid()}}`, `{{@datetime}}`, `{{@userAgent()}}`, `{{@lorem()}}`, and more.
 - Responses open in a reusable panel by default (`cursorToys.httpRequestResponseView`).
@@ -136,7 +161,7 @@ GET https://api.example.com/user/123
 
 ### 📚 Personal Libraries
 
-**Your commands and prompts, everywhere** — personal (`~/.cursor/`) and project (`.cursor/`) libraries in sidebar trees.
+**Your commands and prompts, everywhere** — personal (`~/.cursor/`) and project (`.cursor/`) libraries in the Control panel and optional Explorer trees.
 
 - Browse, rename, delete, and reveal files; filter by extension.
 - Organize with folders and drag-and-drop.
@@ -162,7 +187,7 @@ GET https://api.example.com/user/123
 
 **Markdown notes for you and your project** — stored under `.cursortoys/notepads/` (configurable via `cursorToys.extensionDataFolder`, default `cursortoys`).
 
-- **Personal** (`~/.cursortoys/notepads/`) and **workspace** categories in the sidebar (same pattern as Plans).
+- **Personal** (`~/.cursortoys/notepads/`) and **workspace** categories in the Control panel (same pattern as Plans).
 - Legacy `.cursor/notepads/` is still used when `.cursortoys/notepads/` is empty.
 - Optional status bar icon: `cursorToys.notepads.showStatusBar`.
 - Create, rename, delete; share notepads or folders via CursorToys or Gist.
@@ -178,7 +203,7 @@ GET https://api.example.com/user/123
 - Frontmatter field `status`: `backlog`, `todo`, `doing`, or `done`.
 - Optional `tags` in frontmatter (`name` or `name:#hexcolor` per tag) with colored pills on cards.
 - **CursorToys: Open Kanban Board** — four-column webview (Backlog, Todo, Doing, Done) with drag-and-drop; edits persist to disk.
-- Sidebar tree: create, rename, delete, and open cards (same pattern as Notepads).
+- Control panel and Explorer tree: create, rename, delete, and open cards (same pattern as Notepads).
 
 ### 📎 Clipboard Manager
 
@@ -186,18 +211,16 @@ GET https://api.example.com/user/123
 
 - **Ctrl+C / Ctrl+X** in the editor add to history by default (`cursorToys.clipboard.bindStandardKeys`). Palette: **Copy (Add to History)** / **Cut (Add to History)**.
 - **Paste from Clipboard History** — `Ctrl+Shift+V` / `Cmd+Shift+V` when the editor is focused (Quick Pick preview).
-- **Snippet slots** — save with a **custom name** (sidebar shows the name + preview); stored under `~/.{baseFolder}/clipboard/slots.json`. Rename or remove from the tree context menu.
-- **Command clipboard** — save selection or clipboard text as global or workspace commands; copy, run in terminal (with confirmation), pin, duplicate, rename, delete from the **Clipboard** sidebar.
+- **Snippet slots** — save with a **custom name** (Control panel shows the name + preview); stored under `~/.{baseFolder}/clipboard/slots.json`. Rename or remove from the Explorer Clipboard tree context menu.
+- **Command clipboard** — save selection or clipboard text as global or workspace commands; copy, run in terminal (with confirmation), pin, duplicate, rename, delete from the Control panel or Explorer Clipboard tree.
 - Settings: `cursorToys.clipboard.enabled`, `maxEntries`, `maxEntryChars`, `syncWithSystem`, `previewChars`.
 
 **Other clipboard extensions:** CursorToys does not replace the system copy key by default. Use the CursorToys copy/cut commands (or rebind them), or disable overlapping keybindings in extensions such as *Clipboard Manager* / *Multi Paste* if you prefer a single history UI.
 
 ### 🪝 Cursor Hooks
 
-**Configure Cursor hooks without hunting files** — personal and project `hooks.json`.
-
-- Sidebar shows hooks and linked scripts.
-- Create, share, import (`Cmd+Shift+I`), reveal in folder.
+**Configure Cursor hooks without hunting files** — personal and project `hooks.json` listed in the Control panel.
+- Control panel lists hooks and linked scripts; create, share, import (`Cmd+Shift+I`), reveal in folder.
 
 ### 💬 Chat Integration
 
@@ -224,42 +247,42 @@ GET https://api.example.com/user/123
 
 **Let Cursor agents drive CursorToys** — first-party MCP server embedded in the extension (distinct from MCPB external bundles).
 
-- Enable: **CursorToys → Settings → MCP Server → Enable MCP Server** (`cursorToys.mcp.enabled`).
+- Enable: **CursorToys → Control panel → Config** or `cursorToys.mcp.enabled` in settings.
 - Auto-registers in `~/.cursor/mcp.json` when `cursorToys.mcp.autoRegister` is on (uses Cursor's embedded Node runtime).
 - **Tools** (~150+): Kanban, Notepads, HTTP, anchors, assets, hooks, plans, clipboard, chat, settings, DeepSpec integration, plus `cursortoys_execute` dispatcher.
 - **Resources** (`cursortoys://…`): config snapshot, kanban columns/cards, notepads, HTTP files, anchors, assets, plans, hooks, clipboard history.
 - **Prompts**: `kanban-workflow`, `http-test-suite`, `project-inventory`, `share-and-import`, `anchor-navigation`, `notepad-scratchpad`.
 - Security: destructive ops require `confirm: true`; secrets redacted; optional audit log at `.cursortoys/mcp-audit.log`.
-- **Install skill**: CursorToys Settings → MCP Server → **Install MCP Skill**, command palette, or MCP tool `mcp_install_skill` (bundled template → `.{baseFolder}/skills/cursor-toys-mcp/`).
+- **Install skill**: Control panel Config tab → MCP Server → **Install MCP Skill**, command palette, or MCP tool `mcp_install_skill` (bundled template → `.{baseFolder}/skills/cursor-toys-mcp/`).
 
 ### 📦 MCPB Packages
 
 **Install MCP bundles into Cursor** — [MCP Bundle](https://github.com/modelcontextprotocol/mcpb) (`.mcpb`) support.
 
 - Preview panel with editable env vars before writing to `~/.cursor/mcp.json`.
-- Sidebar tree: reveal, uninstall; optional `npx @anthropic-ai/mcpb` for verify/unpack (`cursorToys.mcpb.useOfficialCli`).
+- Control panel and Explorer tree: reveal, uninstall; optional `npx @anthropic-ai/mcpb` for verify/unpack (`cursorToys.mcpb.useOfficialCli`).
 
 ### 📊 Spending (Cursor API usage)
 
 **Glance at usage from the status bar** — Auto % and API % with tooltip details.
 
 - Token auto-detected from Cursor state or set via **Configure spending session token**.
-- Click opens Cursor dashboard; hide/show via commands.
+- Click the status bar item to open the **Control panel** Usage tab; hide/show via commands.
 
 ### 🧪 DeepSpec
 
 **Spec-driven development** moved to a dedicated extension: **[DeepSpec](https://github.com/godrix/DeepSpec)** (`godrix.deepspec` on the Marketplace).
 
-- Install via **CursorToys → Settings → DeepSpec → Install DeepSpec Extension**, or command **CursorToys: Install DeepSpec Extension**.
+- Install via **Control panel → Config → DeepSpec → Install DeepSpec Extension**, or command **CursorToys: Install DeepSpec Extension**.
 - Your `.deepspec/` folder and `.cursor/skills/deep-spec/` skill are unchanged.
 - Commands are now `deepspec.*` (replacing `cursor-toys.deepspec.*`). Settings: `deepspec.enabled`, `deepspec.reviewPanelColumn`.
 
 ### Explorer sidebar visibility
 
-**Declutter the Explorer** without losing commands.
+**Optional duplicate trees under Files** — the CursorToys activity bar uses the unified Control panel; Explorer trees are opt-in.
 
-- `cursorToys.sidebar.hiddenViews` — hide: `notepads`, `kanban`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`
-- `cursorToys.sidebar.explorerViews` — duplicate selected sections into the Files sidebar (default: `skills`, `plans`)
+- `cursorToys.sidebar.hiddenViews` — hide Explorer sections: `notepads`, `kanban`, `clipboard`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`, `projects`
+- `cursorToys.sidebar.explorerViews` — show selected sections in the Explorer (default: `skills`, `plans`)
 
 ### Extension data folder (`.cursortoys/`)
 
@@ -359,7 +382,13 @@ Most actions are also on **CodeLens** and **right-click context menus**. Full li
 
 ## ✨ What's New
 
-**v2026.6.8-2** — see [CHANGELOG](CHANGELOG.md)
+**v2026.6.14-0** — see [CHANGELOG](CHANGELOG.md)
+
+- **Unified Control Panel** — Personal, Project, Usage, and Config tabs replace the previous stack of activity-bar sidebar trees.
+- Search/filter, drag-and-drop reorder, inline settings toggles, and live usage bars (Cursor, OpenRouter, DeepInfra).
+- Spending and Usage Monitor status bar items now focus the Control panel.
+
+**v2026.6.8-2**
 
 - **CursorToys Command Palette** — `Ctrl+T` / `Cmd+T`; actions sorted by most-used.
 - Settings editor fixes for `cursorToys.notepads.showStatusBar` and `cursorToys.extensionDataFolder`.

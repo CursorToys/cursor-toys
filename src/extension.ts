@@ -55,6 +55,7 @@ import { checkAndShowReleaseNotes, ReleaseNotesPanel, loadChangelogSection } fro
 import { installMcpbPackage, uninstallMcpbPackage, getMcpbRoot } from './mcpbInstaller';
 import { UserMcpbTreeProvider, McpbPackageItem } from './userMcpbTreeProvider';
 import { initSpendingStatusBar, refreshSpending, openSpendingTokenSetup } from './spendingStatusBar';
+import { registerControlView } from './control/controlViewProvider';
 import {
   configureProviderApiKey,
   initUsageMonitorStatusBar,
@@ -351,6 +352,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
   initSpendingStatusBar(context);
   initUsageMonitorStatusBar(context);
+  registerControlView(context);
   initKanbanStatusBar(context);
   initNotepadsStatusBar(context);
 
@@ -1450,13 +1452,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   );
 
-  // Register User Commands Tree Provider
+  // Register User Commands Tree Provider (explorer + control panel data)
   const userCommandsTreeProvider = new UserCommandsTreeProvider();
-  const userCommandsTreeView = vscode.window.createTreeView('cursor-toys.userCommands', {
-    treeDataProvider: userCommandsTreeProvider,
-    showCollapseAll: false,
-    dragAndDropController: userCommandsTreeProvider
-  });
 
   /**
    * Helper function to get URI from command argument (can be CommandFileItem or vscode.Uri)
@@ -1686,11 +1683,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Register User Prompts Tree Provider
   const userPromptsTreeProvider = new UserPromptsTreeProvider();
-  const userPromptsTreeView = vscode.window.createTreeView('cursor-toys.userPrompts', {
-    treeDataProvider: userPromptsTreeProvider,
-    showCollapseAll: false,
-    dragAndDropController: userPromptsTreeProvider
-  });
 
   /**
    * Helper function to get URI from prompt command argument (can be PromptFileItem or vscode.Uri)
@@ -1919,10 +1911,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   const userHttpTreeProvider = new UserHttpTreeProvider();
-  const userHttpTreeView = vscode.window.createTreeView('cursor-toys.userHttp', {
-    treeDataProvider: userHttpTreeProvider,
-    showCollapseAll: false,
-  });
 
   const httpRequestEditorProvider = new HttpRequestEditorProvider();
   const httpRequestEditorRegistration = vscode.window.registerCustomEditorProvider(
@@ -1980,20 +1968,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Register User Notepads Tree Provider
   const userNotepadsTreeProvider = new UserNotepadsTreeProvider();
-  const userNotepadsTreeView = vscode.window.createTreeView('cursor-toys.userNotepads', {
-    treeDataProvider: userNotepadsTreeProvider,
-    showCollapseAll: false,
-    dragAndDropController: userNotepadsTreeProvider
-  });
 
   const userKanbanTreeProvider = new UserKanbanTreeProvider();
   const refreshKanbanViews = (): void => {
     userKanbanTreeProvider.refresh();
   };
-  const userKanbanTreeView = vscode.window.createTreeView('cursor-toys.userKanban', {
-    treeDataProvider: userKanbanTreeProvider,
-    showCollapseAll: false,
-  });
 
   const projectRegistry = ProjectRegistry.getInstance();
   const projectsTreeProvider = new ProjectsTreeProvider(projectRegistry);
@@ -2004,73 +1983,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.subscriptions.push(registryDisposable);
   });
   registerProjectsCommands(context, refreshProjectsViews);
-  const userProjectsTreeView = vscode.window.createTreeView('cursor-toys.userProjects', {
-    treeDataProvider: projectsTreeProvider,
-    showCollapseAll: true,
-  });
 
   const userClipboardTreeProvider = new UserClipboardTreeProvider();
-  const userClipboardTreeView = vscode.window.createTreeView('cursor-toys.userClipboard', {
-    treeDataProvider: userClipboardTreeProvider,
-    showCollapseAll: true,
-  });
   void getClipboardHistoryManager().loadSlots();
   registerClipboardFeature(context, userClipboardTreeProvider);
 
   // Register User Plans Tree Provider
   const userPlansTreeProvider = new UserPlansTreeProvider();
-  const userPlansTreeView = vscode.window.createTreeView('cursor-toys.userPlans', {
-    treeDataProvider: userPlansTreeProvider,
-    showCollapseAll: false,
-    dragAndDropController: userPlansTreeProvider
-  });
 
   const cursorToysSettingsTreeProvider = new CursorToysSettingsTreeProvider();
-  const cursorToysSettingsTreeView = vscode.window.createTreeView('cursor-toys.settings', {
-    treeDataProvider: cursorToysSettingsTreeProvider,
-    showCollapseAll: true,
-  });
-
   const cursorToysUtilsTreeProvider = new CursorToysUtilsTreeProvider();
-  const cursorToysUtilsTreeView = vscode.window.createTreeView('cursor-toys.utils', {
-    treeDataProvider: cursorToysUtilsTreeProvider,
-    showCollapseAll: true,
-  });
 
-  // Register User Hooks Tree Provider
   const userHooksTreeProvider = new UserHooksTreeProvider();
-  const userHooksTreeView = vscode.window.createTreeView('cursor-toys.userHooks', {
-    treeDataProvider: userHooksTreeProvider,
-    showCollapseAll: false
-  });
-
-  // Register User Skills Tree Provider
   const userSkillsTreeProvider = new UserSkillsTreeProvider();
-  const userSkillsTreeView = vscode.window.createTreeView('cursor-toys.userSkills', {
-    treeDataProvider: userSkillsTreeProvider,
-    showCollapseAll: false,
-    dragAndDropController: userSkillsTreeProvider
-  });
-
-  // Register User MCPB Tree Provider (installed MCPB packages)
   const userMcpbTreeProvider = new UserMcpbTreeProvider();
-  const userMcpbTreeView = vscode.window.createTreeView('cursor-toys.userMcpb', {
-    treeDataProvider: userMcpbTreeProvider,
-    showCollapseAll: false
-  });
 
-  // Code Anchors feature
   registerCodeAnchorsConfigListener(context);
   CodeAnchorsManager.getInstance(context);
   const codeAnchorsDecorationProvider = new CodeAnchorsDecorationProvider(context);
   context.subscriptions.push(codeAnchorsDecorationProvider);
   const codeAnchorsTreeProvider = new CodeAnchorsTreeProvider(context);
-  const codeAnchorsTreeView = vscode.window.createTreeView('cursor-toys.codeAnchors', {
-    treeDataProvider: codeAnchorsTreeProvider,
-    showCollapseAll: true
-  });
   context.subscriptions.push(codeAnchorsTreeProvider);
-  context.subscriptions.push(codeAnchorsTreeView);
+
   const codeAnchorsStatusBar = new CodeAnchorsStatusBar(context);
   context.subscriptions.push(codeAnchorsStatusBar);
   registerCodeAnchorsCommands(context);
@@ -3274,7 +3208,7 @@ Detailed instructions for the agent.
   }
 
   const focusNotepads = vscode.commands.registerCommand('cursor-toys.focusNotepads', async () => {
-    await vscode.commands.executeCommand('cursor-toys.userNotepads.focus');
+    await vscode.commands.executeCommand('cursor-toys.focusView');
   });
 
   const openKanbanBoard = vscode.commands.registerCommand('cursor-toys.openKanbanBoard', async () => {
@@ -3707,25 +3641,22 @@ Detailed instructions for the agent.
 
   const focusCursorToysView = vscode.commands.registerCommand(
     'cursor-toys.focusView',
-    async (viewId: string) => {
-      if (!viewId || typeof viewId !== 'string') {
-        return;
-      }
+    async () => {
       await vscode.commands.executeCommand('workbench.view.extension.cursor-toys');
-      await vscode.commands.executeCommand(`${viewId}.focus`);
+      await vscode.commands.executeCommand('cursor-toys.controlView.focus');
     }
   );
 
   const focusHttpView = vscode.commands.registerCommand('cursor-toys.focusHttp', async () => {
-    await vscode.commands.executeCommand('cursor-toys.focusView', 'cursor-toys.userHttp');
+    await vscode.commands.executeCommand('cursor-toys.focusView');
   });
 
   const focusMcpbView = vscode.commands.registerCommand('cursor-toys.focusMcpb', async () => {
-    await vscode.commands.executeCommand('cursor-toys.focusView', 'cursor-toys.userMcpb');
+    await vscode.commands.executeCommand('cursor-toys.focusView');
   });
 
   const focusUtilsView = vscode.commands.registerCommand('cursor-toys.focusUtils', async () => {
-    await vscode.commands.executeCommand('cursor-toys.focusView', 'cursor-toys.utils');
+    await vscode.commands.executeCommand('cursor-toys.focusView');
   });
 
   // Command to send text to chat
@@ -4970,7 +4901,6 @@ Detailed instructions for the agent.
     saveAsUserCommand,
     saveAsUserPrompt,
     saveAsUserSkill,
-    userCommandsTreeView,
     openUserCommand,
     generateUserCommandDeeplink,
     shareUserCommandAsCursorToys,
@@ -4978,7 +4908,6 @@ Detailed instructions for the agent.
     revealUserCommand,
     renameUserCommand,
     refreshUserCommands,
-    userPromptsTreeView,
     openUserPrompt,
     generateUserPromptDeeplink,
     shareUserPromptAsCursorToys,
@@ -4986,17 +4915,12 @@ Detailed instructions for the agent.
     revealUserPrompt,
     renameUserPrompt,
     refreshUserPrompts,
-    userHttpTreeView,
     httpRequestEditorRegistration,
     openHttpRequest,
     openHttpRequestAsText,
     newHttpRequest,
     refreshUserHttp,
-    userNotepadsTreeView,
-    userKanbanTreeView,
-    userProjectsTreeView,
     userProjectsExplorerTreeView,
-    userClipboardTreeView,
     userClipboardExplorerTreeView,
     openKanbanBoard,
     focusNotepads,
@@ -5013,15 +4937,12 @@ Detailed instructions for the agent.
     revealNotepad,
     renameNotepad,
     refreshNotepads,
-    userPlansTreeView,
     openPlan,
     generatePlanShareable,
     deletePlan,
     revealPlan,
     renamePlan,
     refreshPlans,
-    cursorToysSettingsTreeView,
-    cursorToysUtilsTreeView,
     refreshCursorToysSettings,
     editSetting,
     installDeepSpec,
@@ -5034,7 +4955,6 @@ Detailed instructions for the agent.
     focusHttpView,
     focusMcpbView,
     focusUtilsView,
-    userSkillsTreeView,
     openSkill,
     deleteSkill,
     revealSkill,
@@ -5044,7 +4964,6 @@ Detailed instructions for the agent.
     addSkillRemoteCommand,
     skillsWatcher,
     claudeSkillsWatcher,
-    userHooksTreeView,
     createHooksFileCommand,
     openHooksCommand,
     deleteHooksCommand,
@@ -5088,7 +5007,6 @@ Detailed instructions for the agent.
     refreshSkillsCommand,
     showReleaseNotesCommand,
     installMcpbCommand,
-    userMcpbTreeView,
     userCommandsExplorerTreeView,
     userPromptsExplorerTreeView,
     userNotepadsExplorerTreeView,
