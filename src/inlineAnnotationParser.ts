@@ -19,6 +19,8 @@ export interface InlineAnnotationLineMatch {
 
 /**
  * Builds regex patterns for configured tags across supported comment styles.
+ * Tags must appear in ALL CAPS in source (e.g. TODO, FIX, NOTE) to avoid
+ * false positives such as Portuguese "todo" in markdown lists.
  */
 function buildTagRegexes(tags: string[]): RegExp[] {
   const normalized = tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean);
@@ -26,16 +28,18 @@ function buildTagRegexes(tags: string[]): RegExp[] {
     return [];
   }
 
-  const escaped = normalized.map((tag) => tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const escaped = normalized.map((tag) =>
+    tag.toUpperCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  );
   const tagGroup = escaped.join('|');
 
   return [
-    new RegExp(`^\\s*//\\s*(${tagGroup})\\b\\s*:?\\s*(.*)$`, 'i'),
-    new RegExp(`^\\s*#{1,6}\\s*(${tagGroup})\\b\\s*:?\\s*(.*)$`, 'i'),
-    new RegExp(`^\\s*[-*+]\\s+(${tagGroup})\\b\\s*:?\\s*(.*)$`, 'i'),
-    new RegExp(`^\\s*--\\s*(${tagGroup})\\b\\s*:?\\s*(.*)$`, 'i'),
-    new RegExp(`^\\s*;\\s*(${tagGroup})\\b\\s*:?\\s*(.*)$`, 'i'),
-    new RegExp(`^\\s*<!--\\s*(${tagGroup})\\b\\s*:?\\s*(.*?)(?:\\s*-->)?\\s*$`, 'i'),
+    new RegExp(`^\\s*//\\s*(${tagGroup})\\b\\s*:?\\s*(.*)$`),
+    new RegExp(`^\\s*#{1,6}\\s*(${tagGroup})\\b\\s*:?\\s*(.*)$`),
+    new RegExp(`^\\s*[-*+]\\s+(${tagGroup})\\b\\s*:?\\s*(.*)$`),
+    new RegExp(`^\\s*--\\s*(${tagGroup})\\b\\s*:?\\s*(.*)$`),
+    new RegExp(`^\\s*;\\s*(${tagGroup})\\b\\s*:?\\s*(.*)$`),
+    new RegExp(`^\\s*<!--\\s*(${tagGroup})\\b\\s*:?\\s*(.*?)(?:\\s*-->)?\\s*$`),
   ];
 }
 
@@ -51,7 +55,7 @@ export function matchInlineAnnotationLine(lineText: string, tags: string[]): Inl
 
     const tag = match[1].toLowerCase();
     const message = (match[2] ?? '').trim();
-    const column = lineText.toLowerCase().indexOf(tag);
+    const column = lineText.indexOf(match[1]);
 
     return {
       tag,
@@ -66,6 +70,7 @@ export function matchInlineAnnotationLine(lineText: string, tags: string[]): Inl
 /**
  * Parses inline annotation markers from file content.
  * Supports //, #/## headings, markdown lists, --, ;, and HTML comments.
+ * Source tags must be uppercase (TODO, FIX, NOTE); stored tags are lowercase.
  */
 export function parseInlineAnnotations(content: string, tags: string[]): ParsedInlineAnnotation[] {
   const lines = content.split(/\r?\n/);

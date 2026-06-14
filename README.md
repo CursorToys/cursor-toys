@@ -79,7 +79,7 @@ Everything below follows that pattern: short path from intent to action, progres
 - **Usage** — live progress bars for Cursor plan (Auto % and API %), OpenRouter credits, and DeepInfra balance; refresh actions and dashboard links; auto-polls on the configured interval.
 - **Config** — shortcuts (settings.json, Command Palette, What's New) plus the full CursorToys settings tree with inline boolean toggles and edit actions for other types.
 - **Search** — filter items on Personal, Project, and Config tabs.
-- **Reorder** — drag sections and rows; order is saved across sessions.
+- **Reorder** — drag section headers on Personal and Project tabs by the grip handle; order is saved across sessions.
 - **Status bar** — Spending and Usage Monitor items focus the Control panel.
 - Title bar: Refresh, Open settings.json, Configure keys, Command Palette.
 

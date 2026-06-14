@@ -256,11 +256,14 @@ body { padding: 0 0 24px; }
 }
 
 .row:hover .drag { opacity: .65; }
+.sec-h:hover .drag { opacity: .65; }
 .drag svg { width: 10px; height: 14px; }
 .drag:active { cursor: grabbing; }
 
-.row.dragging { opacity: .45; }
-.row.drag-over { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-dim); }
+.row.dragging,
+.sec.dragging { opacity: .45; }
+.row.drag-over,
+.sec.drag-over .sec-h { background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-dim); }
 
 .sw {
   flex: 0 0 auto;

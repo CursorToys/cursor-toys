@@ -45,12 +45,19 @@ export function refreshControlViewIfVisible(): void {
 class ControlViewProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
   private readonly version: string;
+  private readonly viewDisposables: vscode.Disposable[] = [];
+  private postGeneration = 0;
+  private postTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(private readonly context: vscode.ExtensionContext) {
     this.version = context.extension.packageJSON.version || '';
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
+    while (this.viewDisposables.length) {
+      this.viewDisposables.pop()?.dispose();
+    }
+
     this.view = webviewView;
     webviewView.webview.options = {
       enableScripts: true,
@@ -58,27 +65,52 @@ class ControlViewProvider implements vscode.WebviewViewProvider {
     };
     webviewView.webview.html = this.getHtml(webviewView.webview);
 
-    webviewView.webview.onDidReceiveMessage((msg) => this.onMessage(msg));
-    webviewView.onDidChangeVisibility(() => {
-      if (webviewView.visible) {
-        void this.post();
-      }
-    });
-    void this.post();
+    this.viewDisposables.push(
+      webviewView.webview.onDidReceiveMessage((msg) => this.onMessage(msg)),
+      webviewView.onDidChangeVisibility(() => {
+        if (webviewView.visible) {
+          this.schedulePost();
+        }
+      })
+    );
+    this.schedulePost();
   }
 
   post(): void {
+    this.schedulePost(0);
+  }
+
+  private schedulePost(delayMs = 120): void {
     if (!this.view) {
       return;
     }
-    void buildControlModel(this.context, this.version)
-      .then((model) => {
-        this.view?.webview.postMessage({ type: 'data', model });
-      })
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err);
-        this.view?.webview.postMessage({ type: 'error', message });
-      });
+    if (this.postTimer) {
+      clearTimeout(this.postTimer);
+    }
+    this.postTimer = setTimeout(() => {
+      this.postTimer = undefined;
+      void this.publishModel();
+    }, delayMs);
+  }
+
+  private async publishModel(): Promise<void> {
+    if (!this.view) {
+      return;
+    }
+    const generation = ++this.postGeneration;
+    try {
+      const model = await buildControlModel(this.context, this.version);
+      if (generation !== this.postGeneration || !this.view) {
+        return;
+      }
+      this.view.webview.postMessage({ type: 'data', model });
+    } catch (err: unknown) {
+      if (generation !== this.postGeneration || !this.view) {
+        return;
+      }
+      const message = err instanceof Error ? err.message : String(err);
+      this.view.webview.postMessage({ type: 'error', message });
+    }
   }
 
   private async onMessage(msg: {
@@ -126,7 +158,6 @@ class ControlViewProvider implements vscode.WebviewViewProvider {
         case 'reorder':
           if (msg.scope && msg.orderedIds?.length) {
             await saveControlPanelOrderScope(this.context, msg.scope, msg.orderedIds);
-            this.post();
           }
           break;
         case 'runCommand':

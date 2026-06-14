@@ -64,7 +64,7 @@ Tools:
 
 ${args.filePath ? `Start from file: ${args.filePath}` : 'List all anchors, then walk through them in order with brief context per stop.'}`,
 
-  'inline-annotation-review': (args) => `Review inline comment markers in this project (//todo, //fix, ##note, etc.).
+  'inline-annotation-review': (args) => `Review inline comment markers in this project (//TODO, //FIX, ##NOTE, etc.; uppercase in source).
 
 Resources (read-only):
 - cursortoys://inline-annotations — all markers grouped by tag

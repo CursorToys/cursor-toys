@@ -171,7 +171,7 @@ export const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
         kind: 'setting',
         iconId: 'check',
         settingKey: 'cursorToys.inlineAnnotations.enabled',
-        description: 'Index //todo, ##note, //fix comments',
+        description: 'Index //TODO, ##NOTE, //FIX comments (uppercase in source)',
       },
       {
         id: 'inline-annotations-highlight',

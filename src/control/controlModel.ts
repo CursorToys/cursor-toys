@@ -38,11 +38,7 @@ import {
   type ControlProjectsData,
 } from './controlExtras';
 import { ProjectRegistry } from '../projects/projectRegistry';
-import {
-  applyItemOrder,
-  getControlPanelOrder,
-  orderSettingsTree,
-} from './controlPanelOrder';
+import { getControlPanelOrder } from './controlPanelOrder';
 
 export interface ControlAction {
   id: string;
@@ -85,10 +81,16 @@ export interface ControlConfigScope {
   settingsCategories: import('../cursorToysSettingsTreeProvider').ControlSettingsItem[];
 }
 
+export interface ControlPanelSectionOrder {
+  personal: string[];
+  projects: Record<string, string[]>;
+}
+
 export interface ControlModel {
   version: string;
   pollSeconds: number;
   baseFolder: string;
+  panelOrder: ControlPanelSectionOrder;
   personal: {
     scopeLabel: string;
     commands: ControlAssetItem[];
@@ -342,16 +344,22 @@ export async function buildControlModel(
 
   const usageSections = await buildUsageSections(context);
   const orderMap = getControlPanelOrder(context);
-  const settingsCategories = orderSettingsTree(
-    applyItemOrder(buildConfigSettingsItems(getConfig()), 'cfg-categories', orderMap),
-    'cfg-categories',
-    orderMap
-  );
+  const projectOrder: Record<string, string[]> = {};
+  for (const project of projects) {
+    const scope = `project-sections/${project.root}`;
+    if (orderMap[scope]?.length) {
+      projectOrder[project.root] = orderMap[scope];
+    }
+  }
 
   return {
     version,
     pollSeconds: refreshMinutes * 60,
     baseFolder: getBaseFolderName(),
+    panelOrder: {
+      personal: orderMap['personal-sections'] ?? [],
+      projects: projectOrder,
+    },
     personal: {
       scopeLabel: getPersonalScopeLabel(),
       commands,
@@ -369,8 +377,8 @@ export async function buildControlModel(
       codeAnchors: codeAnchors as ControlCodeAnchorsData,
     },
     config: {
-      shortcuts: applyItemOrder(buildConfigShortcuts(), 'cfg-shortcuts', orderMap),
-      settingsCategories,
+      shortcuts: buildConfigShortcuts(),
+      settingsCategories: buildConfigSettingsItems(getConfig()),
     },
     projects,
     usageSections,

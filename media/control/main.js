@@ -93,16 +93,43 @@
     return prefix + '-' + name;
   }
 
-  function section(id, icon, title, count, bodyHtml) {
+  function section(id, icon, title, count, bodyHtml, reorderOpts) {
     const isCol = collapsed[id] !== undefined ? !!collapsed[id] : true;
     return (
-      `<div class="sec ${isCol ? 'collapsed' : ''}" data-secwrap="${id}">` +
+      `<div class="sec ${isCol ? 'collapsed' : ''}" data-secwrap="${id}"${reorderAttrs(reorderOpts)}>` +
       `<div class="sec-h" data-sec="${id}">` +
+      (reorderOpts ? reorderHandle() : '') +
       `<span class="chev">${I.chevron}</span><span class="ic">${icon}</span>` +
       `<span class="nm">${esc(title)}</span>` +
       (count != null ? `<span class="ct">${count}</span>` : '') +
       `</div><div class="sec-b">${bodyHtml || '<div class="empty">Nothing here yet</div>'}</div></div>`
     );
+  }
+
+  function applySectionOrder(items, order) {
+    if (!order || !order.length) return items;
+    const byId = new Map(items.map((item) => [item.id, item]));
+    const sorted = [];
+    for (const id of order) {
+      const item = byId.get(id);
+      if (item) {
+        sorted.push(item);
+        byId.delete(id);
+      }
+    }
+    for (const item of byId.values()) {
+      sorted.push(item);
+    }
+    return sorted;
+  }
+
+  function renderSections(sections, reorderScope) {
+    const opts = reorderScope ? { scope: reorderScope } : null;
+    return sections
+      .map((sec) =>
+        section(sec.id, sec.icon, sec.title, sec.count, sec.body, opts ? { id: sec.id, scope: opts.scope } : null)
+      )
+      .join('');
   }
 
   function reorderHandle() {
@@ -140,10 +167,9 @@
     return I.doc;
   }
 
-  function toggleRow(id, label, on, settingKey, desc, reorderOpts) {
+  function toggleRow(id, label, on, settingKey, desc) {
     return (
-      `<div class="row ${on ? 'on' : ''}"${reorderAttrs(reorderOpts)}>` +
-      (reorderOpts ? reorderHandle() : '') +
+      `<div class="row ${on ? 'on' : ''}">` +
       `<span class="led ${on ? 'on' : ''}"></span>` +
       `<div class="body"><div class="l">${esc(label)}</div>` +
       (desc ? `<div class="d">${esc(desc)}</div>` : '') +
@@ -163,7 +189,7 @@
     );
   }
 
-  function actionRow(label, commandId, desc, args, reorderOpts) {
+  function actionRow(label, commandId, desc, args) {
     const argsAttr =
       args != null ? ` data-command-args="${esc(JSON.stringify(args))}"` : '';
     const body =
@@ -173,8 +199,7 @@
 
     if (isOpenCommand(commandId)) {
       return (
-        `<div class="row click open-act" data-act="runCommand" data-command-id="${esc(commandId)}"${argsAttr}${reorderAttrs(reorderOpts)}>` +
-        (reorderOpts ? reorderHandle() : '') +
+        `<div class="row click open-act" data-act="runCommand" data-command-id="${esc(commandId)}"${argsAttr}>` +
         `<span class="ic">${openCommandIcon(commandId)}</span>` +
         body +
         `<span class="go">${I.go}</span></div>`
@@ -183,8 +208,7 @@
 
     if (isCreateCommand(commandId)) {
       return (
-        `<div class="row click act" data-act="runCommand" data-command-id="${esc(commandId)}"${argsAttr}${reorderAttrs(reorderOpts)}>` +
-        (reorderOpts ? reorderHandle() : '') +
+        `<div class="row click act" data-act="runCommand" data-command-id="${esc(commandId)}"${argsAttr}>` +
         `<span class="ic">${I.plus}</span>` +
         body +
         `</div>`
@@ -192,8 +216,7 @@
     }
 
     return (
-      `<div class="row click" data-act="runCommand" data-command-id="${esc(commandId)}"${argsAttr}${reorderAttrs(reorderOpts)}>` +
-      (reorderOpts ? reorderHandle() : '') +
+      `<div class="row click" data-act="runCommand" data-command-id="${esc(commandId)}"${argsAttr}>` +
       `<span class="ic">${I.bolt}</span>` +
       body +
       `</div>`
@@ -285,25 +308,23 @@
     );
   }
 
-  function settingsItemRows(items, depth, reorderScope) {
+  function settingsItemRows(items, depth) {
     depth = depth || 0;
     let body = '';
     for (const item of items || []) {
-      const opts = reorderScope ? { id: item.id, scope: reorderScope } : null;
       if (item.kind === 'action' && item.commandId) {
-        body += actionRow(item.label, item.commandId, item.description, undefined, opts);
+        body += actionRow(item.label, item.commandId, item.description);
       } else if (item.kind === 'setting' && item.settingKey) {
         if (item.settingType === 'boolean') {
-          body += toggleRow(item.id, item.label, !!item.boolValue, item.settingKey, item.description, opts);
+          body += toggleRow(item.id, item.label, !!item.boolValue, item.settingKey, item.description);
         } else {
-          body += actionRow(item.label, 'cursor-toys.settings.editSetting', item.description, [item.settingKey], opts);
+          body += actionRow(item.label, 'cursor-toys.settings.editSetting', item.description, [item.settingKey]);
         }
       } else if (item.kind === 'category' && item.children && item.children.length) {
-        const nestedScope = reorderScope ? reorderScope + '/' + item.id : '';
         body +=
           `<div class="scope" style="padding-top:${depth ? 6 : 8}px">` +
           `<span class="dot"></span>${esc(item.label)}</div>`;
-        body += settingsItemRows(item.children, depth + 1, nestedScope);
+        body += settingsItemRows(item.children, depth + 1);
       }
     }
     return body;
@@ -324,86 +345,10 @@
 
   function buildPersonal(model) {
     const p = model.personal;
-    let h = `<div class="scope"><span class="dot"></span>Personal<span class="path">${esc(p.scopeLabel)}</span></div>`;
-
-    h += section(
-      'p-cmd',
-      I.terminal,
-      'Commands',
-      p.commands.length,
-      fileRows(p.commands, I.terminal, 'No personal commands') +
-        actionRow('New personal command', 'cursor-toys.save-as-user-command')
-    );
-    h += section(
-      'p-prm',
-      I.doc,
-      'Prompts',
-      p.prompts.length,
-      fileRows(p.prompts, I.doc, 'No personal prompts') +
-        actionRow('New personal prompt', 'cursor-toys.save-as-user-prompt')
-    );
-    h += section(
-      'p-skl',
-      I.sparkle,
-      'Skills',
-      p.skills.length,
-      fileRows(p.skills, I.sparkle, 'No personal skills') +
-        actionRow('New personal skill', 'cursor-toys.save-as-user-skill')
-    );
-    h += section(
-      'p-rules',
-      I.doc,
-      'Rules',
-      p.rules.length,
-      fileRows(p.rules, I.doc, 'No personal rules')
-    );
-    h += section(
-      'p-note',
-      I.doc,
-      'Notepads',
-      p.notepads.length,
-      fileRows(p.notepads, I.doc, 'No notepads') +
-        actionRow('New notepad', 'cursor-toys.createNotepad')
-    );
-    h += section(
-      'p-kanban',
-      I.doc,
-      'Kanban',
-      p.kanban.length,
-      fileRows(p.kanban, I.doc, 'No kanban cards') +
-        actionRow('Open kanban board', 'cursor-toys.openKanbanBoard') +
-        actionRow('New kanban card', 'cursor-toys.createKanbanCard')
-    );
-    h += section(
-      'p-plans',
-      I.doc,
-      'Plans',
-      p.plans.length,
-      fileRows(p.plans, I.doc, 'No plans')
-    );
-    h += section(
-      'p-hooks',
-      I.bolt,
-      'Hooks',
-      p.hooks.length,
-      fileRows(p.hooks, I.bolt, 'No hooks.json') +
-        actionRow('Create hooks file', 'cursor-toys.createHooksFile')
-    );
-    h += section(
-      'p-mcpb',
-      I.puzzle,
-      'MCPB Packages',
-      p.mcpb.length,
-      fileRows(p.mcpb, I.puzzle, 'No MCPB packages') +
-        actionRow('Install MCPB package', 'cursor-toys.installMcpb')
-    );
+    const panelOrder = (model.panelOrder && model.panelOrder.personal) || [];
+    const reorderScope = 'personal-sections';
 
     const clip = p.clipboard || {};
-    h += section('p-clip-hist', I.clippy, 'Clipboard history', (clip.history || []).length, commandRows(clip.history, 'Copy text in the editor to fill history'));
-    h += section('p-clip-slots', I.clippy, 'Snippet slots', (clip.slots || []).length, commandRows(clip.slots, 'No snippets saved'));
-    h += section('p-clip-global', I.terminal, 'Global commands', (clip.globalCommands || []).length, commandRows(clip.globalCommands, 'No saved commands'));
-    h += section('p-clip-ws', I.terminal, 'Workspace commands', (clip.workspaceCommands || []).length, commandRows(clip.workspaceCommands, 'No workspace commands'));
-
     const proj = p.projects || { enabled: true, actions: [], pinned: [], recent: [] };
     let projBody = (proj.actions || []).map((a) => actionRow(a.label, a.commandId, a.description)).join('');
     if (!proj.enabled) {
@@ -421,7 +366,6 @@
         projBody += `<div class="empty">Pin workspaces to see them here</div>`;
       }
     }
-    h += section('p-projects', I.folder, 'Projects', (proj.pinned || []).length + (proj.recent || []).length, projBody);
 
     const anchors = p.codeAnchors || { enabled: true, anchors: [], actions: [] };
     let anchorBody = (anchors.actions || []).map((a) => actionRow(a.label, a.commandId, a.description)).join('');
@@ -430,18 +374,147 @@
     } else {
       anchorBody += anchorRows(anchors.anchors || []);
     }
-    h += section('p-anchors', I.bookmark, 'Code anchors', (anchors.anchors || []).length, anchorBody);
+
+    const sections = [
+      {
+        id: 'p-cmd',
+        icon: I.terminal,
+        title: 'Commands',
+        count: p.commands.length,
+        body:
+          fileRows(p.commands, I.terminal, 'No personal commands') +
+          actionRow('New personal command', 'cursor-toys.save-as-user-command'),
+      },
+      {
+        id: 'p-prm',
+        icon: I.doc,
+        title: 'Prompts',
+        count: p.prompts.length,
+        body:
+          fileRows(p.prompts, I.doc, 'No personal prompts') +
+          actionRow('New personal prompt', 'cursor-toys.save-as-user-prompt'),
+      },
+      {
+        id: 'p-skl',
+        icon: I.sparkle,
+        title: 'Skills',
+        count: p.skills.length,
+        body:
+          fileRows(p.skills, I.sparkle, 'No personal skills') +
+          actionRow('New personal skill', 'cursor-toys.save-as-user-skill'),
+      },
+      {
+        id: 'p-rules',
+        icon: I.doc,
+        title: 'Rules',
+        count: p.rules.length,
+        body: fileRows(p.rules, I.doc, 'No personal rules'),
+      },
+      {
+        id: 'p-note',
+        icon: I.doc,
+        title: 'Notepads',
+        count: p.notepads.length,
+        body:
+          fileRows(p.notepads, I.doc, 'No notepads') +
+          actionRow('New notepad', 'cursor-toys.createNotepad'),
+      },
+      {
+        id: 'p-kanban',
+        icon: I.doc,
+        title: 'Kanban',
+        count: p.kanban.length,
+        body:
+          fileRows(p.kanban, I.doc, 'No kanban cards') +
+          actionRow('Open kanban board', 'cursor-toys.openKanbanBoard') +
+          actionRow('New kanban card', 'cursor-toys.createKanbanCard'),
+      },
+      {
+        id: 'p-plans',
+        icon: I.doc,
+        title: 'Plans',
+        count: p.plans.length,
+        body: fileRows(p.plans, I.doc, 'No plans'),
+      },
+      {
+        id: 'p-hooks',
+        icon: I.bolt,
+        title: 'Hooks',
+        count: p.hooks.length,
+        body:
+          fileRows(p.hooks, I.bolt, 'No hooks.json') +
+          actionRow('Create hooks file', 'cursor-toys.createHooksFile'),
+      },
+      {
+        id: 'p-mcpb',
+        icon: I.puzzle,
+        title: 'MCPB Packages',
+        count: p.mcpb.length,
+        body:
+          fileRows(p.mcpb, I.puzzle, 'No MCPB packages') +
+          actionRow('Install MCPB package', 'cursor-toys.installMcpb'),
+      },
+      {
+        id: 'p-clip-hist',
+        icon: I.clippy,
+        title: 'Clipboard history',
+        count: (clip.history || []).length,
+        body: commandRows(clip.history, 'Copy text in the editor to fill history'),
+      },
+      {
+        id: 'p-clip-slots',
+        icon: I.clippy,
+        title: 'Snippet slots',
+        count: (clip.slots || []).length,
+        body: commandRows(clip.slots, 'No snippets saved'),
+      },
+      {
+        id: 'p-clip-global',
+        icon: I.terminal,
+        title: 'Global commands',
+        count: (clip.globalCommands || []).length,
+        body: commandRows(clip.globalCommands, 'No saved commands'),
+      },
+      {
+        id: 'p-clip-ws',
+        icon: I.terminal,
+        title: 'Workspace commands',
+        count: (clip.workspaceCommands || []).length,
+        body: commandRows(clip.workspaceCommands, 'No workspace commands'),
+      },
+      {
+        id: 'p-projects',
+        icon: I.folder,
+        title: 'Projects',
+        count: (proj.pinned || []).length + (proj.recent || []).length,
+        body: projBody,
+      },
+      {
+        id: 'p-anchors',
+        icon: I.bookmark,
+        title: 'Code anchors',
+        count: (anchors.anchors || []).length,
+        body: anchorBody,
+      },
+    ];
 
     for (const cat of p.utils || []) {
-      const catId = 'p-utils-' + cat.id;
-      const body =
-        (cat.children || [])
-          .map((c) => actionRow(c.label, c.commandId || '', c.description))
-          .join('') || '<div class="empty">No actions</div>';
-      h += section(catId, I.wand, cat.label, (cat.children || []).length, body);
+      sections.push({
+        id: 'p-utils-' + cat.id,
+        icon: I.wand,
+        title: cat.label,
+        count: (cat.children || []).length,
+        body:
+          (cat.children || [])
+            .map((c) => actionRow(c.label, c.commandId || '', c.description))
+            .join('') || '<div class="empty">No actions</div>',
+      });
     }
 
-    return h;
+    return (
+      `<div class="scope"><span class="dot"></span>Personal<span class="path">${esc(p.scopeLabel)}</span></div>` +
+      renderSections(applySectionOrder(sections, panelOrder), reorderScope)
+    );
   }
 
   function buildConfig(model) {
@@ -451,14 +524,13 @@
 
     const shortcutBody =
       (c.shortcuts || [])
-        .map((a) => actionRow(a.label, a.commandId, a.description, undefined, { id: a.id, scope: 'cfg-shortcuts' }))
+        .map((a) => actionRow(a.label, a.commandId, a.description))
         .join('') || '<div class="empty">No shortcuts</div>';
     h += section('cfg-shortcuts', I.bolt, 'Shortcuts', (c.shortcuts || []).length, shortcutBody);
 
     for (const cat of c.settingsCategories || []) {
       const catId = 'cfg-' + cat.id;
-      const reorderScope = 'cfg-categories/' + cat.id;
-      const body = settingsItemRows(cat.children || [], 0, reorderScope) || '<div class="empty">No items</div>';
+      const body = settingsItemRows(cat.children || [], 0) || '<div class="empty">No items</div>';
       h += section(catId, I.gear, cat.label, countSettingsItems(cat.children), body);
     }
 
@@ -472,61 +544,103 @@
         `<div class="empty">Open a workspace folder to see project assets</div>`
       );
     }
+    const projectOrders = (model.panelOrder && model.panelOrder.projects) || {};
     let h = '';
     model.projects.forEach((p, idx) => {
       const sk = 'pr' + idx;
-      h += `<div class="scope"><span class="dot"></span>${esc(p.name)}<span class="path">.${esc(model.baseFolder || 'cursor')}</span></div>`;
-      h += section(secId(sk, 'cmd'), I.terminal, 'Commands', p.commands.length, fileRows(p.commands, I.terminal, 'No project commands'));
-      h += section(secId(sk, 'prm'), I.doc, 'Prompts', p.prompts.length, fileRows(p.prompts, I.doc, 'No project prompts'));
-      h += section(secId(sk, 'rules'), I.doc, 'Rules', p.rules.length, fileRows(p.rules, I.doc, 'No project rules'));
-      h += section(secId(sk, 'skl'), I.sparkle, 'Skills', p.skills.length, fileRows(p.skills, I.sparkle, 'No project skills'));
-      h += section(
-        secId(sk, 'http'),
-        I.globe,
-        'HTTP',
-        p.http.length,
-        fileRows(p.http, I.globe, 'No HTTP requests') +
-          actionRow('New HTTP request', 'cursor-toys.newHttpRequest')
-      );
-      h += section(
-        secId(sk, 'note'),
-        I.doc,
-        'Notepads',
-        p.notepads.length,
-        fileRows(p.notepads, I.doc, 'No notepads') +
-          actionRow('New notepad', 'cursor-toys.createNotepad')
-      );
-      h += section(
-        secId(sk, 'kanban'),
-        I.doc,
-        'Kanban',
-        p.kanban.length,
-        fileRows(p.kanban, I.doc, 'No kanban cards') +
-          actionRow('Open kanban board', 'cursor-toys.openKanbanBoard') +
-          actionRow('New kanban card', 'cursor-toys.createKanbanCard')
-      );
-      h += section(secId(sk, 'plans'), I.doc, 'Plans', p.plans.length, fileRows(p.plans, I.doc, 'No plans'));
-      h += section(
-        secId(sk, 'hooks'),
-        I.bolt,
-        'Hooks',
-        p.hooks.length,
-        fileRows(p.hooks, I.bolt, 'No hooks.json') +
-          actionRow('Create hooks file', 'cursor-toys.createHooksFile')
-      );
+      const reorderScope = 'project-sections/' + p.root;
+      const sectionOrder = projectOrders[p.root] || [];
 
       const inlineAnn = p.inlineAnnotations || { enabled: true, byTag: [], actions: [] };
       const inlineAnnCount = (inlineAnn.byTag || []).reduce(
         (sum, group) => sum + (group.annotations || []).length,
         0
       );
-      h += section(
-        secId(sk, 'inline-ann'),
-        I.doc,
-        'Inline annotations',
-        inlineAnnCount,
-        inlineAnnotationBody(inlineAnn)
-      );
+
+      const sections = [
+        {
+          id: secId(sk, 'cmd'),
+          icon: I.terminal,
+          title: 'Commands',
+          count: p.commands.length,
+          body: fileRows(p.commands, I.terminal, 'No project commands'),
+        },
+        {
+          id: secId(sk, 'prm'),
+          icon: I.doc,
+          title: 'Prompts',
+          count: p.prompts.length,
+          body: fileRows(p.prompts, I.doc, 'No project prompts'),
+        },
+        {
+          id: secId(sk, 'rules'),
+          icon: I.doc,
+          title: 'Rules',
+          count: p.rules.length,
+          body: fileRows(p.rules, I.doc, 'No project rules'),
+        },
+        {
+          id: secId(sk, 'skl'),
+          icon: I.sparkle,
+          title: 'Skills',
+          count: p.skills.length,
+          body: fileRows(p.skills, I.sparkle, 'No project skills'),
+        },
+        {
+          id: secId(sk, 'http'),
+          icon: I.globe,
+          title: 'HTTP',
+          count: p.http.length,
+          body:
+            fileRows(p.http, I.globe, 'No HTTP requests') +
+            actionRow('New HTTP request', 'cursor-toys.newHttpRequest'),
+        },
+        {
+          id: secId(sk, 'note'),
+          icon: I.doc,
+          title: 'Notepads',
+          count: p.notepads.length,
+          body:
+            fileRows(p.notepads, I.doc, 'No notepads') +
+            actionRow('New notepad', 'cursor-toys.createNotepad'),
+        },
+        {
+          id: secId(sk, 'kanban'),
+          icon: I.doc,
+          title: 'Kanban',
+          count: p.kanban.length,
+          body:
+            fileRows(p.kanban, I.doc, 'No kanban cards') +
+            actionRow('Open kanban board', 'cursor-toys.openKanbanBoard') +
+            actionRow('New kanban card', 'cursor-toys.createKanbanCard'),
+        },
+        {
+          id: secId(sk, 'plans'),
+          icon: I.doc,
+          title: 'Plans',
+          count: p.plans.length,
+          body: fileRows(p.plans, I.doc, 'No plans'),
+        },
+        {
+          id: secId(sk, 'hooks'),
+          icon: I.bolt,
+          title: 'Hooks',
+          count: p.hooks.length,
+          body:
+            fileRows(p.hooks, I.bolt, 'No hooks.json') +
+            actionRow('Create hooks file', 'cursor-toys.createHooksFile'),
+        },
+        {
+          id: secId(sk, 'inline-ann'),
+          icon: I.doc,
+          title: 'Inline annotations',
+          count: inlineAnnCount,
+          body: inlineAnnotationBody(inlineAnn),
+        },
+      ];
+
+      h += `<div class="scope"><span class="dot"></span>${esc(p.name)}<span class="path">.${esc(model.baseFolder || 'cursor')}</span></div>`;
+      h += renderSections(applySectionOrder(sections, sectionOrder), reorderScope);
     });
     return h;
   }
@@ -618,23 +732,28 @@
 
   let clickBound = false;
   let dragBound = false;
+  let uiBound = false;
 
   function bind() {
-    const r = document.getElementById('refresh');
-    if (r) {
-      r.addEventListener('click', () => {
+    const si = document.getElementById('search');
+    if (si) {
+      si.value = searchQuery;
+    }
+
+    if (!uiBound) {
+      app.addEventListener('click', (e) => {
+        const r = e.target.closest('#refresh');
+        if (!r || !app.contains(r)) return;
         r.classList.add('spin');
         setTimeout(() => r.classList.remove('spin'), 600);
         vscode.postMessage({ type: 'refresh' });
       });
-    }
-    const si = document.getElementById('search');
-    if (si) {
-      si.value = searchQuery;
-      si.addEventListener('input', (e) => {
+      app.addEventListener('input', (e) => {
+        if (e.target.id !== 'search' || !app.contains(e.target)) return;
         searchQuery = e.target.value;
         applyFilter();
       });
+      uiBound = true;
     }
     if (!clickBound) {
       app.addEventListener('click', onClick);
@@ -653,13 +772,13 @@
   function onDragStart(e) {
     const handle = e.target.closest('.drag');
     if (!handle || !app.contains(handle)) return;
-    const row = handle.closest('[data-reorder-id]');
-    if (!row) return;
+    const target = handle.closest('[data-reorder-id]');
+    if (!target) return;
     dragState = {
-      id: row.getAttribute('data-reorder-id'),
-      scope: row.getAttribute('data-reorder-scope'),
+      id: target.getAttribute('data-reorder-id'),
+      scope: target.getAttribute('data-reorder-scope'),
     };
-    row.classList.add('dragging');
+    target.classList.add('dragging');
     if (e.dataTransfer) {
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', dragState.id);
@@ -677,7 +796,12 @@
     const row = e.target.closest('[data-reorder-id]');
     if (!row || !dragState || dragState.scope !== row.getAttribute('data-reorder-scope')) return;
     e.preventDefault();
-    row.classList.add('drag-over');
+    if (!row.classList.contains('drag-over')) {
+      app.querySelectorAll(`[data-reorder-scope="${dragState.scope}"]`).forEach((el) => {
+        if (el !== row) el.classList.remove('drag-over');
+      });
+      row.classList.add('drag-over');
+    }
   }
 
   function onDragLeave(e) {
@@ -701,6 +825,28 @@
     if (from < 0 || to < 0) return;
     ids.splice(from, 1);
     ids.splice(to, 0, dragState.id);
+
+    const dragEl = rows[from];
+    if (dragEl && row !== dragEl) {
+      if (from < to) {
+        row.after(dragEl);
+      } else {
+        row.before(dragEl);
+      }
+    }
+
+    if (currentModel && currentModel.panelOrder) {
+      if (scope === 'personal-sections') {
+        currentModel.panelOrder.personal = ids;
+      } else if (scope.startsWith('project-sections/')) {
+        const root = scope.slice('project-sections/'.length);
+        if (!currentModel.panelOrder.projects) {
+          currentModel.panelOrder.projects = {};
+        }
+        currentModel.panelOrder.projects[root] = ids;
+      }
+    }
+
     vscode.postMessage({ type: 'reorder', scope, orderedIds: ids });
   }
 
@@ -717,6 +863,7 @@
     }
     const sec = e.target.closest('[data-sec]');
     if (sec && app.contains(sec)) {
+      if (e.target.closest('.drag')) return;
       const id = sec.getAttribute('data-sec');
       const wrap = app.querySelector(`[data-secwrap="${id}"]`);
       const nowCol = !wrap.classList.contains('collapsed');

@@ -17,7 +17,8 @@ import { createGitIgnoreFilter } from './gitignoreTreeFilter';
 function runTests(): void {
   testParseTodoNoteFix();
   testParseMarkdownHeadings();
-  testParseCaseInsensitiveAndCustomTag();
+  testParseUppercaseRequiredAndCustomTag();
+  testIgnoresLowercaseTags();
   testGlobPatterns();
   testGitignoreWithIncludeOverride();
   testIndexReplaceAndNavigation();
@@ -27,9 +28,9 @@ function runTests(): void {
 
 function testParseTodoNoteFix(): void {
   const content = [
-    '// todo: refactor parser',
-    '# note: remember edge case',
-    '  //fix broken handler',
+    '// TODO: refactor parser',
+    '# NOTE: remember edge case',
+    '  //FIX broken handler',
   ].join('\n');
 
   const markers = parseInlineAnnotations(content, ['todo', 'note', 'fix']);
@@ -43,9 +44,9 @@ function testParseTodoNoteFix(): void {
 
 function testParseMarkdownHeadings(): void {
   const content = [
-    '## todo: markdown heading',
-    '### note: nested heading',
-    '- fix: list item',
+    '## TODO: markdown heading',
+    '### NOTE: nested heading',
+    '- FIX: list item',
   ].join('\n');
 
   const markers = parseInlineAnnotations(content, ['todo', 'note', 'fix']);
@@ -55,12 +56,25 @@ function testParseMarkdownHeadings(): void {
   assert.strictEqual(markers[2].tag, 'fix');
 }
 
-function testParseCaseInsensitiveAndCustomTag(): void {
+function testParseUppercaseRequiredAndCustomTag(): void {
   const content = '// HACK: temporary workaround';
   const markers = parseInlineAnnotations(content, ['todo', 'hack']);
   assert.strictEqual(markers.length, 1);
   assert.strictEqual(markers[0].tag, 'hack');
   assert.strictEqual(markers[0].preview, 'temporary workaround');
+}
+
+function testIgnoresLowercaseTags(): void {
+  const portugueseReadme = '- todo conteudo aqui na documentacao';
+  assert.strictEqual(parseInlineAnnotations(portugueseReadme, ['todo', 'note', 'fix']).length, 0);
+
+  const lowercaseComment = '// todo: should not match\n# note: neither';
+  assert.strictEqual(parseInlineAnnotations(lowercaseComment, ['todo', 'note']).length, 0);
+
+  const uppercaseStillMatches = '- TODO: real task';
+  const markers = parseInlineAnnotations(uppercaseStillMatches, ['todo']);
+  assert.strictEqual(markers.length, 1);
+  assert.strictEqual(markers[0].tag, 'todo');
 }
 
 function testGlobPatterns(): void {
@@ -80,8 +94,8 @@ function testGitignoreWithIncludeOverride(): void {
 
     const ignoredDraft = path.join(tmp, '.deepspec', 'specs', 'drafts', 'task', 'note.ts');
     const trackedSrc = path.join(tmp, 'src', 'app.ts');
-    fs.writeFileSync(ignoredDraft, '// note: draft spec\n');
-    fs.writeFileSync(trackedSrc, '// todo: ship feature\n');
+    fs.writeFileSync(ignoredDraft, '// NOTE: draft spec\n');
+    fs.writeFileSync(trackedSrc, '// TODO: ship feature\n');
 
     const gitFilter = createGitIgnoreFilter(tmp);
     assert.strictEqual(
