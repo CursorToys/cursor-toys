@@ -43,6 +43,14 @@ export const MCP_PROMPT_DEFINITIONS: McpPromptDefinition[] = [
     },
   },
   {
+    name: 'inline-annotation-review',
+    description: 'Review inline comment markers (todo, fix, note) grouped by tag in the project',
+    argsSchema: {
+      tag: z.string().optional().describe('Optional tag to focus (todo, fix, note, bug, etc.)'),
+      workspaceRoot: z.string().optional().describe('Optional workspace folder root'),
+    },
+  },
+  {
     name: 'notepad-scratchpad',
     description: 'Create or update notepads during an agent session',
     argsSchema: {

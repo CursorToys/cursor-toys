@@ -86,6 +86,11 @@ import { CodeAnchorsTreeProvider } from './codeAnchorsTreeProvider';
 import { registerCodeAnchorsCommands } from './codeAnchorsCommands';
 import { CodeAnchorsStatusBar } from './codeAnchorsStatusBar';
 import { registerCodeAnchorsConfigListener } from './codeAnchorsConfig';
+import { InlineAnnotationService } from './inlineAnnotationService';
+import { InlineAnnotationsTreeProvider } from './inlineAnnotationsTreeProvider';
+import { registerInlineAnnotationsCommands } from './inlineAnnotationsCommands';
+import { registerInlineAnnotationsConfigListener } from './inlineAnnotationsConfig';
+import { InlineAnnotationsDecorationProvider } from './inlineAnnotationsDecorationProvider';
 import { generateTree, generateTreeFromUri } from './treeGenerator';
 import { showCursorToysCommandPalette } from './cursorToysCommandPalette';
 
@@ -2009,6 +2014,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(codeAnchorsStatusBar);
   registerCodeAnchorsCommands(context);
 
+  const inlineAnnotationService = new InlineAnnotationService(context);
+  inlineAnnotationService.activate();
+  context.subscriptions.push(inlineAnnotationService);
+  const inlineAnnotationsTreeProvider = new InlineAnnotationsTreeProvider(inlineAnnotationService);
+  registerInlineAnnotationsConfigListener(context, () => {
+    void inlineAnnotationService.rescanWorkspace();
+    inlineAnnotationService.refreshOpenDocuments();
+  });
+  registerInlineAnnotationsCommands(context, inlineAnnotationService);
+  const inlineAnnotationsDecorationProvider = new InlineAnnotationsDecorationProvider();
+  context.subscriptions.push(inlineAnnotationsDecorationProvider);
+
   // Explorer mirrors (unique view IDs; same providers as activity bar views)
   const userCommandsExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userCommands', {
     treeDataProvider: userCommandsTreeProvider,
@@ -2059,6 +2076,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     treeDataProvider: userMcpbTreeProvider,
     showCollapseAll: false,
   });
+  const inlineAnnotationsExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.inlineAnnotations', {
+    treeDataProvider: inlineAnnotationsTreeProvider,
+    showCollapseAll: true,
+  });
+  context.subscriptions.push(inlineAnnotationsExplorerTreeView);
 
   /**
    * Helper function to get URI from skills command argument (can be SkillFileItem or vscode.Uri)

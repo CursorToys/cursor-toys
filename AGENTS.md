@@ -132,7 +132,61 @@ export async function functionName(param: Type): Promise<ReturnType> {
 - Criar diretórios automaticamente se não existirem
 - Suportar múltiplas pastas baseado em configuração (`personalCommandsView`)
 
-## Padrões de Integração
+### Control Panel (primary UI)
+
+The CursorToys activity bar uses a **single Control webview** (`cursor-toys.controlView`). Explorer sidebar trees are optional mirrors.
+
+**When adding a user-facing feature, wire the Control Panel first:**
+
+| Layer | Files |
+|---|---|
+| Data builders | `src/control/controlExtras.ts`, `src/control/controlModel.ts` |
+| Webview render | `media/control/main.js`, `media/control/main.css` |
+| Styles (shared) | `media/ui/theme.css`, `media/ui/panel.css`, `src/webviewUi.ts` |
+
+**Layout rules (match existing sections):**
+
+- **Project-scoped data** (workspace files, scans, project assets) → **Project tab** under each workspace root (`buildProjects()` in `main.js`).
+- **Personal-scoped data** (`~/.cursor`, user libraries) → **Personal tab** (`buildPersonal()`).
+- Section body order when both content and actions exist: **primary items first**, **action commands last** (see Inline annotations: tag groups → Commands).
+- Use `.scope` sub-headers inside a section to group items (e.g. TODO / FIX / NOTE columns).
+- Reuse helpers: `section()`, `actionRow()`, `fileRows()`, `esc()`.
+- Add collapsed defaults in `COLLAPSED_DEFAULTS` (`media/control/main.js`).
+- Icons: use existing `I.*` SVG set in `main.js`; do not add new webview frameworks.
+
+**Inline Annotations (reference implementation):**
+
+- Source: `src/inlineAnnotation*.ts`, `src/inlineAnnotations*.ts`
+- Control Panel: `buildInlineAnnotationsDataForRoot()` → Project tab → grouped by tag (`sortInlineAnnotationTags`)
+- Explorer tree: `InlineAnnotationsTreeProvider` (optional mirror)
+- Editor: `InlineAnnotationsDecorationProvider` (`cursorToys.inlineAnnotations.highlightComments`)
+
+### MCP Server (mandatory for new features)
+
+Every user-facing feature **must** expose MCP surfaces so agents can discover and operate without UI. Follow the anchors/kanban pattern.
+
+**Checklist when shipping a feature:**
+
+1. **Tools** — typed handlers in `src/mcp/services/<feature>Tools.ts`; register in `src/mcp/toolSchemaCatalog.ts` + `src/mcp/toolHost.ts`.
+2. **Resources** — read-only URIs in `src/mcp/resourceCatalog.ts`; read/list in `src/mcp/resources/resourceHost.ts` (`cursortoys://…`).
+3. **Prompt** — workflow playbook in `src/mcp/promptCatalog.ts` + body in `src/mcp/prompts/promptHost.ts`.
+4. **Config snapshot** — add settings/paths to `buildConfigSnapshot()` in `resourceHost.ts` when relevant.
+5. **Tests** — extend `src/mcp/mcpWave4.test.ts` (tool/resource/prompt registered, no duplicate names).
+6. **Skill doc** — update `.cursor/skills/cursor-toys-mcp/SKILL.md` (tools, resources, prompts tables).
+7. **CHANGELOG** — document MCP additions under the release entry.
+
+**Inline Annotations MCP (current):**
+
+| Type | Name / URI |
+|---|---|
+| Resource | `cursortoys://inline-annotations`, `cursortoys://inline-annotations/{tag}`, `cursortoys://inline-annotations/file/{path}` |
+| Tools | `inline_annotation_list`, `inline_annotation_list_by_tag`, `inline_annotation_list_file`, `inline_annotation_refresh`, `inline_annotation_next`, `inline_annotation_prev`, `inline_annotation_goto` |
+| Prompt | `inline-annotation-review` |
+
+Prefer **resources for read-only discovery**, **tools for navigation/refresh**, **prompts for multi-step review workflows**.
+
+See `.cursor/skills/cursor-toys-mcp/SKILL.md` for agent-facing documentation.
+
 
 ### Suporte a Múltiplos Formatos
 - **Deeplink**: `cursor://godrix.cursor-toys/`

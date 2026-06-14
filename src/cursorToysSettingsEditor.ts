@@ -13,6 +13,7 @@ const SIDEBAR_SECTION_OPTIONS = [
   { key: 'hooks', label: 'Hooks' },
   { key: 'mcpb', label: 'MCPB' },
   { key: 'http', label: 'HTTP' },
+  { key: 'inlineAnnotations', label: 'Inline Annotations' },
 ] as const;
 
 const ALLOWED_EXTENSION_OPTIONS = [
@@ -547,6 +548,45 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
         off: 'Hide status bar navigation',
       });
       return;
+
+    case 'cursorToys.inlineAnnotations.enabled':
+      await pickBoolean(settingKey, true, {
+        on: 'Enable inline annotations',
+        off: 'Disable inline annotations',
+      });
+      return;
+
+    case 'cursorToys.inlineAnnotations.highlightComments':
+      await pickBoolean(settingKey, true, {
+        on: 'Highlight tagged comment lines',
+        off: 'Use normal comment styling',
+      });
+      return;
+
+    case 'cursorToys.inlineAnnotations.updateOnType':
+      await pickBoolean(settingKey, true, {
+        on: 'Update index while typing',
+        off: 'Update index on save only',
+      });
+      return;
+
+    case 'cursorToys.inlineAnnotations.scanIncludePaths': {
+      const config = vscode.workspace.getConfiguration();
+      const current = config.get<string[]>('cursorToys.inlineAnnotations.scanIncludePaths', []);
+      const nextRaw = await vscode.window.showInputBox({
+        prompt: 'Glob paths to scan even when gitignored (comma-separated)',
+        value: current.join(', '),
+      });
+      if (nextRaw === undefined) {
+        return;
+      }
+      const values = nextRaw
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+      await updateGlobalSetting('cursorToys.inlineAnnotations.scanIncludePaths', values);
+      return;
+    }
 
     case 'cursorToys.kanban.showStatusBar':
       await pickBoolean(settingKey, false, {

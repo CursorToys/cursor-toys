@@ -92,6 +92,7 @@
     "onView:cursor-toys.explorer.userHttp",
     "onView:cursor-toys.explorer.userHooks",
     "onView:cursor-toys.explorer.userMcpb",
+    "onView:cursor-toys.explorer.inlineAnnotations",
     "onCommand:cursorToys.command",
     "onCommand:cursorInject.send"
   ],
@@ -809,6 +810,25 @@
         "title": "CursorToys: Go to Anchor"
       },
       {
+        "command": "cursor-toys.refreshInlineAnnotations",
+        "title": "CursorToys: Refresh Inline Annotations",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.goToInlineAnnotation",
+        "title": "CursorToys: Go to Inline Annotation"
+      },
+      {
+        "command": "cursor-toys.nextInlineAnnotation",
+        "title": "CursorToys: Next Inline Annotation",
+        "icon": "$(arrow-down)"
+      },
+      {
+        "command": "cursor-toys.prevInlineAnnotation",
+        "title": "CursorToys: Previous Inline Annotation",
+        "icon": "$(arrow-up)"
+      },
+      {
         "command": "cursorToys.command",
         "title": "CursorToys: Internal Command Router"
       },
@@ -971,6 +991,11 @@
           "id": "cursor-toys.explorer.userMcpb",
           "name": "MCPB Packages",
           "when": "cursorToys.explorer.mcpbVisible"
+        },
+        {
+          "id": "cursor-toys.explorer.inlineAnnotations",
+          "name": "Inline Annotations",
+          "when": "cursorToys.explorer.inlineAnnotationsVisible && cursorToys.inlineAnnotationsEnabled"
         }
       ]
     },
@@ -1126,6 +1151,11 @@
         {
           "command": "cursor-toys.refreshMcpb",
           "when": "view =~ /cursor-toys\\.(explorer\\.)?userMcpb/",
+          "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.refreshInlineAnnotations",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?inlineAnnotations/",
           "group": "navigation"
         }
       ],
@@ -1854,6 +1884,88 @@
             "default": true,
             "description": "Show forward/backward navigation controls in the status bar when anchors exist in the workspace."
           },
+          "cursorToys.inlineAnnotations.enabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "Index inline comment markers (//todo, ##note, //fix, etc.) and show them in the Inline Annotations explorer view."
+          },
+          "cursorToys.inlineAnnotations.highlightComments": {
+            "type": "boolean",
+            "default": true,
+            "description": "Highlight indexed comment lines in the editor with per-tag background colors. Disable to show comments with normal syntax highlighting only."
+          },
+          "cursorToys.inlineAnnotations.tagColors": {
+            "type": "object",
+            "default": {
+              "todo": "#FFCC0040",
+              "fix": "#F4433640",
+              "note": "#2196F340",
+              "bug": "#E91E6340",
+              "hack": "#FF980040",
+              "warn": "#FF572240",
+              "idea": "#9C27B040",
+              "refactor": "#673AB740",
+              "review": "#00BCD440",
+              "test": "#4CAF5040"
+            },
+            "markdownDescription": "Background colors for highlighted comment lines keyed by tag name (8-digit `#RRGGBBAA` hex recommended)."
+          },
+          "cursorToys.inlineAnnotations.tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "todo",
+              "fix",
+              "note",
+              "bug",
+              "hack",
+              "warn",
+              "idea",
+              "refactor",
+              "review",
+              "test"
+            ],
+            "markdownDescription": "Comment tags to index (case-insensitive). Matched after `//`, `#`, `##`, list markers, `--`, `;`, or HTML comment prefixes."
+          },
+          "cursorToys.inlineAnnotations.scanIncludePaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [],
+            "markdownDescription": "Glob patterns for paths to scan even when excluded by `.gitignore` (e.g. `.deepspec/specs/drafts/**`)."
+          },
+          "cursorToys.inlineAnnotations.fileExtensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "ts",
+              "tsx",
+              "js",
+              "jsx",
+              "py",
+              "go",
+              "rs",
+              "md",
+              "mdc"
+            ],
+            "description": "File extensions to scan for inline annotation markers (without leading dot)."
+          },
+          "cursorToys.inlineAnnotations.updateOnType": {
+            "type": "boolean",
+            "default": true,
+            "description": "Update the inline annotations index while typing (debounced). When disabled, updates happen on save only."
+          },
+          "cursorToys.inlineAnnotations.updateDebounceMs": {
+            "type": "number",
+            "default": 500,
+            "minimum": 200,
+            "description": "Debounce delay in milliseconds when updateOnType is enabled."
+          },
           "cursorToys.sidebar.hiddenViews": {
             "type": "array",
             "items": {
@@ -1869,11 +1981,12 @@
                 "hooks",
                 "mcpb",
                 "http",
-                "projects"
+                "projects",
+                "inlineAnnotations"
               ]
             },
             "default": [],
-            "markdownDescription": "Explorer sidebar sections to hide under CursorToys. Keys: `notepads`, `kanban`, `clipboard`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`, `projects`. Empty list shows all sections. Command Palette and file actions still work for hidden resources."
+            "markdownDescription": "Explorer sidebar sections to hide under CursorToys. Keys: `notepads`, `kanban`, `clipboard`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`, `projects`, `inlineAnnotations`. Empty list shows all sections. Command Palette and file actions still work for hidden resources."
           },
           "cursorToys.sidebar.explorerViews": {
             "type": "array",
@@ -1890,14 +2003,16 @@
                 "hooks",
                 "mcpb",
                 "http",
-                "projects"
+                "projects",
+                "inlineAnnotations"
               ]
             },
             "default": [
               "skills",
-              "plans"
+              "plans",
+              "inlineAnnotations"
             ],
-            "markdownDescription": "Explorer sidebar sections to also show in the Explorer (in addition to the CursorToys activity bar). Keys: `notepads`, `kanban`, `clipboard`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`, `projects`. Default: `skills`, `plans`."
+            "markdownDescription": "Explorer sidebar sections to also show in the Explorer (in addition to the CursorToys activity bar). Keys: `notepads`, `kanban`, `clipboard`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`, `projects`, `inlineAnnotations`. Default: `skills`, `plans`."
           },
           "cursorToys.httpRequestTimeout": {
             "type": "number",
@@ -2334,6 +2449,18 @@
         "key": "ctrl+alt+p",
         "mac": "cmd+alt+p",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "cursor-toys.nextInlineAnnotation",
+        "key": "ctrl+alt+.",
+        "mac": "cmd+alt+.",
+        "when": "editorTextFocus && cursorToys.inlineAnnotationsEnabled"
+      },
+      {
+        "command": "cursor-toys.prevInlineAnnotation",
+        "key": "ctrl+alt+,",
+        "mac": "cmd+alt+,",
+        "when": "editorTextFocus && cursorToys.inlineAnnotationsEnabled"
       }
     ],
     "uriHandlers": [
@@ -2359,6 +2486,7 @@
     "test:usage-monitor": "npm run compile && node out/providerUsage/openRouterCredits.test.js && node out/providerUsage/openRouterKeyInfo.test.js && node out/providerUsage/openRouterActivity.test.js && node out/providerUsage/usageMonitorPanelState.test.js && node out/providerUsage/deepInfraBilling.test.js",
     "test:mcp": "npm run compile && node out/mcp/security.test.js && node out/mcp/commandRegistry.test.js && node out/mcp/mcpWave4.test.js",
     "test:projects": "npm run compile && node out/projects/projectRegistry.test.js && node out/projects/projectPathUtils.test.js",
+    "test:inline-annotations": "npm run compile && node out/inlineAnnotations.test.js",
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
     "publish": "vsce publish"

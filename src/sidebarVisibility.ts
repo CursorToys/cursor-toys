@@ -12,10 +12,15 @@ export type SidebarResourceKey =
   | 'hooks'
   | 'mcpb'
   | 'http'
-  | 'projects';
+  | 'projects'
+  | 'inlineAnnotations';
 
 /** Default sections duplicated in the Explorer sidebar (Files) on first install. */
-export const DEFAULT_EXPLORER_SIDEBAR_VIEWS: readonly SidebarResourceKey[] = ['skills', 'plans'] as const;
+export const DEFAULT_EXPLORER_SIDEBAR_VIEWS: readonly SidebarResourceKey[] = [
+  'skills',
+  'plans',
+  'inlineAnnotations',
+] as const;
 
 export const ALL_SIDEBAR_RESOURCE_KEYS: readonly SidebarResourceKey[] = [
   'notepads',
@@ -29,6 +34,7 @@ export const ALL_SIDEBAR_RESOURCE_KEYS: readonly SidebarResourceKey[] = [
   'mcpb',
   'http',
   'projects',
+  'inlineAnnotations',
 ] as const;
 
 const SIDEBAR_RESOURCE_KEY_SET = new Set<string>(ALL_SIDEBAR_RESOURCE_KEYS);
@@ -46,6 +52,7 @@ const VISIBILITY_CONTEXT_KEYS: Record<SidebarResourceKey, string> = {
   mcpb: 'cursorToys.sidebar.mcpbVisible',
   http: 'cursorToys.sidebar.httpVisible',
   projects: 'cursorToys.sidebar.projectsVisible',
+  inlineAnnotations: 'cursorToys.sidebar.inlineAnnotationsVisible',
 };
 
 /** VS Code context keys to optionally show views in Explorer. */
@@ -61,6 +68,7 @@ const EXPLORER_CONTEXT_KEYS: Record<SidebarResourceKey, string> = {
   mcpb: 'cursorToys.explorer.mcpbVisible',
   http: 'cursorToys.explorer.httpVisible',
   projects: 'cursorToys.explorer.projectsVisible',
+  inlineAnnotations: 'cursorToys.explorer.inlineAnnotationsVisible',
 };
 
 /**

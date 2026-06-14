@@ -30,9 +30,11 @@ import {
 import {
   buildClipboardData,
   buildCodeAnchorsData,
+  buildInlineAnnotationsDataForRoot,
   buildProjectsData,
   type ControlClipboardData,
   type ControlCodeAnchorsData,
+  type ControlInlineAnnotationsData,
   type ControlProjectsData,
 } from './controlExtras';
 import { ProjectRegistry } from '../projects/projectRegistry';
@@ -61,6 +63,7 @@ export interface ControlProjectScope {
   kanban: ControlAssetItem[];
   plans: ControlAssetItem[];
   hooks: ControlAssetItem[];
+  inlineAnnotations: ControlInlineAnnotationsData;
 }
 
 export interface ControlUsageBar {
@@ -333,6 +336,7 @@ export async function buildControlModel(
       kanban: pKanban,
       plans: pPlans,
       hooks: pHooks,
+      inlineAnnotations: buildInlineAnnotationsDataForRoot(root),
     });
   }
 

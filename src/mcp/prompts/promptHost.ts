@@ -38,6 +38,7 @@ ${args.folder ? `Focus folder: ${args.folder}` : 'List HTTP files, pick a suite,
 
 - commands_list, rules_list, prompts_list, skills_list
 - hooks_list, plan_list
+- inline_annotation_list (todo/fix/note markers grouped by tag)
 - personal_*_list for user libraries
 - cursortoys://config resource for resolved paths
 
@@ -62,6 +63,23 @@ Tools:
 - anchor_add / anchor_remove (non-destructive navigation first)
 
 ${args.filePath ? `Start from file: ${args.filePath}` : 'List all anchors, then walk through them in order with brief context per stop.'}`,
+
+  'inline-annotation-review': (args) => `Review inline comment markers in this project (//todo, //fix, ##note, etc.).
+
+Resources (read-only):
+- cursortoys://inline-annotations — all markers grouped by tag
+- cursortoys://inline-annotations/{tag} — one tag column (todo, fix, note, …)
+- cursortoys://inline-annotations/file/{path} — markers in a file
+
+Tools:
+- inline_annotation_list / inline_annotation_list_by_tag / inline_annotation_list_file
+- inline_annotation_next / inline_annotation_prev / inline_annotation_goto
+- inline_annotation_refresh — rescan after bulk edits
+
+UI mirrors Control Panel → Project tab → Inline annotations (annotations first, grouped by tag; commands last).
+
+${args.tag ? `Focus tag: ${args.tag}` : 'Start with todo, then fix, then note columns.'}
+${args.workspaceRoot ? `Workspace root: ${args.workspaceRoot}` : ''}`,
 
   'notepad-scratchpad': (args) => `Use notepads as a session scratchpad.
 

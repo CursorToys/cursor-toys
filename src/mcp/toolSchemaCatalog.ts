@@ -620,6 +620,59 @@ export const MCP_TOOL_DEFINITIONS: ToolDefinition[] = [
     },
   },
   {
+    name: 'inline_annotation_list',
+    description: 'List inline comment markers grouped by tag (todo, fix, note, etc.)',
+    inputSchema: {
+      workspaceRoot: z.string().optional().describe('Optional workspace folder root to filter markers'),
+    },
+  },
+  {
+    name: 'inline_annotation_list_by_tag',
+    description: 'List inline annotations for a single tag',
+    inputSchema: {
+      tag: z.string(),
+      workspaceRoot: z.string().optional(),
+    },
+  },
+  {
+    name: 'inline_annotation_list_file',
+    description: 'List inline annotations in a source file',
+    inputSchema: { filePath: z.string() },
+  },
+  {
+    name: 'inline_annotation_refresh',
+    description: 'Rescan workspace and refresh the inline annotation index',
+    inputSchema: {},
+  },
+  {
+    name: 'inline_annotation_next',
+    description: 'Next inline annotation in workspace order',
+    inputSchema: {
+      filePath: z.string().optional(),
+      line: z.number().optional(),
+      openInEditor: z.boolean().optional(),
+    },
+  },
+  {
+    name: 'inline_annotation_prev',
+    description: 'Previous inline annotation in workspace order',
+    inputSchema: {
+      filePath: z.string().optional(),
+      line: z.number().optional(),
+      openInEditor: z.boolean().optional(),
+    },
+  },
+  {
+    name: 'inline_annotation_goto',
+    description: 'Navigate to an inline annotation (optional openInEditor)',
+    inputSchema: {
+      filePath: z.string(),
+      line: z.number(),
+      tag: z.string().optional(),
+      openInEditor: z.boolean().optional(),
+    },
+  },
+  {
     name: 'http_run_assertions',
     description: 'Run assertions for HTTP request file',
     inputSchema: { filePath: z.string() },

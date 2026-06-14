@@ -37,6 +37,13 @@ export const MCP_RESOURCE_DEFINITIONS: McpResourceDef[] = [
   },
   {
     kind: 'static',
+    name: 'inline-annotations',
+    uri: 'cursortoys://inline-annotations',
+    description: 'All inline comment markers (todo, fix, note, etc.) grouped by tag',
+    mimeType: 'application/json',
+  },
+  {
+    kind: 'static',
     name: 'hooks',
     uri: 'cursortoys://hooks',
     description: 'hooks.json and hook scripts index',
@@ -82,6 +89,20 @@ export const MCP_RESOURCE_DEFINITIONS: McpResourceDef[] = [
     name: 'env',
     uriTemplate: 'cursortoys://env/{name}',
     description: 'Project environment variables (secrets redacted)',
+    mimeType: 'application/json',
+  },
+  {
+    kind: 'template',
+    name: 'inline-annotations-tag',
+    uriTemplate: 'cursortoys://inline-annotations/{tag}',
+    description: 'Inline annotations for a tag (todo, fix, note, bug, hack, warn, idea, refactor, review, test)',
+    mimeType: 'application/json',
+  },
+  {
+    kind: 'template',
+    name: 'inline-annotations-file',
+    uriTemplate: 'cursortoys://inline-annotations/file/{path}',
+    description: 'Inline annotations in a single source file',
     mimeType: 'application/json',
   },
   {

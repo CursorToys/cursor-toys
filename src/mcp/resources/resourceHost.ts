@@ -17,6 +17,7 @@ import * as kanban from '../services/kanbanTools';
 import * as notepad from '../services/notepadTools';
 import * as http from '../services/httpTools';
 import * as anchor from '../services/anchorTools';
+import * as inlineAnnotation from '../services/inlineAnnotationTools';
 import * as hooks from '../services/hooksTools';
 import { buildAssetToolHandlers } from '../services/assetsTools';
 import { buildClipboardToolHandlers } from '../services/clipboardTools';
@@ -132,6 +133,24 @@ export class McpResourceHost {
       }
     }
 
+    if (!template || template.includes('inline-annotations/{tag}')) {
+      try {
+        const listed = (await inlineAnnotation.inlineAnnotationList({})) as {
+          tags?: string[];
+        };
+        for (const tag of listed.tags ?? []) {
+          entries.push({
+            uri: `cursortoys://inline-annotations/${encodeURIComponent(tag)}`,
+            name: `inline-${tag}`,
+            description: `Inline annotations: ${tag}`,
+            mimeType: 'application/json',
+          });
+        }
+      } catch {
+        // Service may be unavailable during early activation
+      }
+    }
+
     return entries;
   }
 
@@ -186,6 +205,20 @@ export class McpResourceHost {
         } else {
           const filePath = decodeUriSegment(segments.join('/'));
           const data = await anchor.anchorListFile({ filePath });
+          text = JSON.stringify(data, null, 2);
+        }
+        break;
+      case 'inline-annotations':
+        if (segments.length === 0) {
+          const data = await inlineAnnotation.inlineAnnotationList({});
+          text = JSON.stringify(data, null, 2);
+        } else if (segments[0] === 'file' && segments[1]) {
+          const filePath = decodeUriSegment(segments.slice(1).join('/'));
+          const data = await inlineAnnotation.inlineAnnotationListFile({ filePath });
+          text = JSON.stringify(data, null, 2);
+        } else {
+          const tag = decodeUriSegment(segments.join('/'));
+          const data = await inlineAnnotation.inlineAnnotationListByTag({ tag });
           text = JSON.stringify(data, null, 2);
         }
         break;
@@ -257,6 +290,12 @@ export class McpResourceHost {
         enabled: config.get<boolean>('mcp.enabled', false),
         autoRegister: config.get<boolean>('mcp.autoRegister', true),
         auditLogEnabled: config.get<boolean>('mcp.auditLogEnabled', false),
+      },
+      inlineAnnotations: {
+        enabled: config.get<boolean>('inlineAnnotations.enabled', true),
+        highlightComments: config.get<boolean>('inlineAnnotations.highlightComments', true),
+        tags: config.get<string[]>('inlineAnnotations.tags', []),
+        scanIncludePaths: config.get<string[]>('inlineAnnotations.scanIncludePaths', []),
       },
     };
   }

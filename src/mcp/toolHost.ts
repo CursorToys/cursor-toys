@@ -11,6 +11,7 @@ import * as kanban from './services/kanbanTools';
 import * as notepad from './services/notepadTools';
 import * as http from './services/httpTools';
 import * as anchor from './services/anchorTools';
+import * as inlineAnnotation from './services/inlineAnnotationTools';
 import { cursortoysExecute, cursortoysListCommands } from './services/dispatcherTools';
 import { buildAssetToolHandlers } from './services/assetsTools';
 import { buildPersonalToolHandlers } from './services/personalTools';
@@ -79,6 +80,13 @@ const STATIC_HANDLERS: Record<string, ToolHandler> = {
   anchor_next: anchor.anchorNext,
   anchor_prev: anchor.anchorPrev,
   anchor_goto: anchor.anchorGoto,
+  inline_annotation_list: inlineAnnotation.inlineAnnotationList,
+  inline_annotation_list_by_tag: inlineAnnotation.inlineAnnotationListByTag,
+  inline_annotation_list_file: inlineAnnotation.inlineAnnotationListFile,
+  inline_annotation_refresh: () => inlineAnnotation.inlineAnnotationRefresh(),
+  inline_annotation_next: inlineAnnotation.inlineAnnotationNext,
+  inline_annotation_prev: inlineAnnotation.inlineAnnotationPrev,
+  inline_annotation_goto: inlineAnnotation.inlineAnnotationGoto,
 };
 
 function buildContextualHandlers(ctx: McpHostContext): Record<string, ToolHandler> {

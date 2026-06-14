@@ -221,6 +221,49 @@
       .join('');
   }
 
+  function inlineAnnotationRows(list) {
+    if (!list || !list.length) return '';
+    return list
+      .map((a) =>
+        actionRow(
+          `${a.fileName}:${a.line + 1}`,
+          'cursor-toys.goToInlineAnnotation',
+          a.preview,
+          [a.filePath, a.line, a.tag]
+        )
+      )
+      .join('');
+  }
+
+  function inlineAnnotationBody(inlineAnn) {
+    if (!inlineAnn.enabled) {
+      return '<div class="empty">Inline annotations disabled</div>';
+    }
+
+    let body = '';
+    const groups = inlineAnn.byTag || [];
+    const totalCount = groups.reduce((sum, group) => sum + (group.annotations || []).length, 0);
+
+    if (totalCount > 0) {
+      for (const group of groups) {
+        const items = group.annotations || [];
+        if (!items.length) continue;
+        body += `<div class="scope" style="padding-top:8px"><span class="dot"></span>${esc((group.tag || '').toUpperCase())}<span class="path">${items.length}</span></div>`;
+        body += inlineAnnotationRows(items);
+      }
+    } else {
+      body += '<div class="empty">No inline annotations in this project</div>';
+    }
+
+    const actions = (inlineAnn.actions || []).map((a) => actionRow(a.label, a.commandId, a.description)).join('');
+    if (actions) {
+      body += `<div class="scope" style="padding-top:8px"><span class="dot"></span>Commands</div>`;
+      body += actions;
+    }
+
+    return body;
+  }
+
   function fileRows(list, icon, emptyTxt) {
     if (!list.length) return `<div class="empty">${esc(emptyTxt || 'Empty')}</div>`;
     return list.map((f) => linkRow(icon, f.name, f.description || '', f.path)).join('');
@@ -470,6 +513,19 @@
         p.hooks.length,
         fileRows(p.hooks, I.bolt, 'No hooks.json') +
           actionRow('Create hooks file', 'cursor-toys.createHooksFile')
+      );
+
+      const inlineAnn = p.inlineAnnotations || { enabled: true, byTag: [], actions: [] };
+      const inlineAnnCount = (inlineAnn.byTag || []).reduce(
+        (sum, group) => sum + (group.annotations || []).length,
+        0
+      );
+      h += section(
+        secId(sk, 'inline-ann'),
+        I.doc,
+        'Inline annotations',
+        inlineAnnCount,
+        inlineAnnotationBody(inlineAnn)
       );
     });
     return h;

@@ -6,6 +6,8 @@ import { getClipboardHistoryManager } from '../clipboardHistoryManager';
 import { formatSlotDisplayLabel } from '../clipboardSnippetSlots';
 import { truncateClipboardPreview } from '../clipboardQuickPick';
 import { CodeAnchorsManager } from '../codeAnchorsManager';
+import { InlineAnnotationService } from '../inlineAnnotationService';
+import { sortInlineAnnotationTags } from '../inlineAnnotationTags';
 import { ProjectRegistry } from '../projects/projectRegistry';
 import { isProjectsEnabled } from '../projects/projectsConfig';
 import type { ProjectEntry } from '../projects/types';
@@ -245,4 +247,81 @@ export async function buildCodeAnchorsData(
 
   anchors.sort((a, b) => a.fileName.localeCompare(b.fileName) || a.line - b.line);
   return { enabled: true, anchors, actions };
+}
+
+export interface ControlInlineAnnotationRow {
+  id: string;
+  tag: string;
+  filePath: string;
+  fileName: string;
+  line: number;
+  preview: string;
+}
+
+export interface ControlInlineAnnotationsData {
+  enabled: boolean;
+  byTag: ControlInlineAnnotationTagGroup[];
+  actions: ControlAction[];
+}
+
+export interface ControlInlineAnnotationTagGroup {
+  tag: string;
+  annotations: ControlInlineAnnotationRow[];
+}
+
+/**
+ * Returns true when a file path belongs to a workspace root folder.
+ */
+function isPathUnderWorkspaceRoot(filePath: string, workspaceRoot: string): boolean {
+  const resolvedFile = path.resolve(filePath);
+  const resolvedRoot = path.resolve(workspaceRoot);
+  return resolvedFile === resolvedRoot || resolvedFile.startsWith(`${resolvedRoot}${path.sep}`);
+}
+
+/**
+ * Builds inline annotation rows for a workspace folder in the Control webview.
+ */
+export function buildInlineAnnotationsDataForRoot(workspaceRoot: string): ControlInlineAnnotationsData {
+  const cfg = vscode.workspace.getConfiguration('cursorToys');
+  const enabled = cfg.get<boolean>('inlineAnnotations.enabled', true);
+  const actions: ControlAction[] = [
+    { id: 'refresh-inline-annotations', label: 'Refresh annotations', commandId: 'cursor-toys.refreshInlineAnnotations' },
+    { id: 'next-inline-annotation', label: 'Next annotation', commandId: 'cursor-toys.nextInlineAnnotation' },
+    { id: 'prev-inline-annotation', label: 'Previous annotation', commandId: 'cursor-toys.prevInlineAnnotation' },
+  ];
+
+  if (!enabled) {
+    return { enabled: false, byTag: [], actions };
+  }
+
+  const service = InlineAnnotationService.getInstance();
+  if (!service) {
+    return { enabled: true, byTag: [], actions };
+  }
+
+  const grouped = new Map<string, ControlInlineAnnotationRow[]>();
+  for (const marker of service.index.getAllSorted()) {
+    if (!isPathUnderWorkspaceRoot(marker.filePath, workspaceRoot)) {
+      continue;
+    }
+
+    const row: ControlInlineAnnotationRow = {
+      id: marker.id,
+      tag: marker.tag,
+      filePath: marker.filePath,
+      fileName: path.basename(marker.filePath),
+      line: marker.line,
+      preview: marker.preview,
+    };
+    const list = grouped.get(marker.tag) ?? [];
+    list.push(row);
+    grouped.set(marker.tag, list);
+  }
+
+  const byTag: ControlInlineAnnotationTagGroup[] = sortInlineAnnotationTags(grouped.keys()).map((tag) => ({
+    tag,
+    annotations: grouped.get(tag) ?? [],
+  }));
+
+  return { enabled: true, byTag, actions };
 }

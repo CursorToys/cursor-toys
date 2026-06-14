@@ -1,11 +1,15 @@
 # CursorToys
 
-![](https://i.imgur.com/hLjssCU.jpeg)
+![](https://i.imgur.com/TjSi5so.jpeg)
 
-## v2026.6.14-1 - Unified UI and Control Panel polish
+## v2026.6.14-2 - Unified UI and Control Panel polish
 
 ### Added
 
+- **Inline Annotations** — indexes `//todo`, `##note`, `//fix`, and other configurable comment tags across the workspace; Explorer tree view grouped by tag, file, and line with click-to-navigate and next/previous commands.
+- **Inline annotation highlights** — optional per-tag background colors on comment lines (`highlightComments`, default on): todo yellow, note blue, fix red.
+- **Inline Annotations MCP** — resources (`cursortoys://inline-annotations`), tools (`inline_annotation_*`), prompt (`inline-annotation-review`).
+- **`cursorToys.inlineAnnotations.*`** — enable/disable, custom tags, file extensions, gitignore overrides via `scanIncludePaths` (e.g. `.deepspec/specs/drafts/**`), live updates while typing, and configurable `tagColors`.
 - **Shared webview UI** — `media/ui/theme.css`, `media/ui/panel.css`, and `src/webviewUi.ts` (panel header, CSP helpers, document builder) for a consistent CursorToys look across webviews.
 - **`cursorToys.releaseNotes.showOnStartup`** — disable automatic **What's New** on install/update (command palette entry still opens release notes manually).
 
