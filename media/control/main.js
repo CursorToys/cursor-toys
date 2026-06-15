@@ -132,6 +132,20 @@
       .join('');
   }
 
+  function subscope(label, count, depth) {
+    depth = depth || 0;
+    const countHtml = count != null ? `<span class="subct">${esc(String(count))}</span>` : '';
+    const pad = 14 + depth * 12;
+    return (
+      `<div class="subscope" style="padding-left:${pad}px">` +
+      `<span class="subdot"></span>${esc(label)}${countHtml}</div>`
+    );
+  }
+
+  function subgroup(html) {
+    return `<div class="subgroup">${html || ''}</div>`;
+  }
+
   function reorderHandle() {
     return `<span class="drag" draggable="true" title="Drag to reorder">${I.grip}</span>`;
   }
@@ -271,8 +285,8 @@
       for (const group of groups) {
         const items = group.annotations || [];
         if (!items.length) continue;
-        body += `<div class="scope" style="padding-top:8px"><span class="dot"></span>${esc((group.tag || '').toUpperCase())}<span class="path">${items.length}</span></div>`;
-        body += inlineAnnotationRows(items);
+        body += subscope((group.tag || '').toUpperCase(), items.length);
+        body += subgroup(inlineAnnotationRows(items));
       }
     } else {
       body += '<div class="empty">No inline annotations in this project</div>';
@@ -280,8 +294,8 @@
 
     const actions = (inlineAnn.actions || []).map((a) => actionRow(a.label, a.commandId, a.description)).join('');
     if (actions) {
-      body += `<div class="scope" style="padding-top:8px"><span class="dot"></span>Commands</div>`;
-      body += actions;
+      body += subscope('Commands');
+      body += subgroup(actions);
     }
 
     return body;
@@ -321,10 +335,8 @@
           body += actionRow(item.label, 'cursor-toys.settings.editSetting', item.description, [item.settingKey]);
         }
       } else if (item.kind === 'category' && item.children && item.children.length) {
-        body +=
-          `<div class="scope" style="padding-top:${depth ? 6 : 8}px">` +
-          `<span class="dot"></span>${esc(item.label)}</div>`;
-        body += settingsItemRows(item.children, depth + 1);
+        body += subscope(item.label, null, depth);
+        body += subgroup(settingsItemRows(item.children, depth + 1));
       }
     }
     return body;
@@ -355,12 +367,12 @@
       projBody += `<div class="empty">Enable Projects in Settings</div>`;
     } else {
       if ((proj.pinned || []).length) {
-        projBody += `<div class="scope" style="padding-top:8px"><span class="dot"></span>Pinned</div>`;
-        projBody += projectRows(proj.pinned) || '';
+        projBody += subscope('Pinned');
+        projBody += subgroup(projectRows(proj.pinned) || '');
       }
       if ((proj.recent || []).length) {
-        projBody += `<div class="scope" style="padding-top:8px"><span class="dot"></span>Recent</div>`;
-        projBody += projectRows(proj.recent) || '';
+        projBody += subscope('Recent');
+        projBody += subgroup(projectRows(proj.recent) || '');
       }
       if (!(proj.pinned || []).length && !(proj.recent || []).length) {
         projBody += `<div class="empty">Pin workspaces to see them here</div>`;

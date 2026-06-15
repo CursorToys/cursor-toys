@@ -2,26 +2,26 @@
 
 ![](https://i.imgur.com/TjSi5so.jpeg)
 
+## v2026.6.14-4 - Control Panel visual hierarchy
+
+### Changed
+
+- **Control panel** — expanded section bodies are indented under their headers (vertical guide line); nested groups use sub-scope labels so items read as inside the parent section (inline annotation **TODO** / **FIX** / **NOTE** columns and **Commands**, Projects **Pinned** / **Recent**, Config settings categories).
+
 ## v2026.6.14-3 - Inline annotations matching & Control Panel performance
 
 ### Changed
 
 - **Inline annotations** — tags must appear in **uppercase** in source (`TODO`, `FIX`, `NOTE`, etc.); avoids false positives such as `- todo conteudo aqui` in Portuguese markdown lists.
-- **Control panel section reorder** — drag-and-drop grip on **Personal** and **Project** section headers (Commands, Skills, HTTP, …); order persisted per tab/workspace. Config tab no longer reorders individual settings rows.
-- **Webviews restyled** to match the Control Panel: release notes, annotation, MCPB preview, spending token setup, usage monitor, HTTP response, recommendations browser, projects dashboard, Kanban board, and HTTP request editor.
-- **HTTP request editor** — detail tabs use pill-style buttons (like Control Panel); **Env** is the last tab (gear icon + label) with environment content in the pane; removed the large top environment banner.
-- **Control panel** — all sections start **collapsed** by default; persisted expand/collapse uses a state version so older “everything open” webview state resets once.
+- **Control panel section reorder** — drag-and-drop grip on **Personal** and **Project** section headers; order persisted per tab/workspace. Config tab no longer reorders individual settings rows.
 
 ### Fixed
 
 - **Control panel** — section drag-and-drop no longer triggers a full model rebuild (prevents memory spikes and freezes while reordering).
 - **Control panel webview** — fixed duplicate Refresh/Search event listeners accumulating on each render.
 - **Control panel** — debounced and coalesced `post()` rebuilds; stale in-flight builds are discarded.
-- No **No workspace folder open** toast on startup when no folder is open (HTTP test context is silent until a command needs a workspace).
-- Control panel **drag-and-drop reorder** (Config shortcuts/settings) — fixed duplicate listeners breaking reorder.
-- **What's New** — CHANGELOG images load over `https:`; markdown layout and spacing improved (less excessive line breaks).
-- **Kanban board** — when the project has no Kanban folder, prompts to create the first card instead of an empty board with a broken header; removed redundant oversized panel header.
-- **HTTP editor** — removed redundant oversized header; CSP allows shared UI stylesheets.
+
+## v2026.6.14-2 - Unified UI and Control Panel polish
 
 ### Added
 
@@ -31,6 +31,20 @@
 - **`cursorToys.inlineAnnotations.*`** — enable/disable, custom tags, file extensions, gitignore overrides via `scanIncludePaths` (e.g. `.deepspec/specs/drafts/**`), live updates while typing, and configurable `tagColors`.
 - **Shared webview UI** — `media/ui/theme.css`, `media/ui/panel.css`, and `src/webviewUi.ts` (panel header, CSP helpers, document builder) for a consistent CursorToys look across webviews.
 - **`cursorToys.releaseNotes.showOnStartup`** — disable automatic **What's New** on install/update (command palette entry still opens release notes manually).
+
+### Changed
+
+- **Webviews restyled** to match the Control Panel: release notes, annotation, MCPB preview, spending token setup, usage monitor, HTTP response, recommendations browser, projects dashboard, Kanban board, and HTTP request editor.
+- **HTTP request editor** — detail tabs use pill-style buttons (like Control Panel); **Env** is the last tab (gear icon + label) with environment content in the pane; removed the large top environment banner.
+- **Control panel** — all sections start **collapsed** by default; persisted expand/collapse uses a state version so older “everything open” webview state resets once.
+
+### Fixed
+
+- No **No workspace folder open** toast on startup when no folder is open (HTTP test context is silent until a command needs a workspace).
+- Control panel **drag-and-drop reorder** (Config shortcuts/settings) — fixed duplicate listeners breaking reorder.
+- **What's New** — CHANGELOG images load over `https:`; markdown layout and spacing improved (less excessive line breaks).
+- **Kanban board** — when the project has no Kanban folder, prompts to create the first card instead of an empty board with a broken header; removed redundant oversized panel header.
+- **HTTP editor** — removed redundant oversized header; CSP allows shared UI stylesheets.
 
 ## v2026.6.14-0 - Unified Control Panel
 
