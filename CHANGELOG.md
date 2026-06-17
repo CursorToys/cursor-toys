@@ -2,6 +2,22 @@
 
 ![](https://i.imgur.com/TjSi5so.jpeg)
 
+## v2026.6.14-5 - HTTP Control Panel and folder layout
+
+### Added
+
+- **Control panel → Project → HTTP** — **New HTTP request** creates a blank `.req` file with auto-incrementing name `YYYY-MM-DD-XX.req` (e.g. `2026-06-17-01.req`) and opens the visual HTTP editor immediately.
+
+### Changed
+
+- **Control panel HTTP** — request files are grouped by subfolder (e.g. `github/`) with scoped labels; nested paths show as `folder/file.req`.
+- **Control panel** — clicking an HTTP request opens the **visual editor** instead of plain text.
+- **HTTP Explorer tree** — subfolders under `.cursor/http/` render as a proper nested folder hierarchy (multi-level paths such as `github/api/`).
+
+### Fixed
+
+- **HTTP request open** — `cursor-toys.openHttpRequest` accepts file path strings from the Control panel; falls back to text view if the custom editor cannot open.
+
 ## v2026.6.14-4 - Control Panel visual hierarchy
 
 ### Changed

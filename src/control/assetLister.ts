@@ -23,6 +23,7 @@ import {
   isHttpRequestFile,
   isPlanFile,
 } from '../utils';
+import { httpFileDisplayName } from '../httpFolderTree';
 import { parseHooksFile } from '../hooksManager';
 
 export interface ControlAssetItem {
@@ -71,7 +72,14 @@ async function listHttpRecursive(basePath: string, currentPath: string): Promise
     for (const [name, type] of entries) {
       const itemPath = path.join(currentPath, name);
       if (type === vscode.FileType.File && isHttpRequestFile(itemPath)) {
-        items.push({ name, path: itemPath });
+        const relativePath = path.relative(basePath, itemPath).replace(/\\/g, '/');
+        const folderPath = path.posix.dirname(relativePath);
+        const name = path.basename(itemPath);
+        items.push({
+          name: httpFileDisplayName(name, folderPath === '.' ? undefined : folderPath),
+          path: itemPath,
+          description: folderPath === '.' ? undefined : folderPath,
+        });
       } else if (type === vscode.FileType.Directory) {
         items.push(...(await listHttpRecursive(basePath, itemPath)));
       }

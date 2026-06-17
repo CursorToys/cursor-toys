@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.14-4",
+  "version": "2026.6.14-5",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -2482,7 +2482,7 @@
     "test:command-palette": "npm run compile && node out/cursorToysCommandPalette.test.js",
     "test:extension-data": "npm run compile && node out/utils.extensionData.test.js",
     "test:file-meta": "npm run compile && node out/httpRequestEditorFileMeta.test.js",
-    "test:http": "npm run compile && node out/httpDynamicVariables.test.js && node out/httpRequestExtensions.test.js && node out/httpRequestVariables.test.js && node out/httpVariableResolver.test.js && node out/httpRequestParser.test.js",
+    "test:http": "npm run compile && node out/httpDynamicVariables.test.js && node out/httpRequestExtensions.test.js && node out/httpRequestVariables.test.js && node out/httpVariableResolver.test.js && node out/httpRequestParser.test.js && node out/httpRequestFileNaming.test.js && node out/httpFolderTree.test.js",
     "test:usage-monitor": "npm run compile && node out/providerUsage/openRouterCredits.test.js && node out/providerUsage/openRouterKeyInfo.test.js && node out/providerUsage/openRouterActivity.test.js && node out/providerUsage/usageMonitorPanelState.test.js && node out/providerUsage/deepInfraBilling.test.js",
     "test:mcp": "npm run compile && node out/mcp/security.test.js && node out/mcp/commandRegistry.test.js && node out/mcp/mcpWave4.test.js",
     "test:projects": "npm run compile && node out/projects/projectRegistry.test.js && node out/projects/projectPathUtils.test.js",

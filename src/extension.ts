@@ -1929,12 +1929,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const openHttpRequest = vscode.commands.registerCommand(
     'cursor-toys.openHttpRequest',
-    async (arg: HttpTreeItem | vscode.Uri | undefined) => {
+    async (arg: HttpTreeItem | vscode.Uri | string | undefined) => {
       let uri: vscode.Uri | null = null;
       if (arg instanceof vscode.Uri) {
         uri = arg;
-      } else if (arg && 'uri' in arg && arg.uri.scheme === 'file') {
+      } else if (typeof arg === 'string' && arg.trim()) {
+        uri = vscode.Uri.file(arg.trim());
+      } else if (arg && typeof arg === 'object' && 'uri' in arg && arg.uri.scheme === 'file') {
         uri = arg.uri;
+      } else if (arg && typeof arg === 'object' && 'filePath' in arg && typeof arg.filePath === 'string') {
+        uri = vscode.Uri.file(arg.filePath);
       }
       if (!uri) {
         vscode.window.showErrorMessage('No HTTP request file selected');
@@ -1961,7 +1965,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const newHttpRequest = vscode.commands.registerCommand(
     'cursor-toys.newHttpRequest',
-    () => createNewHttpRequest()
+    (workspacePath?: string) => createNewHttpRequest(workspacePath)
   );
 
   const refreshUserHttp = vscode.commands.registerCommand(

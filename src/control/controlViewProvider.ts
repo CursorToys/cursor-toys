@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { generateWebviewNonce, getControlResourceRoots } from '../webviewUi';
 import { refreshSpending } from '../spendingStatusBar';
 import { refreshUsageMonitorStatusBar } from '../providerUsage/usageMonitorStatusBar';
+import { isHttpRequestFile } from '../utils';
 import { buildControlModel } from './controlModel';
 import { saveControlPanelOrderScope } from './controlPanelOrder';
 
@@ -146,6 +147,8 @@ class ControlViewProvider implements vscode.WebviewViewProvider {
               const stat = await vscode.workspace.fs.stat(uri);
               if (stat.type === vscode.FileType.Directory) {
                 await vscode.commands.executeCommand('revealFileInOS', uri);
+              } else if (isHttpRequestFile(msg.path)) {
+                await vscode.commands.executeCommand('cursor-toys.openHttpRequest', msg.path);
               } else {
                 const doc = await vscode.workspace.openTextDocument(uri);
                 await vscode.window.showTextDocument(doc);

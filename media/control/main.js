@@ -306,6 +306,37 @@
     return list.map((f) => linkRow(icon, f.name, f.description || '', f.path)).join('');
   }
 
+  function httpFileRows(list, icon, emptyTxt) {
+    if (!list || !list.length) return `<div class="empty">${esc(emptyTxt || 'Empty')}</div>`;
+
+    const byFolder = new Map();
+    for (const file of list) {
+      const folder = file.description || '';
+      if (!byFolder.has(folder)) byFolder.set(folder, []);
+      byFolder.get(folder).push(file);
+    }
+
+    const folders = [...byFolder.keys()].sort((a, b) => {
+      if (!a) return -1;
+      if (!b) return 1;
+      return a.localeCompare(b);
+    });
+
+    let html = '';
+    for (const folder of folders) {
+      const files = byFolder.get(folder) || [];
+      files.sort((a, b) => a.name.localeCompare(b.name));
+      const rows = files.map((f) => linkRow(icon, f.name, '', f.path)).join('');
+      if (folder) {
+        html += subscope(folder, files.length);
+        html += subgroup(rows);
+      } else {
+        html += rows;
+      }
+    }
+    return html;
+  }
+
   function ucolor(p) {
     return p < 50 ? 'var(--led-on)' : p < 80 ? '#e8b339' : '#e0706b';
   }
@@ -604,8 +635,8 @@
           title: 'HTTP',
           count: p.http.length,
           body:
-            fileRows(p.http, I.globe, 'No HTTP requests') +
-            actionRow('New HTTP request', 'cursor-toys.newHttpRequest'),
+            httpFileRows(p.http, I.globe, 'No HTTP requests') +
+            actionRow('New HTTP request', 'cursor-toys.newHttpRequest', undefined, [p.root]),
         },
         {
           id: secId(sk, 'note'),

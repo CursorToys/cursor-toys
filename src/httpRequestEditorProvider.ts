@@ -42,11 +42,15 @@ export async function openHttpRequestEditor(uri: vscode.Uri): Promise<void> {
     await vscode.window.showTextDocument(uri, { preview: false });
     return;
   }
-  await vscode.commands.executeCommand(
-    'vscode.openWith',
-    uri,
-    HTTP_REQUEST_EDITOR_VIEW_TYPE
-  );
+  try {
+    await vscode.commands.executeCommand(
+      'vscode.openWith',
+      uri,
+      HTTP_REQUEST_EDITOR_VIEW_TYPE
+    );
+  } catch {
+    await vscode.window.showTextDocument(uri, { preview: false });
+  }
 }
 
 /**

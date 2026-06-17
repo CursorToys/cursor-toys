@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { getHttpPath } from './utils';
+import { buildHttpFolderTree, type HttpFolderTreeEntry } from './httpFolderTree';
 import {
   getHttpRequestBlocks,
   getHttpRequestBlockDescription,
@@ -240,45 +241,39 @@ export class UserHttpTreeProvider implements vscode.TreeDataProvider<HttpTreeEle
   }
 
   private groupFilesByFolder(files: HttpTreeItem[]): HttpTreeItem[] {
-    const folderMap = new Map<string, HttpTreeItem[]>();
+    const entries = files.map((file) => ({
+      filePath: file.filePath,
+      fileName: file.fileName,
+      folderPath: file.folderPath || '',
+    }));
+    return this.folderEntriesToTreeItems(buildHttpFolderTree(entries));
+  }
 
-    for (const file of files) {
-      const folder = file.folderPath || '';
-      if (!folderMap.has(folder)) {
-        folderMap.set(folder, []);
-      }
-      folderMap.get(folder)!.push(file);
-    }
-
+  private folderEntriesToTreeItems(entries: HttpFolderTreeEntry[]): HttpTreeItem[] {
     const result: HttpTreeItem[] = [];
-    const sortedFolders = Array.from(folderMap.keys()).sort((a, b) => {
-      if (a === '' && b !== '') {
-        return -1;
-      }
-      if (a !== '' && b === '') {
-        return 1;
-      }
-      return a.localeCompare(b);
-    });
-
-    for (const folderPath of sortedFolders) {
-      const filesInFolder = folderMap.get(folderPath)!;
-      filesInFolder.sort((a, b) => a.fileName.localeCompare(b.fileName));
-
-      if (folderPath === '') {
-        result.push(...filesInFolder);
-      } else {
+    for (const entry of entries) {
+      if (entry.kind === 'file') {
+        const file = entry.file;
         result.push({
-          uri: vscode.Uri.file(''),
-          fileName: path.basename(folderPath),
-          filePath: folderPath,
-          type: 'folder',
-          folderPath,
-          children: filesInFolder,
+          uri: vscode.Uri.file(file.filePath),
+          fileName: file.fileName,
+          filePath: file.filePath,
+          type: 'file',
+          folderPath: file.folderPath,
         });
+        continue;
       }
-    }
 
+      const folder = entry.node;
+      result.push({
+        uri: vscode.Uri.file(''),
+        fileName: folder.name,
+        filePath: folder.relativePath,
+        type: 'folder',
+        folderPath: folder.relativePath,
+        children: this.folderEntriesToTreeItems(folder.entries),
+      });
+    }
     return result;
   }
 }
