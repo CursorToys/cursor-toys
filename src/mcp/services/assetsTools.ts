@@ -3,6 +3,14 @@ import * as vscode from 'vscode';
 import { z } from 'zod';
 import { generateDeeplink } from '../../deeplinkGenerator';
 import { generateShareable } from '../../shareableGenerator';
+import { backupBeforeWrite } from '../../backupManager';
+import {
+  applyModeToFrontmatter,
+  composeRuleFile,
+  normalizeRuleContent,
+  parseRuleFile,
+  type RuleApplyMode,
+} from '../../ruleFrontmatter';
 import {
   getCommandsPath,
   getPromptsPath,
@@ -61,6 +69,33 @@ async function listAssetFiles(type: ProjectAssetType, isPersonal?: boolean): Pro
     }
   }
   return files.sort();
+}
+
+function buildRuleContent(args: Record<string, unknown>, name: string, rawContent: string): string {
+  const applyMode = args.applyMode as RuleApplyMode | undefined;
+  if (applyMode) {
+    const body = parseRuleFile(rawContent).body || `# ${name}\n\n`;
+    return composeRuleFile(
+      applyModeToFrontmatter(applyMode, {
+        description: args.description as string | undefined,
+        globs: args.globs as string | string[] | undefined,
+      }),
+      body
+    );
+  }
+  if (rawContent.includes('---')) {
+    return rawContent;
+  }
+  return normalizeRuleContent(rawContent);
+}
+
+async function backupIfExists(filePath: string, category: 'rules' | 'skills' | 'commands' | 'prompts'): Promise<void> {
+  try {
+    await vscode.workspace.fs.stat(vscode.Uri.file(filePath));
+    await backupBeforeWrite(filePath, category);
+  } catch {
+    // new file
+  }
 }
 
 async function resolveAssetPath(
@@ -130,7 +165,11 @@ export async function assetCreate(
   const ext = type === 'rules' && allowedExtensions.includes('mdc') ? 'mdc' : allowedExtensions[0] || 'md';
   const sanitized = sanitizeFileName(name);
   const filePath = path.join(root, `${sanitized}.${ext}`);
-  const content = String(args.content ?? `# ${name}\n\n`);
+  let content = String(args.content ?? `# ${name}\n\n`);
+  if (type === 'rules') {
+    content = buildRuleContent(args, name, content);
+  }
+  await backupIfExists(filePath, type);
   await vscode.workspace.fs.writeFile(vscode.Uri.file(filePath), Buffer.from(content, 'utf8'));
   return assetRead(type, { filePath, isPersonal });
 }
@@ -148,9 +187,14 @@ export async function assetUpdate(
   if (!filePath || args.content === undefined) {
     throw new Error('asset not found or content missing');
   }
+  let content = String(args.content);
+  if (type === 'rules') {
+    content = buildRuleContent(args, path.basename(filePath, path.extname(filePath)), content);
+  }
+  await backupBeforeWrite(filePath, type);
   await vscode.workspace.fs.writeFile(
     vscode.Uri.file(filePath),
-    Buffer.from(String(args.content), 'utf8')
+    Buffer.from(content, 'utf8')
   );
   return assetRead(type, { filePath });
 }
@@ -277,9 +321,22 @@ export function buildAssetToolDefinitions(): Array<{
           name: z.string(),
           content: z.string().optional(),
           isPersonal: z.boolean().optional(),
+          applyMode: z.enum(['always', 'intelligent', 'globs', 'manual']).optional(),
+          description: z.string().optional(),
+          globs: z.union([z.string(), z.array(z.string())]).optional(),
         },
       },
-      { name: `${type}_update`, description: `Update ${type} asset`, inputSchema: { ...common, content: z.string() } },
+      {
+        name: `${type}_update`,
+        description: `Update ${type} asset`,
+        inputSchema: {
+          ...common,
+          content: z.string(),
+          applyMode: z.enum(['always', 'intelligent', 'globs', 'manual']).optional(),
+          description: z.string().optional(),
+          globs: z.union([z.string(), z.array(z.string())]).optional(),
+        },
+      },
       { name: `${type}_rename`, description: `Rename ${type} asset`, inputSchema: { ...common, newName: z.string() } },
       { name: `${type}_delete`, description: `Delete ${type} asset`, inputSchema: { ...common, ...confirm } },
       { name: `${type}_generate_deeplink`, description: `Generate deeplink for ${type}`, inputSchema: common },

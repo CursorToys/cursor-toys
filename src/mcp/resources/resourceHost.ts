@@ -4,15 +4,18 @@ import {
   getBaseFolderName,
   getCommandsPath,
   getExtensionDataFolderName,
+  getGlobalCursorRoot,
   getHttpPath,
   getKanbanPath,
   getNotepadsPath,
+  getPersonalAgentsPath,
   getPlansPath,
   getPromptsPath,
   getRulesPath,
   getSkillsPath,
   getUserHomePath,
 } from '../../utils';
+import { listAgents } from '../../agentsManager';
 import * as kanban from '../services/kanbanTools';
 import * as notepad from '../services/notepadTools';
 import * as http from '../services/httpTools';
@@ -128,6 +131,17 @@ export class McpResourceHost {
           uri: `cursortoys://assets/${type}`,
           name: `${type}-index`,
           description: `Project ${type} index`,
+          mimeType: 'application/json',
+        });
+      }
+    }
+
+    if (!template || template.includes('personal/{type}')) {
+      for (const type of ['rules', 'skills', 'commands', 'prompts', 'agents', 'hooks'] as const) {
+        entries.push({
+          uri: `cursortoys://personal/${type}`,
+          name: `personal-${type}`,
+          description: `Personal ${type} index`,
           mimeType: 'application/json',
         });
       }
@@ -250,6 +264,24 @@ export class McpResourceHost {
         text = JSON.stringify(data, null, 2);
         break;
       }
+      case 'personal': {
+        const type = segments[0];
+        if (type === 'agents') {
+          text = JSON.stringify(await listAgents(), null, 2);
+          break;
+        }
+        if (type === 'hooks') {
+          text = JSON.stringify(await hooks.hooksList({ isPersonal: true }), null, 2);
+          break;
+        }
+        if (['commands', 'rules', 'prompts', 'skills'].includes(type ?? '')) {
+          const handler = this.assetHandlers[`${type}_list`];
+          const data = handler ? await handler({ isPersonal: true }) : [];
+          text = JSON.stringify(data, null, 2);
+          break;
+        }
+        throw new Error(`Unknown personal resource type: ${type}`);
+      }
       case 'clipboard': {
         if (segments[0] !== 'history') {
           throw new Error('Unsupported clipboard resource');
@@ -271,11 +303,15 @@ export class McpResourceHost {
     const config = vscode.workspace.getConfiguration('cursorToys');
     const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     const baseFolder = getBaseFolderName();
+    const globalRoot = getGlobalCursorRoot();
     return {
       workspacePath: workspacePath ?? null,
       extensionDataFolder: getExtensionDataFolderName(),
       baseFolder,
+      globalCursorPath: config.get<string>('globalCursorPath', ''),
       paths: {
+        globalCursorRoot: globalRoot,
+        agents: getPersonalAgentsPath(),
         kanban: getKanbanPath(workspacePath),
         notepads: getNotepadsPath(workspacePath),
         http: workspacePath ? getHttpPath(workspacePath) : null,

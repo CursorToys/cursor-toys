@@ -63,6 +63,7 @@
     'p-projects': true,
     'p-anchors': true,
     'p-rules': true,
+    'p-agents': true,
   };
 
   const _state = vscode.getState() || {};
@@ -454,6 +455,13 @@
         body: fileRows(p.rules, I.doc, 'No personal rules'),
       },
       {
+        id: 'p-agents',
+        icon: I.sparkle,
+        title: 'Agents',
+        count: (p.agents || []).length,
+        body: fileRows(p.agents || [], I.sparkle, 'No personal agents'),
+      },
+      {
         id: 'p-note',
         icon: I.doc,
         title: 'Notepads',
@@ -486,7 +494,8 @@
         count: p.hooks.length,
         body:
           fileRows(p.hooks, I.bolt, 'No hooks.json') +
-          actionRow('Create hooks file', 'cursor-toys.createHooksFile'),
+          actionRow('Create hooks file', 'cursor-toys.createHooksFile') +
+          actionRow('Spawn hook placeholders', 'cursor-toys.spawnHookPlaceholders'),
       },
       {
         id: 'p-mcpb',

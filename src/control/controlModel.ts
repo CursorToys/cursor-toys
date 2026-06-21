@@ -15,6 +15,7 @@ import {
   listPersonalPlans,
   listPersonalPrompts,
   listPersonalRules,
+  listPersonalAgents,
   listPersonalSkills,
   listProjectCommands,
   listProjectHooks,
@@ -97,6 +98,7 @@ export interface ControlModel {
     prompts: ControlAssetItem[];
     skills: ControlAssetItem[];
     rules: ControlAssetItem[];
+    agents: ControlAssetItem[];
     notepads: ControlAssetItem[];
     kanban: ControlAssetItem[];
     plans: ControlAssetItem[];
@@ -300,6 +302,7 @@ export async function buildControlModel(
     listPersonalPrompts(),
     listPersonalSkills(),
     listPersonalRules(),
+    listPersonalAgents(),
     listPersonalNotepads(),
     listPersonalKanban(),
     listPersonalPlans(),
@@ -308,7 +311,7 @@ export async function buildControlModel(
     buildClipboardData(),
     buildCodeAnchorsData(context),
   ]);
-  const [commands, prompts, skills, rules, notepads, kanban, plans, hooks, mcpb, clipboard, codeAnchors] =
+  const [commands, prompts, skills, rules, agents, notepads, kanban, plans, hooks, mcpb, clipboard, codeAnchors] =
     personalResults;
   const projectsData = buildProjectsData(ProjectRegistry.getInstance());
 
@@ -366,6 +369,7 @@ export async function buildControlModel(
       prompts,
       skills,
       rules,
+      agents,
       notepads,
       kanban,
       plans,

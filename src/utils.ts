@@ -8,6 +8,10 @@ import {
   normalizeExtensionDataFolderName,
   resolveExtensionDataSubfolderRoot,
 } from './extensionDataPaths';
+import {
+  buildPersonalAgentsPath,
+  resolveGlobalCursorRoot,
+} from './globalCursorPaths';
 
 /**
  * Sanitizes the file name to use only letters, numbers, dots, hyphens, and underscores
@@ -192,6 +196,33 @@ export function getUserHomePath(): string {
 }
 
 /**
+ * Gets the global Cursor config root (~/.cursor by default, overridable via cursorToys.globalCursorPath).
+ */
+export function getGlobalCursorRoot(): string {
+  const config = vscode.workspace.getConfiguration('cursorToys');
+  const override = config.get<string>('globalCursorPath', '');
+  return resolveGlobalCursorRoot(getUserHomePath(), getBaseFolderName(), override);
+}
+
+/**
+ * Gets the personal agents folder path (~/.cursor/agents by default).
+ */
+export function getPersonalAgentsPath(): string {
+  return buildPersonalAgentsPath(getGlobalCursorRoot());
+}
+
+/**
+ * Gets the full path to the agents folder (personal or workspace).
+ */
+export function getAgentsPath(workspacePath?: string, isUser: boolean = false): string {
+  const baseFolderName = getBaseFolderName();
+  if (isUser || !workspacePath) {
+    return getPersonalAgentsPath();
+  }
+  return path.join(workspacePath, `.${baseFolderName}`, 'agents');
+}
+
+/**
  * Gets the base folder name based on configuration
  * @returns Base folder name (e.g., 'cursor', 'vscode', 'ai')
  */
@@ -258,7 +289,7 @@ export function getRulesPath(workspacePath?: string, isUser: boolean = false): s
   const baseFolderName = getBaseFolderName();
   
   if (isUser || !workspacePath) {
-    return path.join(getUserHomePath(), `.${baseFolderName}`, 'rules');
+    return path.join(getGlobalCursorRoot(), 'rules');
   }
   
   return path.join(workspacePath, `.${baseFolderName}`, 'rules');
@@ -273,7 +304,7 @@ export function getPromptsPath(workspacePath?: string, isUser: boolean = false):
   const baseFolderName = getBaseFolderName();
   
   if (isUser || !workspacePath) {
-    return path.join(getUserHomePath(), `.${baseFolderName}`, 'prompts');
+    return path.join(getGlobalCursorRoot(), 'prompts');
   }
   
   return path.join(workspacePath, `.${baseFolderName}`, 'prompts');
@@ -698,8 +729,7 @@ export function getHooksPath(workspacePath: string, isPersonal: boolean): string
  * @returns Path to personal hooks.json
  */
 export function getPersonalHooksPath(): string {
-  const homeDir = os.homedir();
-  return path.join(homeDir, '.cursor', 'hooks.json');
+  return path.join(getGlobalCursorRoot(), 'hooks.json');
 }
 
 /**
@@ -711,7 +741,7 @@ export function getSkillsPath(workspacePath?: string, isUser: boolean = false): 
   const baseFolderName = getBaseFolderName();
   
   if (isUser || !workspacePath) {
-    return path.join(getUserHomePath(), `.${baseFolderName}`, 'skills');
+    return path.join(getGlobalCursorRoot(), 'skills');
   }
   
   return path.join(workspacePath, `.${baseFolderName}`, 'skills');

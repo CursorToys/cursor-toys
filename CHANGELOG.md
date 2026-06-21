@@ -2,6 +2,25 @@
 
 ![](https://i.imgur.com/TjSi5so.jpeg)
 
+## v2026.6.22-0 - Global User AI parity (MCP + Control Panel)
+
+### Added
+
+- **MCP `agents_*` tools** — CRUD, rename, share, and deeplink for personal subagents in `~/.cursor/agents/`.
+- **MCP sync tools** — `sync_asset_to_workspace` and `sync_asset_to_global` with `dryRun` preview and backup-before-overwrite (`confirm: true` required on overwrite).
+- **MCP hook ergonomics** — `hook_script_spawn_placeholders` (20 event stubs), `hook_script_set_enabled`, `hooks_clear`.
+- **MCP resources** — `cursortoys://personal/{type}` indexes for personal rules, skills, commands, prompts, agents, hooks.
+- **MCP prompt** — `global-user-ai-workflow` playbook for agent-first `~/.cursor/` management.
+- **Control Panel Personal** — **Agents** section; **Spawn hook placeholders** action on Hooks.
+- **Setting** — `cursorToys.globalCursorPath` overrides the global Cursor config root.
+- **Backups** — timestamped copies under `~/.cursor/.backups/` before rule/agent overwrites and sync conflicts.
+
+### Changed
+
+- **Explorer sidebar** — **Agents** tree view lists personal and workspace subagents (`~/.cursor/agents/`); enabled by default via `cursorToys.sidebar.explorerViews`.
+- **Rules MCP** — `rules_create` / `rules_update` accept `applyMode` (`always`, `intelligent`, `globs`, `manual`) and normalize `.mdc` frontmatter.
+- **`cursortoys://config`** — includes `globalCursorRoot` and `agents` path in snapshot.
+
 ## v2026.6.14-5 - HTTP Control Panel and folder layout
 
 ### Added

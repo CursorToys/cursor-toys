@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.14-5",
+  "version": "2026.6.22-0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -91,6 +91,7 @@
     "onView:cursor-toys.explorer.userSkills",
     "onView:cursor-toys.explorer.userHttp",
     "onView:cursor-toys.explorer.userHooks",
+    "onView:cursor-toys.explorer.userAgents",
     "onView:cursor-toys.explorer.userMcpb",
     "onView:cursor-toys.explorer.inlineAnnotations",
     "onCommand:cursorToys.command",
@@ -266,6 +267,35 @@
       {
         "command": "cursor-toys.refreshUserPrompts",
         "title": "CursorToys: Refresh Prompts",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.openUserAgent",
+        "title": "CursorToys: Open Agent"
+      },
+      {
+        "command": "cursor-toys.generateUserAgentDeeplink",
+        "title": "CursorToys: Generate Deeplink (Agent)"
+      },
+      {
+        "command": "cursor-toys.shareUserAgentAsCursorToys",
+        "title": "CursorToys: Share as CursorToys (Agent)"
+      },
+      {
+        "command": "cursor-toys.deleteUserAgent",
+        "title": "CursorToys: Delete Agent"
+      },
+      {
+        "command": "cursor-toys.revealUserAgent",
+        "title": "CursorToys: Reveal Agent in Folder"
+      },
+      {
+        "command": "cursor-toys.renameUserAgent",
+        "title": "CursorToys: Rename Agent"
+      },
+      {
+        "command": "cursor-toys.refreshUserAgents",
+        "title": "CursorToys: Refresh Agents",
         "icon": "$(refresh)"
       },
       {
@@ -983,6 +1013,11 @@
           "when": "cursorToys.explorer.promptsVisible"
         },
         {
+          "id": "cursor-toys.explorer.userAgents",
+          "name": "Agents",
+          "when": "cursorToys.explorer.agentsVisible"
+        },
+        {
           "id": "cursor-toys.explorer.userHooks",
           "name": "Cursor Hooks",
           "when": "cursorToys.explorer.hooksVisible"
@@ -1046,6 +1081,11 @@
         {
           "command": "cursor-toys.refreshUserPrompts",
           "when": "view =~ /cursor-toys\\.(explorer\\.)?userPrompts/",
+          "group": "navigation"
+        },
+        {
+          "command": "cursor-toys.refreshUserAgents",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userAgents/",
           "group": "navigation"
         },
         {
@@ -1228,6 +1268,41 @@
         {
           "command": "cursor-toys.deleteUserPrompt",
           "when": "view =~ /cursor-toys\\.(explorer\\.)?userPrompts/ && viewItem == userPromptFile",
+          "group": "2_actions"
+        },
+        {
+          "command": "cursor-toys.openUserAgent",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userAgents/ && viewItem == userAgentFile",
+          "group": "inline"
+        },
+        {
+          "command": "cursor-toys.generateUserAgentDeeplink",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userAgents/ && viewItem == userAgentFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareUserAgentAsCursorToys",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userAgents/ && viewItem == userAgentFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.shareViaGist",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userAgents/ && viewItem == userAgentFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.renameUserAgent",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userAgents/ && viewItem == userAgentFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.revealUserAgent",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userAgents/ && viewItem == userAgentFile",
+          "group": "1_actions"
+        },
+        {
+          "command": "cursor-toys.deleteUserAgent",
+          "when": "view =~ /cursor-toys\\.(explorer\\.)?userAgents/ && viewItem == userAgentFile",
           "group": "2_actions"
         },
         {
@@ -1840,6 +1915,11 @@
             "pattern": "^[a-zA-Z0-9_-]+$",
             "description": "Base folder name for storing commands, rules, prompts and HTTP files (e.g., 'cursor', 'vscode', 'ai'). Note: Rules and prompts are Cursor-specific features."
           },
+          "cursorToys.globalCursorPath": {
+            "type": "string",
+            "default": "",
+            "description": "Override global Cursor config directory (relative to home or absolute). Empty uses .{baseFolder} under home (e.g. ~/.cursor)."
+          },
           "cursorToys.extensionDataFolder": {
             "type": "string",
             "default": "cursortoys",
@@ -1976,6 +2056,7 @@
                 "clipboard",
                 "commands",
                 "prompts",
+                "agents",
                 "plans",
                 "skills",
                 "hooks",
@@ -1998,6 +2079,7 @@
                 "clipboard",
                 "commands",
                 "prompts",
+                "agents",
                 "plans",
                 "skills",
                 "hooks",
@@ -2010,9 +2092,10 @@
             "default": [
               "skills",
               "plans",
+              "agents",
               "inlineAnnotations"
             ],
-            "markdownDescription": "Explorer sidebar sections to also show in the Explorer (in addition to the CursorToys activity bar). Keys: `notepads`, `kanban`, `clipboard`, `commands`, `prompts`, `plans`, `skills`, `hooks`, `mcpb`, `http`, `projects`, `inlineAnnotations`. Default: `skills`, `plans`."
+            "markdownDescription": "Explorer sidebar sections to also show in the Explorer (in addition to the CursorToys activity bar). Keys: `notepads`, `kanban`, `clipboard`, `commands`, `prompts`, `agents`, `plans`, `skills`, `hooks`, `mcpb`, `http`, `projects`, `inlineAnnotations`. Default: `skills`, `plans`, `agents`, `inlineAnnotations`."
           },
           "cursorToys.httpRequestTimeout": {
             "type": "number",
@@ -2485,6 +2568,7 @@
     "test:http": "npm run compile && node out/httpDynamicVariables.test.js && node out/httpRequestExtensions.test.js && node out/httpRequestVariables.test.js && node out/httpVariableResolver.test.js && node out/httpRequestParser.test.js && node out/httpRequestFileNaming.test.js && node out/httpFolderTree.test.js",
     "test:usage-monitor": "npm run compile && node out/providerUsage/openRouterCredits.test.js && node out/providerUsage/openRouterKeyInfo.test.js && node out/providerUsage/openRouterActivity.test.js && node out/providerUsage/usageMonitorPanelState.test.js && node out/providerUsage/deepInfraBilling.test.js",
     "test:mcp": "npm run compile && node out/mcp/security.test.js && node out/mcp/commandRegistry.test.js && node out/mcp/mcpWave4.test.js",
+    "test:globalUserAi": "npm run compile && node out/globalUserAiParity.test.js",
     "test:projects": "npm run compile && node out/projects/projectRegistry.test.js && node out/projects/projectPathUtils.test.js",
     "test:inline-annotations": "npm run compile && node out/inlineAnnotations.test.js",
     "watch": "tsc -watch -p ./",

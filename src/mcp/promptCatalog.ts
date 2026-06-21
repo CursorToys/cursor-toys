@@ -57,4 +57,11 @@ export const MCP_PROMPT_DEFINITIONS: McpPromptDefinition[] = [
       name: z.string().optional().describe('Notepad name to open or create'),
     },
   },
+  {
+    name: 'global-user-ai-workflow',
+    description: 'Manage personal ~/.cursor/ assets via MCP (rules, skills, agents, hooks, sync)',
+    argsSchema: {
+      focus: z.string().optional().describe('Optional category: rules, skills, agents, hooks'),
+    },
+  },
 ];

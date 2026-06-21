@@ -5,12 +5,18 @@ import { importDeeplink } from './deeplinkImporter';
 import { importRemoteSkillFromGitHubFolderUrl, validateGitHubSkillFolderUrl } from './skillRemoteImporter';
 import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist, createSkillFromStructure } from './shareableImporter';
-import { getFileTypeFromPath, isAllowedExtension, isHttpRequestFile, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getKanbanPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getProjectEnvFilePath, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, isHttpRequestFile, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getKanbanPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getProjectEnvFilePath, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, getPersonalAgentsPath, getAgentsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { EnvCodeLensProvider } from './envCodeLensProvider';
 import { UserCommandsTreeProvider, CommandFileItem } from './userCommandsTreeProvider';
 import { UserPromptsTreeProvider, PromptFileItem } from './userPromptsTreeProvider';
+import {
+  UserAgentsTreeProvider,
+  AgentFileItem,
+  registerUserAgentsTreeProvider,
+  refreshUserAgentsTree,
+} from './userAgentsTreeProvider';
 import { UserHttpTreeProvider, HttpTreeItem } from './userHttpTreeProvider';
 import { UserNotepadsTreeProvider, NotepadFileItem } from './userNotepadsTreeProvider';
 import { UserKanbanTreeProvider, KanbanFileItem } from './userKanbanTreeProvider';
@@ -55,7 +61,8 @@ import { checkAndShowReleaseNotes, ReleaseNotesPanel, loadChangelogSection } fro
 import { installMcpbPackage, uninstallMcpbPackage, getMcpbRoot } from './mcpbInstaller';
 import { UserMcpbTreeProvider, McpbPackageItem } from './userMcpbTreeProvider';
 import { initSpendingStatusBar, refreshSpending, openSpendingTokenSetup } from './spendingStatusBar';
-import { registerControlView } from './control/controlViewProvider';
+import { registerControlView, refreshControlViewIfVisible } from './control/controlViewProvider';
+import { registerGlobalCursorWatcher, registerGlobalUserAiCommands } from './globalUserAiCommands';
 import {
   configureProviderApiKey,
   initUsageMonitorStatusBar,
@@ -358,6 +365,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   initSpendingStatusBar(context);
   initUsageMonitorStatusBar(context);
   registerControlView(context);
+  registerGlobalUserAiCommands(context);
+  registerGlobalCursorWatcher(context);
   initKanbanStatusBar(context);
   initNotepadsStatusBar(context);
 
@@ -1915,6 +1924,190 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   );
 
+  const userAgentsTreeProvider = new UserAgentsTreeProvider();
+  registerUserAgentsTreeProvider(userAgentsTreeProvider);
+
+  function getAgentUriFromArgument(arg: AgentFileItem | vscode.Uri | undefined): vscode.Uri | null {
+    if (!arg) {
+      return null;
+    }
+    if (arg instanceof vscode.Uri) {
+      return arg;
+    }
+    if ('uri' in arg) {
+      return arg.uri;
+    }
+    return null;
+  }
+
+  function getAgentFileNameFromArgument(arg: AgentFileItem | vscode.Uri | undefined): string {
+    if (!arg) {
+      return 'file';
+    }
+    if (arg instanceof vscode.Uri) {
+      return path.basename(arg.fsPath);
+    }
+    if ('fileName' in arg) {
+      return arg.fileName;
+    }
+    return 'file';
+  }
+
+  function getAgentFilePathFromArgument(arg: AgentFileItem | vscode.Uri | undefined): string | null {
+    if (!arg) {
+      return null;
+    }
+    if (arg instanceof vscode.Uri) {
+      return arg.fsPath;
+    }
+    if ('filePath' in arg) {
+      return arg.filePath;
+    }
+    return null;
+  }
+
+  const openUserAgent = vscode.commands.registerCommand(
+    'cursor-toys.openUserAgent',
+    async (arg?: AgentFileItem | vscode.Uri) => {
+      const uri = getAgentUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      try {
+        const document = await vscode.workspace.openTextDocument(uri);
+        await vscode.window.showTextDocument(document);
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error opening file: ${error}`);
+      }
+    }
+  );
+
+  const generateUserAgentDeeplink = vscode.commands.registerCommand(
+    'cursor-toys.generateUserAgentDeeplink',
+    async (arg?: AgentFileItem | vscode.Uri) => {
+      const uri = getAgentUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      await generateDeeplinkWithValidation(uri, 'command');
+    }
+  );
+
+  const shareUserAgentAsCursorToys = vscode.commands.registerCommand(
+    'cursor-toys.shareUserAgentAsCursorToys',
+    async (arg?: AgentFileItem | vscode.Uri) => {
+      const uri = getAgentUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      await generateShareableWithValidation(uri, 'command');
+    }
+  );
+
+  const deleteUserAgent = vscode.commands.registerCommand(
+    'cursor-toys.deleteUserAgent',
+    async (arg?: AgentFileItem | vscode.Uri) => {
+      const uri = getAgentUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      const fileName = getAgentFileNameFromArgument(arg);
+      const confirm = await vscode.window.showWarningMessage(
+        `Are you sure you want to delete "${fileName}"?`,
+        'Yes',
+        'No'
+      );
+      if (confirm === 'Yes') {
+        try {
+          await vscode.workspace.fs.delete(uri);
+          vscode.window.showInformationMessage(`Agent "${fileName}" deleted`);
+          userAgentsTreeProvider.refresh();
+          refreshControlViewIfVisible();
+        } catch (error) {
+          vscode.window.showErrorMessage(`Error deleting file: ${error}`);
+        }
+      }
+    }
+  );
+
+  const revealUserAgent = vscode.commands.registerCommand(
+    'cursor-toys.revealUserAgent',
+    async (arg?: AgentFileItem | vscode.Uri) => {
+      const uri = getAgentUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      try {
+        await vscode.commands.executeCommand('revealFileInOS', uri);
+      } catch (error) {
+        vscode.window.showErrorMessage(`Error revealing file: ${error}`);
+      }
+    }
+  );
+
+  const renameUserAgent = vscode.commands.registerCommand(
+    'cursor-toys.renameUserAgent',
+    async (arg?: AgentFileItem | vscode.Uri) => {
+      const uri = getAgentUriFromArgument(arg);
+      if (!uri) {
+        vscode.window.showErrorMessage('No file selected');
+        return;
+      }
+      const currentFilePath = getAgentFilePathFromArgument(arg);
+      const currentFileName = getAgentFileNameFromArgument(arg);
+      if (!currentFilePath) {
+        return;
+      }
+      const newName = await vscode.window.showInputBox({
+        prompt: 'Enter new file name',
+        value: currentFileName,
+        validateInput: (value) => {
+          if (!value || !value.trim()) {
+            return 'Name cannot be empty';
+          }
+          if (/[<>:"/\\|?*]/.test(value)) {
+            return 'Name contains invalid characters';
+          }
+          return null;
+        },
+      });
+      if (newName && newName !== currentFileName) {
+        try {
+          const newPath = path.join(path.dirname(currentFilePath), newName);
+          const newUri = vscode.Uri.file(newPath);
+          try {
+            await vscode.workspace.fs.stat(newUri);
+            const overwrite = await vscode.window.showWarningMessage(
+              `File "${newName}" already exists. Do you want to overwrite it?`,
+              'Yes',
+              'No'
+            );
+            if (overwrite !== 'Yes') {
+              return;
+            }
+          } catch {
+            // new file
+          }
+          await vscode.workspace.fs.rename(uri, newUri, { overwrite: true });
+          vscode.window.showInformationMessage(`Agent renamed to "${newName}"`);
+          userAgentsTreeProvider.refresh();
+          refreshControlViewIfVisible();
+        } catch (error) {
+          vscode.window.showErrorMessage(`Error renaming file: ${error}`);
+        }
+      }
+    }
+  );
+
+  const refreshUserAgents = vscode.commands.registerCommand('cursor-toys.refreshUserAgents', () => {
+    userAgentsTreeProvider.refresh();
+  });
+
   const userHttpTreeProvider = new UserHttpTreeProvider();
 
   const httpRequestEditorProvider = new HttpRequestEditorProvider();
@@ -2040,6 +2233,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     treeDataProvider: userPromptsTreeProvider,
     showCollapseAll: false,
     dragAndDropController: userPromptsTreeProvider,
+  });
+  const userAgentsExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userAgents', {
+    treeDataProvider: userAgentsTreeProvider,
+    showCollapseAll: false,
   });
   const userNotepadsExplorerTreeView = vscode.window.createTreeView('cursor-toys.explorer.userNotepads', {
     treeDataProvider: userNotepadsTreeProvider,
@@ -4654,6 +4851,27 @@ Detailed instructions for the agent.
 
   let userPromptsWatchers = createPromptsWatchers();
 
+  const createAgentsWatchers = (): vscode.FileSystemWatcher[] => {
+    const watchers: vscode.FileSystemWatcher[] = [];
+    const addWatcher = (folderPath: string): void => {
+      const folderUri = vscode.Uri.file(folderPath);
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(folderUri, '**/*')
+      );
+      watcher.onDidCreate(() => userAgentsTreeProvider.refresh());
+      watcher.onDidDelete(() => userAgentsTreeProvider.refresh());
+      watchers.push(watcher);
+    };
+    addWatcher(getPersonalAgentsPath());
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      addWatcher(getAgentsPath(workspaceFolder.uri.fsPath, false));
+    }
+    return watchers;
+  };
+
+  let userAgentsWatchers = createAgentsWatchers();
+
   const createHttpWatchers = (): vscode.FileSystemWatcher[] => {
     const watchers: vscode.FileSystemWatcher[] = [];
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -4868,6 +5086,9 @@ Detailed instructions for the agent.
   userPromptsWatchers.forEach(watcher => {
     context.subscriptions.push(watcher);
   });
+  userAgentsWatchers.forEach(watcher => {
+    context.subscriptions.push(watcher);
+  });
   userNotepadsWatchers.forEach(watcher => {
     context.subscriptions.push(watcher);
   });
@@ -4941,6 +5162,13 @@ Detailed instructions for the agent.
     revealUserPrompt,
     renameUserPrompt,
     refreshUserPrompts,
+    openUserAgent,
+    generateUserAgentDeeplink,
+    shareUserAgentAsCursorToys,
+    deleteUserAgent,
+    revealUserAgent,
+    renameUserAgent,
+    refreshUserAgents,
     httpRequestEditorRegistration,
     openHttpRequest,
     openHttpRequestAsText,
@@ -5035,6 +5263,7 @@ Detailed instructions for the agent.
     installMcpbCommand,
     userCommandsExplorerTreeView,
     userPromptsExplorerTreeView,
+    userAgentsExplorerTreeView,
     userNotepadsExplorerTreeView,
     userKanbanExplorerTreeView,
     userPlansExplorerTreeView,

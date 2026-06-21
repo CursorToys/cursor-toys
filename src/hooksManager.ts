@@ -1,6 +1,14 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as os from 'os';
+import {
+  ALL_HOOK_EVENTS,
+  hookEventFromScriptBasename,
+  hookStubContent,
+  hookStubFilename,
+  isValidHookScriptName,
+  type HookEventName,
+} from './hookScriptUtils';
+import { getPersonalHooksPath as getPersonalHooksPathFromUtils } from './utils';
 
 /**
  * Represents the structure of a hooks.json file
@@ -13,22 +21,9 @@ export interface HooksConfig {
 }
 
 /**
- * List of all documented Cursor hooks
+ * List of all documented Cursor hooks (legacy export — prefer ALL_HOOK_EVENTS).
  */
-export const DOCUMENTED_HOOKS = [
-  'beforeShellExecution',
-  'afterShellExecution',
-  'beforeMCPExecution',
-  'afterMCPExecution',
-  'beforeReadFile',
-  'afterFileEdit',
-  'beforeSubmitPrompt',
-  'stop',
-  'afterAgentResponse',
-  'afterAgentThought',
-  'beforeTabFileRead',
-  'afterTabFileEdit'
-];
+export const DOCUMENTED_HOOKS: string[] = [...ALL_HOOK_EVENTS];
 
 /**
  * Gets the path to hooks.json file
@@ -48,8 +43,7 @@ export function getHooksPath(workspacePath: string, isPersonal: boolean): string
  * @returns Path to personal hooks.json
  */
 export function getPersonalHooksPath(): string {
-  const homeDir = os.homedir();
-  return path.join(homeDir, '.cursor', 'hooks.json');
+  return getPersonalHooksPathFromUtils();
 }
 
 /**
@@ -68,22 +62,13 @@ export function getProjectHooksPath(workspacePath: string): string {
  * @param targetPath Path where to create the hooks.json file
  */
 export async function createHooksFile(targetPath: string): Promise<void> {
+  const hooks: HooksConfig['hooks'] = {};
+  for (const event of ALL_HOOK_EVENTS) {
+    hooks[event] = [];
+  }
   const template: HooksConfig = {
     version: 1,
-    hooks: {
-      beforeShellExecution: [],
-      afterShellExecution: [],
-      beforeMCPExecution: [],
-      afterMCPExecution: [],
-      beforeReadFile: [],
-      afterFileEdit: [],
-      beforeSubmitPrompt: [],
-      stop: [],
-      afterAgentResponse: [],
-      afterAgentThought: [],
-      beforeTabFileRead: [],
-      afterTabFileEdit: []
-    }
+    hooks,
   };
 
   const content = JSON.stringify(template, null, 2);
@@ -206,4 +191,97 @@ export async function hooksFileExists(filePath: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Clears all hook registrations in hooks.json (scripts remain on disk).
+ */
+export async function clearHooksConfig(hooksPath: string): Promise<void> {
+  await createHooksFile(hooksPath);
+}
+
+/**
+ * Creates missing default hook script stubs (idempotent).
+ */
+export async function spawnHookPlaceholders(hooksJsonPath: string): Promise<string[]> {
+  const hooksDir = path.join(path.dirname(hooksJsonPath), 'hooks');
+  await vscode.workspace.fs.createDirectory(vscode.Uri.file(hooksDir));
+  const created: string[] = [];
+  for (const event of ALL_HOOK_EVENTS) {
+    const filename = hookStubFilename(event);
+    const scriptPath = path.join(hooksDir, filename);
+    try {
+      await vscode.workspace.fs.stat(vscode.Uri.file(scriptPath));
+    } catch {
+      await vscode.workspace.fs.writeFile(
+        vscode.Uri.file(scriptPath),
+        Buffer.from(hookStubContent(event), 'utf8')
+      );
+      created.push(scriptPath);
+    }
+  }
+  if (!(await hooksFileExists(hooksJsonPath))) {
+    await createHooksFile(hooksJsonPath);
+  }
+  return created;
+}
+
+function scriptCommandForHooksJson(scriptPath: string, hooksDir: string): string {
+  const rel = path.relative(hooksDir, scriptPath).replace(/\\/g, '/');
+  const ext = path.extname(scriptPath).toLowerCase();
+  if (ext === '.js' || ext === '.ts') {
+    return `node ./hooks/${rel}`;
+  }
+  return `./hooks/${rel}`;
+}
+
+/**
+ * Enables or disables a hook script in hooks.json for its mapped event.
+ */
+export async function setHookScriptEnabled(
+  hooksJsonPath: string,
+  scriptName: string,
+  enabled: boolean
+): Promise<{ event: string | null; enabled: boolean }> {
+  if (!isValidHookScriptName(scriptName)) {
+    throw new Error('Invalid hook script name');
+  }
+  const hooksDir = path.join(path.dirname(hooksJsonPath), 'hooks');
+  const scriptPath = path.join(hooksDir, scriptName);
+  const event = hookEventFromScriptBasename(scriptName);
+  if (!event) {
+    throw new Error(`Cannot map script name to a documented hook event: ${scriptName}`);
+  }
+
+  if (!(await hooksFileExists(hooksJsonPath))) {
+    await createHooksFile(hooksJsonPath);
+  }
+
+  const config = (await parseHooksFile(hooksJsonPath)) ?? {
+    version: 1,
+    hooks: Object.fromEntries(ALL_HOOK_EVENTS.map((e) => [e, []])) as HooksConfig['hooks'],
+  };
+
+  const commandRef = scriptCommandForHooksJson(scriptPath, hooksDir);
+  for (const hookName of Object.keys(config.hooks)) {
+    config.hooks[hookName] = (config.hooks[hookName] ?? []).filter(
+      (entry) => entry.command !== commandRef && !entry.command.endsWith(`/${scriptName}`)
+    );
+  }
+
+  if (enabled) {
+    if (!config.hooks[event]) {
+      config.hooks[event] = [];
+    }
+    config.hooks[event].push({ command: commandRef });
+  }
+
+  await vscode.workspace.fs.writeFile(
+    vscode.Uri.file(hooksJsonPath),
+    Buffer.from(JSON.stringify(config, null, 2), 'utf8')
+  );
+
+  return { event, enabled };
+}
+
+export { ALL_HOOK_EVENTS, type HookEventName };
 

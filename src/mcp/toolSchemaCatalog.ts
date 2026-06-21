@@ -124,6 +124,13 @@ function buildHooksToolDefinitions(): ToolDefinition[] {
     },
     { name: 'hook_script_delete', description: 'Delete hook script', inputSchema: { ...scriptPath, ...confirm } },
     { name: 'hook_script_share', description: 'Read hook script for sharing', inputSchema: scriptPath },
+    { name: 'hooks_clear', description: 'Clear all hook registrations in hooks.json', inputSchema: { ...personal, ...confirm } },
+    { name: 'hook_script_spawn_placeholders', description: 'Create missing default hook script stubs', inputSchema: personal },
+    {
+      name: 'hook_script_set_enabled',
+      description: 'Enable or disable a hook script in hooks.json',
+      inputSchema: { name: z.string().optional(), filePath: z.string().optional(), enabled: z.boolean().optional(), ...personal },
+    },
   ];
 }
 
@@ -333,6 +340,43 @@ function buildSettingsToolDefinitions(): ToolDefinition[] {
     },
     { name: 'settings_list', description: 'List all CursorToys settings keys', inputSchema: {} },
     { name: 'settings_configure_keys', description: 'Open API keys configuration wizard', inputSchema: {} },
+  ];
+}
+
+function buildAgentsToolDefinitions(): ToolDefinition[] {
+  const confirm = { confirm: z.boolean().optional() };
+  const common = { filePath: z.string().optional(), name: z.string().optional() };
+  return [
+    { name: 'agents_list', description: 'List personal subagents (~/.cursor/agents/)', inputSchema: {} },
+    { name: 'agents_read', description: 'Read personal subagent file', inputSchema: common },
+    { name: 'agents_create', description: 'Create personal subagent', inputSchema: { name: z.string(), content: z.string().optional() } },
+    { name: 'agents_update', description: 'Update personal subagent', inputSchema: { ...common, content: z.string() } },
+    { name: 'agents_rename', description: 'Rename personal subagent', inputSchema: { ...common, newName: z.string() } },
+    { name: 'agents_delete', description: 'Delete personal subagent', inputSchema: { ...common, ...confirm } },
+    { name: 'agents_share', description: 'Share personal subagent as CursorToys link', inputSchema: common },
+    { name: 'agents_generate_deeplink', description: 'Generate deeplink for personal subagent', inputSchema: common },
+  ];
+}
+
+function buildSyncToolDefinitions(): ToolDefinition[] {
+  const syncCommon = {
+    category: z.enum(['rules', 'skills', 'commands', 'prompts', 'agents', 'hooks']),
+    name: z.string(),
+    workspacePath: z.string().optional(),
+    dryRun: z.boolean().optional(),
+    confirm: z.boolean().optional(),
+  };
+  return [
+    {
+      name: 'sync_asset_to_workspace',
+      description: 'Copy personal global asset to workspace with backup on overwrite',
+      inputSchema: syncCommon,
+    },
+    {
+      name: 'sync_asset_to_global',
+      description: 'Copy workspace asset to personal global with backup on overwrite',
+      inputSchema: syncCommon,
+    },
   ];
 }
 
@@ -709,4 +753,6 @@ export const MCP_TOOL_DEFINITIONS: ToolDefinition[] = [
   ...buildUsageToolDefinitions(),
   ...buildSettingsToolDefinitions(),
   ...buildDeepspecToolDefinitions(),
+  ...buildAgentsToolDefinitions(),
+  ...buildSyncToolDefinitions(),
 ];

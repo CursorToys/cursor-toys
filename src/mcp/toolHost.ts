@@ -26,6 +26,8 @@ import { buildUsageToolHandlers } from './services/usageTools';
 import { buildSettingsToolHandlers } from './services/settingsTools';
 import { buildDeepspecToolHandlers } from './services/deepspecTools';
 import { buildMcpSkillToolHandlers } from './services/mcpSkillTools';
+import { buildAgentsToolHandlers } from './services/agentsTools';
+import { buildSyncToolHandlers } from './services/syncTools';
 
 type ToolHandler = (args: Record<string, unknown>) => Promise<unknown> | unknown;
 
@@ -34,6 +36,8 @@ const STATIC_HANDLERS: Record<string, ToolHandler> = {
   ...buildPersonalToolHandlers(),
   ...buildHooksToolHandlers(),
   ...buildPlansToolHandlers(),
+  ...buildAgentsToolHandlers(),
+  ...buildSyncToolHandlers(),
   ...buildChatToolHandlers(),
   ...buildClipboardToolHandlers(),
   ...buildDeepspecToolHandlers(),

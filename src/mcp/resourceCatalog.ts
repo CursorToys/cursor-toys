@@ -133,4 +133,11 @@ export const MCP_RESOURCE_DEFINITIONS: McpResourceDef[] = [
     description: 'Cursor plan file content',
     mimeType: 'text/markdown',
   },
+  {
+    kind: 'template',
+    name: 'personal-index',
+    uriTemplate: 'cursortoys://personal/{type}',
+    description: 'Personal library index (rules, skills, commands, prompts, agents, hooks)',
+    mimeType: 'application/json',
+  },
 ];

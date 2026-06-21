@@ -3,8 +3,11 @@ import * as vscode from 'vscode';
 import { z } from 'zod';
 import {
   createHooksFile,
+  clearHooksConfig,
   DOCUMENTED_HOOKS,
   parseHooksFile,
+  setHookScriptEnabled,
+  spawnHookPlaceholders,
   validateHooksFile,
 } from '../../hooksManager';
 import { generateGistShareableForHooks, generateShareableForHooks } from '../../shareableGenerator';
@@ -159,6 +162,30 @@ export async function hookScriptShare(args: Record<string, unknown>): Promise<un
   };
 }
 
+export async function hooksClear(args: Record<string, unknown>): Promise<unknown> {
+  const hooksPath = resolveHooksPath(Boolean(args.isPersonal));
+  await clearHooksConfig(hooksPath);
+  return hooksRead({ isPersonal: args.isPersonal });
+}
+
+export async function hookScriptSpawnPlaceholders(args: Record<string, unknown>): Promise<unknown> {
+  const hooksPath = resolveHooksPath(Boolean(args.isPersonal));
+  const created = await spawnHookPlaceholders(hooksPath);
+  return { hooksPath, created, count: created.length };
+}
+
+export async function hookScriptSetEnabled(args: Record<string, unknown>): Promise<unknown> {
+  const scriptName = String(args.name ?? args.filePath ?? '').trim();
+  if (!scriptName) {
+    throw new Error('name or filePath is required');
+  }
+  const basename = path.basename(scriptName);
+  const enabled = args.enabled !== false;
+  const hooksPath = resolveHooksPath(Boolean(args.isPersonal));
+  const result = await setHookScriptEnabled(hooksPath, basename, enabled);
+  return { hooksPath, scriptName: basename, ...result };
+}
+
 export function buildHooksToolHandlers(): Record<
   string,
   (args: Record<string, unknown>) => Promise<unknown>
@@ -177,6 +204,9 @@ export function buildHooksToolHandlers(): Record<
     hook_script_update: hookScriptUpdate,
     hook_script_delete: hookScriptDelete,
     hook_script_share: hookScriptShare,
+    hooks_clear: hooksClear,
+    hook_script_spawn_placeholders: hookScriptSpawnPlaceholders,
+    hook_script_set_enabled: hookScriptSetEnabled,
   };
 }
 
@@ -201,6 +231,7 @@ export function buildHooksToolDefinitions(): Array<{
     { name: 'hooks_delete', description: 'Delete hooks.json', inputSchema: { ...personal, ...confirm } },
     { name: 'hooks_share', description: 'Share hooks as CursorToys link', inputSchema: personal },
     { name: 'hooks_share_gist', description: 'Share hooks via GitHub Gist', inputSchema: personal },
+    { name: 'hooks_clear', description: 'Clear all hook registrations in hooks.json', inputSchema: { ...personal, ...confirm } },
     { name: 'hook_script_read', description: 'Read hook script file', inputSchema: scriptPath },
     {
       name: 'hook_script_create',
@@ -214,5 +245,15 @@ export function buildHooksToolDefinitions(): Array<{
     },
     { name: 'hook_script_delete', description: 'Delete hook script', inputSchema: { ...scriptPath, ...confirm } },
     { name: 'hook_script_share', description: 'Read hook script for sharing', inputSchema: scriptPath },
+    {
+      name: 'hook_script_spawn_placeholders',
+      description: 'Create missing default hook script stubs (idempotent)',
+      inputSchema: personal,
+    },
+    {
+      name: 'hook_script_set_enabled',
+      description: 'Enable or disable a hook script in hooks.json',
+      inputSchema: { name: z.string().optional(), filePath: z.string().optional(), enabled: z.boolean().optional(), ...personal },
+    },
   ];
 }

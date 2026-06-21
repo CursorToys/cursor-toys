@@ -11,7 +11,11 @@ function runTests(): void {
   assert.ok(MCP_RESOURCE_DEFINITIONS.some((r) => r.kind === 'static' && r.uri === 'cursortoys://inline-annotations'), 'inline-annotations resource');
   assert.ok(MCP_PROMPT_DEFINITIONS.some((p) => p.name === 'inline-annotation-review'), 'inline-annotation-review prompt');
   assert.ok(MCP_RESOURCE_DEFINITIONS.length >= 10, 'expected MCP resources catalog');
-  assert.ok(MCP_PROMPT_DEFINITIONS.length >= 7, 'expected MCP prompts catalog');
+  assert.ok(MCP_PROMPT_DEFINITIONS.length >= 8, 'expected MCP prompts catalog');
+  assert.ok(MCP_TOOL_DEFINITIONS.some((t) => t.name === 'agents_list'), 'agents_list tool');
+  assert.ok(MCP_TOOL_DEFINITIONS.some((t) => t.name === 'sync_asset_to_workspace'), 'sync_asset_to_workspace tool');
+  assert.ok(MCP_RESOURCE_DEFINITIONS.some((r) => r.kind === 'template' && r.uriTemplate === 'cursortoys://personal/{type}'), 'personal resource');
+  assert.ok(MCP_PROMPT_DEFINITIONS.some((p) => p.name === 'global-user-ai-workflow'), 'global-user-ai-workflow prompt');
 
   const names = new Set(MCP_TOOL_DEFINITIONS.map((t) => t.name));
   assert.strictEqual(names.size, MCP_TOOL_DEFINITIONS.length, 'duplicate tool names');

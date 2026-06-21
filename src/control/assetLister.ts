@@ -10,6 +10,7 @@ import {
   getHttpPath,
   getKanbanPath,
   getNotepadsPath,
+  getPersonalAgentsPath,
   getPersonalCommandsPaths,
   getPersonalHooksPath,
   getPersonalPlansPaths,
@@ -297,6 +298,16 @@ export async function listPersonalRules(): Promise<ControlAssetItem[]> {
   const config = vscode.workspace.getConfiguration('cursorToys');
   const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
   const dir = getRulesPath(undefined, true);
+  if (!(await pathExists(dir))) {
+    return [];
+  }
+  return dedupeByPath(await listMarkdownRecursive(dir, dir, allowedExtensions));
+}
+
+export async function listPersonalAgents(): Promise<ControlAssetItem[]> {
+  const config = vscode.workspace.getConfiguration('cursorToys');
+  const allowedExtensions = config.get<string[]>('allowedExtensions', ['md', 'mdc']);
+  const dir = getPersonalAgentsPath();
   if (!(await pathExists(dir))) {
     return [];
   }

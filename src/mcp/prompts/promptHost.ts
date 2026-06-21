@@ -37,7 +37,7 @@ ${args.folder ? `Focus folder: ${args.folder}` : 'List HTTP files, pick a suite,
   'project-inventory': () => `Inventory this project's Cursor AI assets using MCP tools:
 
 - commands_list, rules_list, prompts_list, skills_list
-- hooks_list, plan_list
+- agents_list, hooks_list, plan_list
 - inline_annotation_list (todo/fix/note markers grouped by tag)
 - personal_*_list for user libraries
 - cursortoys://config resource for resolved paths
@@ -88,6 +88,26 @@ Tools:
 - notepad_create / notepad_update
 
 ${args.name ? `Notepad: ${args.name}` : 'Create or open a notepad to capture findings, then keep it updated as work progresses.'}`,
+
+  'global-user-ai-workflow': (args) => `Manage personal Cursor AI libraries under ~/.cursor/ (global user scope).
+
+Resources (read-only discovery):
+- cursortoys://config — resolved globalCursorRoot and paths
+- cursortoys://personal/{type} — index for rules, skills, commands, prompts, agents, hooks
+
+Tools:
+- rules_* / skills_* / commands_* / prompts_* with isPersonal: true (no personal_rules_* duplicate)
+- agents_* — subagents in ~/.cursor/agents/ (Cursor docs: "subagents")
+- hooks_*, hook_script_*, hook_script_spawn_placeholders, hook_script_set_enabled with isPersonal: true
+- sync_asset_to_workspace / sync_asset_to_global — backup before overwrite; use dryRun: true first, then confirm: true
+
+Workflow:
+1. Read cursortoys://personal/{type} or agents_list
+2. hooks_validate for hooks; rules_create/update supports applyMode (always, intelligent, globs, manual)
+3. Mutations create timestamped backups under ~/.cursor/.backups/
+4. Optional sync to/from workspace; share via *_share or share-and-import prompt
+
+${args.focus ? `Focus category: ${args.focus}` : 'Start with cursortoys://config, then inventory personal libraries.'}`,
 };
 
 /**

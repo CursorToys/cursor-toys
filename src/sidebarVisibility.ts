@@ -7,6 +7,7 @@ export type SidebarResourceKey =
   | 'clipboard'
   | 'commands'
   | 'prompts'
+  | 'agents'
   | 'plans'
   | 'skills'
   | 'hooks'
@@ -19,6 +20,7 @@ export type SidebarResourceKey =
 export const DEFAULT_EXPLORER_SIDEBAR_VIEWS: readonly SidebarResourceKey[] = [
   'skills',
   'plans',
+  'agents',
   'inlineAnnotations',
 ] as const;
 
@@ -28,6 +30,7 @@ export const ALL_SIDEBAR_RESOURCE_KEYS: readonly SidebarResourceKey[] = [
   'clipboard',
   'commands',
   'prompts',
+  'agents',
   'plans',
   'skills',
   'hooks',
@@ -46,6 +49,7 @@ const VISIBILITY_CONTEXT_KEYS: Record<SidebarResourceKey, string> = {
   clipboard: 'cursorToys.sidebar.clipboardVisible',
   commands: 'cursorToys.sidebar.commandsVisible',
   prompts: 'cursorToys.sidebar.promptsVisible',
+  agents: 'cursorToys.sidebar.agentsVisible',
   plans: 'cursorToys.sidebar.plansVisible',
   skills: 'cursorToys.sidebar.skillsVisible',
   hooks: 'cursorToys.sidebar.hooksVisible',
@@ -62,6 +66,7 @@ const EXPLORER_CONTEXT_KEYS: Record<SidebarResourceKey, string> = {
   clipboard: 'cursorToys.explorer.clipboardVisible',
   commands: 'cursorToys.explorer.commandsVisible',
   prompts: 'cursorToys.explorer.promptsVisible',
+  agents: 'cursorToys.explorer.agentsVisible',
   plans: 'cursorToys.explorer.plansVisible',
   skills: 'cursorToys.explorer.skillsVisible',
   hooks: 'cursorToys.explorer.hooksVisible',
