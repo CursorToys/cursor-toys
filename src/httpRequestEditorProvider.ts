@@ -21,6 +21,8 @@ import {
 } from './httpRequestEditorTypes';
 import { getProjectEnvFilePath, isHttpRequestFile } from './utils';
 import { EnvironmentManager } from './environmentManager';
+import { curlToFormData } from './httpCurlImport';
+import { createNewHttpRequest } from './httpRequestEditorCommands';
 
 function isEditorEnabled(): boolean {
   return vscode.workspace
@@ -370,6 +372,28 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
             } else if (raw.silent !== true) {
               void vscode.window.showErrorMessage('Failed to save tests.');
             }
+            break;
+          }
+          case 'importCurl': {
+            const form = curlToFormData(raw.text);
+            if (!form) {
+              void vscode.window.showErrorMessage(
+                'Could not parse cURL command. Check the format and try again.'
+              );
+              break;
+            }
+            state.activeBlockIndex = blockIndex;
+            void webviewPanel.webview.postMessage({
+              type: 'curlImported',
+              form,
+              blockIndex,
+            });
+            void vscode.window.showInformationMessage('Imported request from cURL.');
+            break;
+          }
+          case 'newRequest': {
+            const wf = vscode.workspace.getWorkspaceFolder(document.uri);
+            await createNewHttpRequest(wf?.uri.fsPath);
             break;
           }
           default:

@@ -108,7 +108,10 @@ Explorer sidebar trees (`cursorToys.sidebar.explorerViews`) remain available for
 **Test APIs where you code** — REST client with environments, helpers, and `@assert()` automation.
 
 - Run requests from `.req` / `.request` files via CodeLens (cURL or `METHOD URL` syntax).
-- **Visual request editor** (Postman-style): open `.req` files from the Control panel (Project tab) or Explorer HTTP tree to edit method, URL, headers, and body; Send, Copy cURL, and create new requests (blank, paste cURL, or paste HTTP). Use **Open as text** or disable via `cursorToys.httpRequestEditor.enabled`.
+- **Visual request editor** (Postman-style): open `.req` files from the Control panel (Project tab) or Explorer HTTP tree to edit method, URL, headers, and body; **Send**, **Copy cURL**, and **New request** in the toolbar.
+- **New HTTP request** — Command Palette (`CursorToys: New HTTP Request`), HTTP sidebar `+` button, Explorer right-click on `.cursor/http/`, or Control Panel → Project → HTTP; creates `YYYY-MM-DD-XX.req` and opens the visual editor.
+- **cURL import** — paste a `curl …` command into the URL field in the visual editor to fill method, URL, headers, and body (like Postman/Insomnia).
+- Use **Open as text** or disable the visual editor via `cursorToys.httpRequestEditor.enabled`.
 - Use `{{variableName}}` from project-root `.env*` files; switch environments instantly.
 - Dynamic helpers: `{{@uuid()}}`, `{{@datetime}}`, `{{@userAgent()}}`, `{{@lorem()}}`, and more.
 - Responses open in a reusable panel by default (`cursorToys.httpRequestResponseView`).
@@ -371,6 +374,7 @@ Click **Send Request** above the file → response in the panel.
 | AI | Refine Selection with AI | `Cmd+Shift+R` / `Ctrl+Shift+R` |
 | AI | Import from Link | `Cmd+Shift+I` / `Ctrl+Shift+I` |
 | HTTP | Send HTTP Request | CodeLens on `.req` files |
+| HTTP | New HTTP Request | Command Palette, HTTP sidebar `+`, Explorer `.cursor/http/` |
 | HTTP | Select HTTP Environment | Command Palette |
 | Share | Generate / Share (commands, rules, prompts) | Context menu, CodeLens |
 | Chat | Send Selection to Chat | Context menu |
@@ -381,6 +385,13 @@ Click **Send Request** above the file → response in the panel.
 Most actions are also on **CodeLens** and **right-click context menus**. Full list: Command Palette → `CursorToys:`.
 
 ## ✨ What's New
+
+**v2026.6.23-1** — see [CHANGELOG](CHANGELOG.md)
+
+- **HTTP New Request** — create dated `.req` files from the visual editor toolbar, HTTP sidebar, Explorer `.cursor/http/` context menu, or Control Panel.
+- **HTTP cURL import** — paste `curl …` into the URL field in the visual editor to populate method, URL, headers, and body.
+
+**v2026.6.23-0** — Cursor Pet (Tamagotchi companion, opt-in via `cursorToys.cursorPet.enabled`).
 
 **v2026.6.14-0** — see [CHANGELOG](CHANGELOG.md)
 

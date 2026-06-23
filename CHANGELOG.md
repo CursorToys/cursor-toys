@@ -2,6 +2,13 @@
 
 ![](https://i.imgur.com/oxTZoZH.jpeg)
 
+## v2026.6.23-1 - HTTP New Request and cURL import
+
+### Added
+
+- **HTTP New Request** — `CursorToys: New HTTP Request` in the HTTP sidebar title bar, Explorer context menu on `.cursor/http/`, Control Panel HTTP section, and the visual request editor toolbar; creates a dated `.req` file (`YYYY-MM-DD-XX.req`) and opens the Postman-style editor.
+- **HTTP cURL import** — paste a `curl …` command into the URL field in the visual HTTP editor to populate method, URL, headers, and body (Postman/Insomnia-style); supports `-X` / `--request`, `-H`, `-d` / `--data`, and line continuations with `\`.
+
 ## v2026.6.23-0 - Cursor Pet (Tamagotchi companion)
 
 ### Added

@@ -154,14 +154,31 @@ export function isRestClientFormat(content: string): boolean {
   return false;
 }
 
+/**
+ * Collapses line continuations and extra whitespace in a pasted cURL command.
+ */
+export function normalizeCurlInput(text: string): string {
+  return text
+    .trim()
+    .replace(/\\\r?\n\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Returns true when the text looks like a cURL command (Postman/Insomnia paste).
+ */
+export function isCurlCommand(text: string): boolean {
+  const normalized = normalizeCurlInput(text);
+  return /^curl(\s|$)/i.test(normalized);
+}
+
 function parseCurlCommand(curlCommand: string): HttpRequestConfig | null {
-  let command = curlCommand.trim();
+  let command = normalizeCurlInput(curlCommand);
 
   if (command.toLowerCase().startsWith('curl')) {
     command = command.substring(4).trim();
   }
-
-  command = command.replace(/\s+/g, ' ').trim();
 
   const urlPatterns = [/['"]https?:\/\/[^'"]+['"]/i, /https?:\/\/[^\s"']+/i];
 
@@ -178,8 +195,7 @@ function parseCurlCommand(curlCommand: string): HttpRequestConfig | null {
     return null;
   }
 
-  const methodMatch = command.match(/-X\s+(\w+)/i);
-  const method = methodMatch ? methodMatch[1].toUpperCase() : 'GET';
+  const methodMatch = command.match(/(?:-X|--request)\s+(\w+)/i);
 
   const headers: Record<string, string> = {};
   const headerRegex = /(?:-H|--header)\s+(["'])((?:(?:\\.|(?!\1)[^\\])*))\1/gi;
@@ -208,6 +224,11 @@ function parseCurlCommand(curlCommand: string): HttpRequestConfig | null {
       body = bodyMatch[2] || bodyMatch[1];
       break;
     }
+  }
+
+  let method = methodMatch ? methodMatch[1].toUpperCase() : 'GET';
+  if (!methodMatch && body) {
+    method = /(?:^|\s)-G(?:\s|$)/i.test(command) ? 'GET' : 'POST';
   }
 
   return {

@@ -97,6 +97,8 @@ export type HttpRequestEditorInboundMessage =
   | { command: 'setBlockEnv'; blockIndex: number; envName: string | null }
   | { command: 'selectEnvironment' }
   | { command: 'createEnvironment' }
-  | { command: 'saveAssertions'; blockIndex: number; assertions: HttpRequestAssertionSummary[]; silent?: boolean };
+  | { command: 'saveAssertions'; blockIndex: number; assertions: HttpRequestAssertionSummary[]; silent?: boolean }
+  | { command: 'importCurl'; text: string; blockIndex: number }
+  | { command: 'newRequest' };
 
 export const HTTP_REQUEST_EDITOR_VIEW_TYPE = 'cursorToys.httpRequest';

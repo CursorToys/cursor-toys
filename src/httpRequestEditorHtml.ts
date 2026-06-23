@@ -551,6 +551,7 @@ export function buildHttpRequestEditorHtml(
         <span class="sub" id="filePath"></span>
       </div>
       <span class="dirty" id="dirtyLabel" hidden>Unsaved</span>
+      <button type="button" class="secondary" id="newRequestBtn">New request</button>
       <button type="button" class="secondary" id="openTextBtn">Open as text</button>
       <button type="button" id="saveBtn">Save</button>
       <button type="button" id="copyCurlBtn">Copy cURL</button>
@@ -582,14 +583,14 @@ export function buildHttpRequestEditorHtml(
               </select>
             </div>
             <div class="url-field">
-              <label class="field-label" for="url">URL — hover {{variables}} for values</label>
+              <label class="field-label" for="url">URL — paste cURL or type {{variables}}</label>
               <div class="url-input-wrap">
                 <div class="url-backdrop" id="urlBackdrop" aria-hidden="true"></div>
-                <input type="text" id="url" class="url-input" placeholder="https://api.example.com or {{GITHUB_API}}/users/{{GITHUB_USER}}" autocomplete="off" spellcheck="false" />
+                <input type="text" id="url" class="url-input" placeholder="https://api.example.com or paste a cURL command" autocomplete="off" spellcheck="false" />
               </div>
             </div>
           </div>
-          <p class="hint"><span style="color:#58a6ff">■</span> # @var &nbsp; <span style="color:#3fb950">■</span> .env &nbsp; <span style="color:#d2a8ff">■</span> helper &nbsp; <span style="color:#f85149">■</span> missing — type <code>{{</code> for autocomplete</p>
+          <p class="hint"><span style="color:#58a6ff">■</span> # @var &nbsp; <span style="color:#3fb950">■</span> .env &nbsp; <span style="color:#d2a8ff">■</span> helper &nbsp; <span style="color:#f85149">■</span> missing — paste cURL in URL to import like Postman</p>
           <label class="field-label">Body</label>
           <textarea id="body" class="var-ac-input" placeholder="JSON, form data, etc." autocomplete="off" spellcheck="false"></textarea>
         </div>
@@ -729,6 +730,7 @@ export function buildHttpRequestEditorHtml(
       saveBtn: document.getElementById('saveBtn'),
       copyCurlBtn: document.getElementById('copyCurlBtn'),
       openTextBtn: document.getElementById('openTextBtn'),
+      newRequestBtn: document.getElementById('newRequestBtn'),
       addHeaderBtn: document.getElementById('addHeaderBtn'),
       removeHeaderBtn: document.getElementById('removeHeaderBtn'),
       selectEnvBtn: document.getElementById('selectEnvBtn'),
@@ -1392,10 +1394,32 @@ export function buildHttpRequestEditorHtml(
       }
     }
 
+    function onUrlPaste(e) {
+      const text = e.clipboardData?.getData('text/plain')?.trim() ?? '';
+      if (!/^curl(\\s|$)/i.test(text)) {
+        return;
+      }
+      e.preventDefault();
+      post('importCurl', { text, blockIndex: state.activeBlockIndex });
+    }
+
+    function onCurlImported(msg) {
+      if (!msg?.form) {
+        return;
+      }
+      if (typeof msg.blockIndex === 'number') {
+        state.activeBlockIndex = msg.blockIndex;
+      }
+      applyForm(msg.form);
+      setDetailTab('request');
+      onFormChange();
+    }
+
     function bind() {
       els.detailTabButtons.forEach((btn) => btn.addEventListener('click', () => setDetailTab(btn.dataset.detail)));
       els.method.addEventListener('change', onFormChange);
       els.url.addEventListener('input', onFormChange);
+      els.url.addEventListener('paste', onUrlPaste);
       els.url.addEventListener('scroll', syncUrlScroll);
       els.url.addEventListener('mousemove', onUrlMouseMove);
       els.url.addEventListener('mouseleave', onUrlMouseLeave);
@@ -1407,6 +1431,7 @@ export function buildHttpRequestEditorHtml(
       els.saveBtn.addEventListener('click', () => post('save', { form: readForm(), blockIndex: state.activeBlockIndex }));
       els.copyCurlBtn.addEventListener('click', () => post('copyCurl', { blockIndex: state.activeBlockIndex }));
       els.openTextBtn.addEventListener('click', () => post('openAsText'));
+      els.newRequestBtn.addEventListener('click', () => post('newRequest'));
       els.selectEnvBtn.addEventListener('click', () => post('selectEnvironment'));
       els.createEnvBtn.addEventListener('click', () => post('createEnvironment'));
       els.addHeaderBtn.addEventListener('click', () => {
@@ -1422,7 +1447,10 @@ export function buildHttpRequestEditorHtml(
       els.cancelAssertBtn.addEventListener('click', () => clearAssertForm());
     }
 
-    window.addEventListener('message', (e) => { if (e.data?.type === 'init') applyInit(e.data); });
+    window.addEventListener('message', (e) => {
+      if (e.data?.type === 'init') applyInit(e.data);
+      if (e.data?.type === 'curlImported') onCurlImported(e.data);
+    });
     fillDatalists();
     applyInit(INIT);
     bind();
