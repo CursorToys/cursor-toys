@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.22-0",
+  "version": "2026.6.23-0",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -94,6 +94,7 @@
     "onView:cursor-toys.explorer.userAgents",
     "onView:cursor-toys.explorer.userMcpb",
     "onView:cursor-toys.explorer.inlineAnnotations",
+    "onView:cursor-toys.cursorPetView",
     "onCommand:cursorToys.command",
     "onCommand:cursorInject.send"
   ],
@@ -411,6 +412,37 @@
         "command": "cursor-toys.refreshKanban",
         "title": "CursorToys: Refresh Kanban",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.cursorPet.open",
+        "title": "CursorToys: Open Cursor Pet Panel",
+        "icon": "$(heart)"
+      },
+      {
+        "command": "cursor-toys.cursorPet.focusView",
+        "title": "CursorToys: Focus Cursor Pet",
+        "icon": "$(heart)"
+      },
+      {
+        "command": "cursor-toys.cursorPet.refresh",
+        "title": "CursorToys: Refresh Cursor Pet",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "cursor-toys.cursorPet.installHooks",
+        "title": "CursorToys: Install Cursor Pet Activity Hooks"
+      },
+      {
+        "command": "cursor-toys.cursorPet.reset",
+        "title": "CursorToys: Reset Cursor Pet"
+      },
+      {
+        "command": "cursor-toys.cursorPet.debugMenu",
+        "title": "CursorToys: Cursor Pet Debug — Preview Flows"
+      },
+      {
+        "command": "cursor-toys.cursorPet.feedHelp",
+        "title": "CursorToys: Cursor Pet — How to Feed & Play"
       },
       {
         "command": "cursor-toys.projects.openDashboard",
@@ -954,6 +986,11 @@
           "id": "cursor-toys",
           "title": "CursorToys",
           "icon": "resources/cursor-toys.svg"
+        },
+        {
+          "id": "cursor-pet",
+          "title": "Cursor Pet",
+          "icon": "resources/cursor-pet.svg"
         }
       ]
     },
@@ -964,6 +1001,15 @@
           "id": "cursor-toys.controlView",
           "name": "CursorToys",
           "icon": "$(dashboard)"
+        }
+      ],
+      "cursor-pet": [
+        {
+          "type": "webview",
+          "id": "cursor-toys.cursorPetView",
+          "name": "Cursor Pet",
+          "when": "cursorToys.cursorPet.enabled",
+          "icon": "$(heart)"
         }
       ],
       "explorer": [
@@ -1072,6 +1118,21 @@
           "command": "cursor-toys.showMenu",
           "when": "view == cursor-toys.controlView",
           "group": "navigation@3"
+        },
+        {
+          "command": "cursor-toys.cursorPet.refresh",
+          "when": "view == cursor-toys.cursorPetView",
+          "group": "navigation@0"
+        },
+        {
+          "command": "cursor-toys.cursorPet.open",
+          "when": "view == cursor-toys.cursorPetView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "cursor-toys.cursorPet.reset",
+          "when": "view == cursor-toys.cursorPetView",
+          "group": "navigation@2"
         },
         {
           "command": "cursor-toys.refreshUserCommands",
@@ -2364,6 +2425,76 @@
             "type": "boolean",
             "default": false,
             "description": "Open the Projects dashboard when Cursor starts (requires projects.enabled)."
+          },
+          "cursorToys.cursorPet.enabled": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable Cursor Pet — a companion that hatches from an egg and stays healthy when you use Cursor."
+          },
+          "cursorToys.cursorPet.incubationTargetPoints": {
+            "type": "number",
+            "default": 100,
+            "minimum": 10,
+            "maximum": 1000,
+            "description": "Activity points required to hatch the egg."
+          },
+          "cursorToys.cursorPet.decayIntervalMinutes": {
+            "type": "number",
+            "default": 30,
+            "minimum": 1,
+            "maximum": 1440,
+            "description": "Minutes between hunger and happiness decay ticks."
+          },
+          "cursorToys.cursorPet.lowVitalsWarningThreshold": {
+            "type": "number",
+            "default": 25,
+            "minimum": 1,
+            "maximum": 100,
+            "description": "Show warnings when hunger or happiness fall below this percentage."
+          },
+          "cursorToys.cursorPet.hungerDecayPerTick": {
+            "type": "number",
+            "default": 4,
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Hunger lost per decay tick."
+          },
+          "cursorToys.cursorPet.happinessDecayPerTick": {
+            "type": "number",
+            "default": 3,
+            "minimum": 1,
+            "maximum": 50,
+            "description": "Happiness lost per decay tick."
+          },
+          "cursorToys.cursorPet.autoInstallHooks": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically install Cursor hook bridge scripts when Cursor Pet is enabled."
+          },
+          "cursorToys.cursorPet.showStatusBar": {
+            "type": "boolean",
+            "default": false,
+            "description": "Show Cursor Pet vitals or incubation progress in the status bar."
+          },
+          "cursorToys.cursorPet.minutesPerGameDay": {
+            "type": "number",
+            "default": 60,
+            "description": "Real minutes per Tamagotchi game day (life stage progression)."
+          },
+          "cursorToys.cursorPet.maxGameDays": {
+            "type": "number",
+            "default": 25,
+            "description": "Maximum game days before natural death by old age."
+          },
+          "cursorToys.cursorPet.tokenDeathEnabled": {
+            "type": "boolean",
+            "default": true,
+            "description": "When Cursor plan usage is exhausted (Pro/API), the pet dies."
+          },
+          "cursorToys.cursorPet.debugMode": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Internal testing only — 5-second decay ticks. Set in settings.json; not shown in CursorToys Config UI."
           }
         }
       },
@@ -2571,6 +2702,7 @@
     "test:globalUserAi": "npm run compile && node out/globalUserAiParity.test.js",
     "test:projects": "npm run compile && node out/projects/projectRegistry.test.js && node out/projects/projectPathUtils.test.js",
     "test:inline-annotations": "npm run compile && node out/inlineAnnotations.test.js",
+    "test:cursor-pet": "npm run compile && node out/cursorPet/cursorPetEngine.test.js && node out/cursorPet/cursorPetDebug.test.js && node out/cursorPet/cursorPetStatusBar.test.js",
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
     "publish": "vsce publish"

@@ -51,6 +51,11 @@ export const MCP_PROMPT_DEFINITIONS: McpPromptDefinition[] = [
     },
   },
   {
+    name: 'cursor-pet-care',
+    description: 'Check Cursor Pet vitals and suggest organic care actions in Cursor',
+    argsSchema: {},
+  },
+  {
     name: 'notepad-scratchpad',
     description: 'Create or update notepads during an agent session',
     argsSchema: {

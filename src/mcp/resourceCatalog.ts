@@ -44,6 +44,13 @@ export const MCP_RESOURCE_DEFINITIONS: McpResourceDef[] = [
   },
   {
     kind: 'static',
+    name: 'cursor-pet',
+    uri: 'cursortoys://cursor-pet',
+    description: 'Cursor Pet state, vitals, and incubation progress',
+    mimeType: 'application/json',
+  },
+  {
+    kind: 'static',
     name: 'hooks',
     uri: 'cursortoys://hooks',
     description: 'hooks.json and hook scripts index',

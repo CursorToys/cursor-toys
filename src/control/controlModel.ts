@@ -33,8 +33,10 @@ import {
   buildCodeAnchorsData,
   buildInlineAnnotationsDataForRoot,
   buildProjectsData,
+  buildCursorPetData,
   type ControlClipboardData,
   type ControlCodeAnchorsData,
+  type ControlCursorPetData,
   type ControlInlineAnnotationsData,
   type ControlProjectsData,
 } from './controlExtras';
@@ -108,6 +110,7 @@ export interface ControlModel {
     clipboard: ControlClipboardData;
     projects: ControlProjectsData;
     codeAnchors: ControlCodeAnchorsData;
+    cursorPet: ControlCursorPetData;
   };
   config: ControlConfigScope;
   projects: ControlProjectScope[];
@@ -314,6 +317,7 @@ export async function buildControlModel(
   const [commands, prompts, skills, rules, agents, notepads, kanban, plans, hooks, mcpb, clipboard, codeAnchors] =
     personalResults;
   const projectsData = buildProjectsData(ProjectRegistry.getInstance());
+  const cursorPetData = buildCursorPetData();
 
   const projects: ControlProjectScope[] = [];
   for (const root of roots) {
@@ -379,6 +383,7 @@ export async function buildControlModel(
       clipboard: clipboard as ControlClipboardData,
       projects: projectsData,
       codeAnchors: codeAnchors as ControlCodeAnchorsData,
+      cursorPet: cursorPetData,
     },
     config: {
       shortcuts: buildConfigShortcuts(),

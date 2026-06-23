@@ -42,6 +42,9 @@ export interface McpConnectionInfo {
   port: number;
   token: string;
   updatedAt: string;
+  features?: {
+    cursorPet?: boolean;
+  };
 }
 
 export interface McpToolResult {

@@ -668,6 +668,94 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       });
       return;
 
+    case 'cursorToys.cursorPet.enabled':
+      await pickBoolean(settingKey, false, {
+        on: 'Enable Cursor Pet companion',
+        off: 'Disable Cursor Pet companion',
+      });
+      return;
+
+    case 'cursorToys.cursorPet.showStatusBar':
+      await pickBoolean(settingKey, false, {
+        on: 'Show pet status in the status bar',
+        off: 'Hide pet status from the status bar',
+      });
+      return;
+
+    case 'cursorToys.cursorPet.debugMode':
+      await pickBoolean(settingKey, false, {
+        on: 'Enable debug mode (5s decay + flow previews)',
+        off: 'Disable debug mode',
+      });
+      return;
+
+    case 'cursorToys.cursorPet.autoInstallHooks':
+      await pickBoolean(settingKey, true, {
+        on: 'Auto-install activity hook bridge',
+        off: 'Do not auto-install activity hooks',
+      });
+      return;
+
+    case 'cursorToys.cursorPet.incubationTargetPoints':
+      await pickNumber(settingKey, 100, 'Incubation target points', (n) => {
+        if (n < 10) {
+          return 'Minimum 10';
+        }
+        if (n > 1000) {
+          return 'Maximum 1000';
+        }
+        return null;
+      });
+      return;
+
+    case 'cursorToys.cursorPet.decayIntervalMinutes':
+      await pickNumber(settingKey, 30, 'Decay interval (minutes)', (n) => {
+        if (n < 1) {
+          return 'Minimum 1 minute';
+        }
+        if (n > 1440) {
+          return 'Maximum 1440 minutes (24h)';
+        }
+        return null;
+      });
+      return;
+
+    case 'cursorToys.cursorPet.lowVitalsWarningThreshold':
+      await pickNumber(settingKey, 25, 'Low vitals warning threshold (%)', (n) => {
+        if (n < 1) {
+          return 'Minimum 1';
+        }
+        if (n > 100) {
+          return 'Maximum 100';
+        }
+        return null;
+      });
+      return;
+
+    case 'cursorToys.cursorPet.hungerDecayPerTick':
+      await pickNumber(settingKey, 4, 'Hunger decay per tick', (n) => {
+        if (n < 1) {
+          return 'Minimum 1';
+        }
+        if (n > 50) {
+          return 'Maximum 50';
+        }
+        return null;
+      });
+      return;
+
+    case 'cursorToys.cursorPet.happinessDecayPerTick':
+      await pickNumber(settingKey, 3, 'Happiness decay per tick', (n) => {
+        if (n < 1) {
+          return 'Minimum 1';
+        }
+        if (n > 50) {
+          return 'Maximum 50';
+        }
+        return null;
+      });
+      return;
+
     default:
       void vscode.window.showWarningMessage(
         `Unknown setting "${settingKey}". Use the items in the CursorToys Settings tree to edit options.`

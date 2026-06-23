@@ -2,6 +2,7 @@
  * MCP tool schemas only — no vscode imports (used by stdio subprocess).
  */
 import { z } from 'zod';
+import { CURSOR_PET_MCP_TOOL_DEFINITIONS } from './cursorPetMcpCatalog';
 
 export interface ToolDefinition {
   name: string;
@@ -741,6 +742,7 @@ export const MCP_TOOL_DEFINITIONS: ToolDefinition[] = [
     description: 'Install HTTP docs skill in project',
     inputSchema: {},
   },
+  ...CURSOR_PET_MCP_TOOL_DEFINITIONS,
   ...buildAssetToolDefinitions(),
   ...buildPersonalToolDefinitions(),
   ...buildHooksToolDefinitions(),

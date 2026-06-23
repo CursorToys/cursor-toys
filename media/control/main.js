@@ -37,6 +37,18 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M10 3a2 2 0 0 1 4 0c0 .5.5 1 1 1h2a1 1 0 0 1 1 1v2c0 .5.5 1 1 1a2 2 0 0 1 0 4c-.5 0-1 .5-1 1v3a1 1 0 0 1-1 1h-3c-.5 0-1-.5-1-1a2 2 0 0 0-4 0c0 .5-.5 1-1 1H6a1 1 0 0 1-1-1v-3c0-.5-.5-1-1-1a2 2 0 0 1 0-4c.5 0 1-.5 1-1V6a1 1 0 0 1 1-1h2c.5 0 1-.5 1-1z"/></svg>',
     bookmark:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M7 4h10v16l-5-3.5L7 20z"/></svg>',
+    heart:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 5.5-7 10-7 10z"/></svg>',
+    pet:
+      '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+      '<rect x="7" y="8" width="10" height="10" fill="currentColor" opacity="0.95"/>' +
+      '<rect x="9" y="5" width="6" height="4" fill="currentColor"/>' +
+      '<rect x="8" y="10" width="2" height="2" fill="var(--vscode-editor-background, #1e1e1e)"/>' +
+      '<rect x="14" y="10" width="2" height="2" fill="var(--vscode-editor-background, #1e1e1e)"/>' +
+      '<rect x="10" y="14" width="4" height="2" fill="var(--vscode-editor-background, #1e1e1e)"/>' +
+      '<rect x="6" y="18" width="4" height="4" fill="currentColor"/>' +
+      '<rect x="14" y="18" width="4" height="4" fill="currentColor"/>' +
+      '</svg>',
     folder:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M3 7a1 1 0 0 1 1-1h5l2 2h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></svg>',
     clippy:
@@ -62,6 +74,7 @@
     'p-clip-ws': true,
     'p-projects': true,
     'p-anchors': true,
+    'p-cursor-pet': true,
     'p-rules': true,
     'p-agents': true,
   };
@@ -419,6 +432,40 @@
       anchorBody += anchorRows(anchors.anchors || []);
     }
 
+    const pet = p.cursorPet || {
+      enabled: false,
+      phase: 'disabled',
+      actions: [],
+      hunger: 0,
+      happiness: 0,
+      incubationProgress: 0,
+      incubationTarget: 0,
+      bridgeInstalled: false,
+      lowVitalsWarning: false,
+    };
+    let petBody = (pet.actions || []).map((a) => actionRow(a.label, a.commandId, a.description)).join('');
+    if (!pet.enabled) {
+      petBody += `<div class="empty">Enable in Config tab → Cursor Pet → Enable Cursor Pet</div>`;
+    } else {
+      petBody += `<div class="scope">Phase</div><div class="subgroup">${esc(pet.phase)}</div>`;
+      if (pet.archetype) {
+        petBody += `<div class="scope">Type</div><div class="subgroup">${esc(pet.archetype)}</div>`;
+      }
+      if (pet.phase === 'incubating') {
+        petBody += `<div class="scope">Incubation</div><div class="subgroup">${Math.round(pet.incubationProgress)} / ${Math.round(pet.incubationTarget)}</div>`;
+      }
+      if (pet.phase === 'alive' || pet.phase === 'dead') {
+        petBody += `<div class="scope">Hunger</div><div class="subgroup">${Math.round(pet.hunger)}%</div>`;
+        petBody += `<div class="scope">Happiness</div><div class="subgroup">${Math.round(pet.happiness)}%</div>`;
+      }
+      if (pet.lowVitalsWarning) {
+        petBody += `<div class="empty warning">Low vitals — use Cursor to feed and play</div>`;
+      }
+      if (!pet.bridgeInstalled) {
+        petBody += `<div class="empty warning">Activity hooks not installed</div>`;
+      }
+    }
+
     const sections = [
       {
         id: 'p-cmd',
@@ -547,6 +594,13 @@
         title: 'Code anchors',
         count: (anchors.anchors || []).length,
         body: anchorBody,
+      },
+      {
+        id: 'p-cursor-pet',
+        icon: I.pet,
+        title: 'Cursor Pet',
+        count: pet.enabled ? 1 : 0,
+        body: petBody,
       },
     ];
 

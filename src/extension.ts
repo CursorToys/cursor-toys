@@ -62,6 +62,8 @@ import { installMcpbPackage, uninstallMcpbPackage, getMcpbRoot } from './mcpbIns
 import { UserMcpbTreeProvider, McpbPackageItem } from './userMcpbTreeProvider';
 import { initSpendingStatusBar, refreshSpending, openSpendingTokenSetup } from './spendingStatusBar';
 import { registerControlView, refreshControlViewIfVisible } from './control/controlViewProvider';
+import { initCursorPet } from './cursorPet/cursorPetService';
+import { syncCursorPetContext } from './cursorPet/cursorPetConfig';
 import { registerGlobalCursorWatcher, registerGlobalUserAiCommands } from './globalUserAiCommands';
 import {
   configureProviderApiKey,
@@ -233,6 +235,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   await syncSidebarViewVisibility();
   await syncExplorerViewVisibility();
   await syncProjectsContext();
+  await syncCursorPetContext();
   await syncClipboardKeybindingContext();
 
   // Register URI Handler early so cursor:// or vscode:// links open the panel as soon as the extension activates
@@ -365,6 +368,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   initSpendingStatusBar(context);
   initUsageMonitorStatusBar(context);
   registerControlView(context);
+  await initCursorPet(context);
   registerGlobalUserAiCommands(context);
   registerGlobalCursorWatcher(context);
   initKanbanStatusBar(context);

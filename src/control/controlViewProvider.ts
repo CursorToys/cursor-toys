@@ -135,7 +135,10 @@ class ControlViewProvider implements vscode.WebviewViewProvider {
           }
           const subKey = msg.settingKey.replace(/^cursorToys\./, '');
           const sectionCfg = vscode.workspace.getConfiguration('cursorToys');
-          const current = sectionCfg.get<boolean>(subKey, false);
+          const inspected = sectionCfg.inspect<boolean>(subKey);
+          const defaultValue =
+            typeof inspected?.defaultValue === 'boolean' ? inspected.defaultValue : false;
+          const current = sectionCfg.get<boolean>(subKey, defaultValue);
           await sectionCfg.update(subKey, !current, vscode.ConfigurationTarget.Global);
           this.post();
           break;

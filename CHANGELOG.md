@@ -1,6 +1,23 @@
 # CursorToys
 
-![](https://i.imgur.com/TjSi5so.jpeg)
+![](https://i.imgur.com/oxTZoZH.jpeg)
+
+## v2026.6.23-0 - Cursor Pet (Tamagotchi companion)
+
+### Added
+
+- **Cursor Pet** (`cursorToys.cursorPet.enabled`, default `false`) — pixel Tamagotchi-style companion in a Game Boy canvas; hatches from one of three eggs (ember, mist, moss) after incubation driven by Cursor usage.
+- **Activity bar view** — dedicated sidebar (`cursor-toys.cursorPetView`) with pixel pet canvas; optional status bar label (`cursorToys.cursorPet.showStatusBar`) with phase icons; click focuses the view.
+- **Webview panel** — `cursor-toys.cursorPet.open` / `focusView`; day/night scene, easter eggs, NEW EGG after death, angry-click reactions (emoji bubbles, toolbar glance, notification).
+- **Tamagotchi life cycle** — baby → child → teen → adult → elder over game days (`cursorToys.cursorPet.minutesPerGameDay`, default 60 min/day); hunger/happiness as 0–4 hearts in HUD and status bar.
+- **Care mechanics** — attention alerts, care mistakes, poop/clean, sickness/medicine, tantrum/discipline, night sleep/lights off, treats (agent `stop` hook); death from neglect, sickness, old age (~25 game days), and optional Cursor plan token exhaustion (`cursorToys.cursorPet.tokenDeathEnabled`).
+- **Organic care** — feed via code edits and shell activity; play via chat, agent responses, MCP/subagent activity, and transcript watcher; no manual FEED/PLAY buttons in the backpack.
+- **Backpack** — accordion inventory panel (collapsed by default) with feed/play source hints, hook status, HOOKS and GUIDE actions.
+- **Activity bridge** — `cursor-pet-bridge.js` and `cursor-pet-feed.js` hook scripts write to `~/.cursortoys/cursor-pet/activity.ndjson`; auto-install via `cursorToys.cursorPet.autoInstallHooks`.
+- **Control Panel** — Personal tab Cursor Pet section with enable toggle, status, and "How to feed & play" guide.
+- **Config UI** — Cursor Pet settings in Config tab (debug mode hidden — enable only via `cursorToys.cursorPet.debugMode` in settings.json); `cursor-toys.cursorPet.debugMenu` for internal preview flows.
+- **MCP Cursor Pet** — resource `cursortoys://cursor-pet`; prompt `cursor-pet-care`; tools `cursor_pet_status`, `cursor_pet_select_egg`, `cursor_pet_feed` (organic guidance), `cursor_pet_play`, `cursor_pet_clean`, `cursor_pet_medicine`, `cursor_pet_discipline`, `cursor_pet_lights_off`, `cursor_pet_treat`, `cursor_pet_reset`, `cursor_pet_refresh`, `cursor_pet_install_hooks`, `cursor_pet_open`.
+- **Conditional MCP catalog** — Cursor Pet tools, resource, and prompt appear only when `cursorToys.cursorPet.enabled` is on (stdio subprocess reads `features.cursorPet` from connection info; reconnect MCP after toggling).
 
 ## v2026.6.22-0 - Global User AI parity (MCP + Control Panel)
 

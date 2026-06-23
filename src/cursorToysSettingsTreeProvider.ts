@@ -731,6 +731,37 @@ export const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
     ],
   },
   {
+    id: 'cursor-pet',
+    label: 'Cursor Pet',
+    kind: 'category',
+    iconId: 'heart',
+    children: [
+      {
+        id: 'cursor-pet-enabled',
+        label: 'Enable Cursor Pet',
+        kind: 'setting',
+        iconId: 'check',
+        settingKey: 'cursorToys.cursorPet.enabled',
+        description: 'Companion that hatches from an egg and stays healthy as you use Cursor',
+      },
+      {
+        id: 'cursor-pet-statusbar',
+        label: 'Show Pet in Status Bar',
+        kind: 'setting',
+        iconId: 'pulse',
+        settingKey: 'cursorToys.cursorPet.showStatusBar',
+        description: 'Live hunger/happiness or incubation progress in the status bar',
+      },
+      {
+        id: 'cursor-pet-open',
+        label: 'Open Cursor Pet',
+        kind: 'action',
+        iconId: 'heart',
+        commandId: 'cursor-toys.cursorPet.open',
+      },
+    ],
+  },
+  {
     id: 'notepads',
     label: 'Notepads',
     kind: 'category',
@@ -788,7 +819,15 @@ function enrichSettingsWithValues(
   return items.map((item) => {
     if (item.kind === 'setting' && item.settingKey) {
       const subKey = item.settingKey.replace(/^cursorToys\./, '');
-      const value = cfg.get<unknown>(subKey);
+      const inspected = cfg.inspect(subKey);
+      let value = cfg.get<unknown>(subKey);
+      if (value === undefined && inspected !== undefined) {
+        value =
+          inspected.globalValue ??
+          inspected.workspaceValue ??
+          inspected.workspaceFolderValue ??
+          inspected.defaultValue;
+      }
       const enriched: ControlSettingsItem = { ...item };
       if (typeof value === 'boolean') {
         enriched.settingType = 'boolean';

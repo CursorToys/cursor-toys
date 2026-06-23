@@ -21,12 +21,15 @@ import * as notepad from '../services/notepadTools';
 import * as http from '../services/httpTools';
 import * as anchor from '../services/anchorTools';
 import * as inlineAnnotation from '../services/inlineAnnotationTools';
+import * as cursorPet from '../services/cursorPetTools';
 import * as hooks from '../services/hooksTools';
 import { buildAssetToolHandlers } from '../services/assetsTools';
 import { buildClipboardToolHandlers } from '../services/clipboardTools';
 import { buildPlansToolHandlers } from '../services/plansTools';
 import type { McpHostContext } from '../types';
 import { MCP_RESOURCE_DEFINITIONS } from '../resourceCatalog';
+import { filterResourcesForCursorPet, isCursorPetMcpResource } from '../cursorPetMcpCatalog';
+import { isCursorPetEnabled } from '../../cursorPet/cursorPetConfig';
 import { trackMcpEvent } from '../mcpTelemetry';
 
 export interface McpResourceEntry {
@@ -65,7 +68,8 @@ export class McpResourceHost {
   }
 
   listStaticResources(): McpResourceEntry[] {
-    return MCP_RESOURCE_DEFINITIONS.filter((d) => d.kind === 'static').map((d) => ({
+    const defs = filterResourcesForCursorPet(MCP_RESOURCE_DEFINITIONS, isCursorPetEnabled());
+    return defs.filter((d) => d.kind === 'static').map((d) => ({
       uri: d.uri,
       name: d.name,
       description: d.description,
@@ -171,6 +175,10 @@ export class McpResourceHost {
   async readResource(uri: string): Promise<{ contents: Array<{ uri: string; mimeType: string; text: string }> }> {
     trackMcpEvent('mcp_resource_read', { uri: uri.split('/').slice(0, 3).join('/') });
 
+    if (isCursorPetMcpResource(uri) && !isCursorPetEnabled()) {
+      throw new Error('Cursor Pet MCP resources require cursorToys.cursorPet.enabled in CursorToys settings.');
+    }
+
     const { host, segments } = parseCursortoysUri(uri);
     let mimeType = 'application/json';
     let text = '';
@@ -236,6 +244,11 @@ export class McpResourceHost {
           text = JSON.stringify(data, null, 2);
         }
         break;
+      case 'cursor-pet': {
+        const data = await cursorPet.cursorPetStatus();
+        text = JSON.stringify(data, null, 2);
+        break;
+      }
       case 'assets': {
         const type = segments[0] as 'commands' | 'rules' | 'prompts' | 'skills';
         const handler = this.assetHandlers[`${type}_list`];
@@ -332,6 +345,9 @@ export class McpResourceHost {
         highlightComments: config.get<boolean>('inlineAnnotations.highlightComments', true),
         tags: config.get<string[]>('inlineAnnotations.tags', []),
         scanIncludePaths: config.get<string[]>('inlineAnnotations.scanIncludePaths', []),
+      },
+      cursorPet: {
+        enabled: config.get<boolean>('cursorPet.enabled', false),
       },
     };
   }

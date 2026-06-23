@@ -7,6 +7,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { McpIpcClient } from './ipcClient';
+import {
+  filterPromptsForCursorPet,
+  filterResourcesForCursorPet,
+  filterToolsForCursorPet,
+} from './cursorPetMcpCatalog';
 import { MCP_PROMPT_DEFINITIONS } from './promptCatalog';
 import { MCP_RESOURCE_DEFINITIONS } from './resourceCatalog';
 import { MCP_TOOL_DEFINITIONS } from './toolSchemaCatalog';
@@ -38,12 +43,24 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  let cursorPetEnabled = false;
+  try {
+    const connectionInfo = McpIpcClient.loadConnectionInfo(configPath);
+    cursorPetEnabled = connectionInfo.features?.cursorPet === true;
+  } catch {
+    // fall back to hiding Cursor Pet MCP surface
+  }
+
+  const toolDefs = filterToolsForCursorPet(MCP_TOOL_DEFINITIONS, cursorPetEnabled);
+  const resourceDefs = filterResourcesForCursorPet(MCP_RESOURCE_DEFINITIONS, cursorPetEnabled);
+  const promptDefs = filterPromptsForCursorPet(MCP_PROMPT_DEFINITIONS, cursorPetEnabled);
+
   const server = new McpServer(
     { name: 'cursor-toys', version: '1.0.0' },
     { capabilities: { tools: {}, resources: {}, prompts: {} } }
   );
 
-  for (const def of MCP_TOOL_DEFINITIONS) {
+  for (const def of toolDefs) {
     server.registerTool(
       def.name,
       {
@@ -59,7 +76,7 @@ async function main(): Promise<void> {
     );
   }
 
-  for (const def of MCP_RESOURCE_DEFINITIONS) {
+  for (const def of resourceDefs) {
     if (def.kind === 'static') {
       server.registerResource(
         def.name,
@@ -125,7 +142,7 @@ async function main(): Promise<void> {
     );
   }
 
-  for (const def of MCP_PROMPT_DEFINITIONS) {
+  for (const def of promptDefs) {
     server.registerPrompt(
       def.name,
       {

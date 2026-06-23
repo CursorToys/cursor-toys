@@ -10,6 +10,8 @@ import { InlineAnnotationService } from '../inlineAnnotationService';
 import { sortInlineAnnotationTags } from '../inlineAnnotationTags';
 import { ProjectRegistry } from '../projects/projectRegistry';
 import { isProjectsEnabled } from '../projects/projectsConfig';
+import { isCursorPetEnabled, shouldShowCursorPetStatusBar } from '../cursorPet/cursorPetConfig';
+import { CursorPetService } from '../cursorPet/cursorPetService';
 import type { ProjectEntry } from '../projects/types';
 import type { ControlAction } from './controlModel';
 
@@ -42,6 +44,20 @@ export interface ControlProjectsData {
   actions: ControlAction[];
   pinned: ControlProjectRow[];
   recent: ControlProjectRow[];
+}
+
+export interface ControlCursorPetData {
+  enabled: boolean;
+  showStatusBar: boolean;
+  phase: string;
+  archetype: string | null;
+  hunger: number;
+  happiness: number;
+  incubationProgress: number;
+  incubationTarget: number;
+  bridgeInstalled: boolean;
+  lowVitalsWarning: boolean;
+  actions: ControlAction[];
 }
 
 export interface ControlAnchorRow {
@@ -324,4 +340,71 @@ export function buildInlineAnnotationsDataForRoot(workspaceRoot: string): Contro
   }));
 
   return { enabled: true, byTag, actions };
+}
+
+/**
+ * Builds Cursor Pet summary for the Personal tab in Control Panel.
+ */
+export function buildCursorPetData(): ControlCursorPetData {
+  const enabled = isCursorPetEnabled();
+  const showStatusBar = shouldShowCursorPetStatusBar();
+  const actions: ControlAction[] = [
+    { id: 'open-cursor-pet', label: 'Open pet', commandId: 'cursor-toys.cursorPet.focusView' },
+    {
+      id: 'feed-help-cursor-pet',
+      label: 'How to feed & play',
+      description: 'Code edits feed; chat plays. Hooks and terminal scripts available.',
+      commandId: 'cursor-toys.cursorPet.feedHelp',
+    },
+    { id: 'install-cursor-pet-hooks', label: 'Install activity hooks', commandId: 'cursor-toys.cursorPet.installHooks' },
+    { id: 'reset-cursor-pet', label: 'New egg', commandId: 'cursor-toys.cursorPet.reset' },
+  ];
+
+  if (!enabled) {
+    return {
+      enabled: false,
+      showStatusBar: false,
+      phase: 'disabled',
+      archetype: null,
+      hunger: 0,
+      happiness: 0,
+      incubationProgress: 0,
+      incubationTarget: 0,
+      bridgeInstalled: false,
+      lowVitalsWarning: false,
+      actions,
+    };
+  }
+
+  const service = CursorPetService.getInstance();
+  if (!service) {
+    return {
+      enabled: true,
+      showStatusBar,
+      phase: 'inactive',
+      archetype: null,
+      hunger: 0,
+      happiness: 0,
+      incubationProgress: 0,
+      incubationTarget: 0,
+      bridgeInstalled: false,
+      lowVitalsWarning: false,
+      actions,
+    };
+  }
+
+  const vm = service.getViewModel();
+  return {
+    enabled: true,
+    showStatusBar,
+    phase: vm.phase,
+    archetype: vm.archetype,
+    hunger: vm.hunger,
+    happiness: vm.happiness,
+    incubationProgress: vm.incubationProgress,
+    incubationTarget: vm.incubationTarget,
+    bridgeInstalled: service.isBridgeInstalled(),
+    lowVitalsWarning: vm.lowVitalsWarning,
+    actions,
+  };
 }

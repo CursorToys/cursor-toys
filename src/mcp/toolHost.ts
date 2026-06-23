@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import { isCursorPetMcpTool } from './cursorPetMcpCatalog';
+import { isCursorPetEnabled } from '../cursorPet/cursorPetConfig';
 import type { McpHostContext } from './types';
 import { appendMcpAuditLog } from './auditLog';
 import { trackMcpToolCall } from './mcpTelemetry';
@@ -12,6 +14,7 @@ import * as notepad from './services/notepadTools';
 import * as http from './services/httpTools';
 import * as anchor from './services/anchorTools';
 import * as inlineAnnotation from './services/inlineAnnotationTools';
+import * as cursorPet from './services/cursorPetTools';
 import { cursortoysExecute, cursortoysListCommands } from './services/dispatcherTools';
 import { buildAssetToolHandlers } from './services/assetsTools';
 import { buildPersonalToolHandlers } from './services/personalTools';
@@ -91,6 +94,19 @@ const STATIC_HANDLERS: Record<string, ToolHandler> = {
   inline_annotation_next: inlineAnnotation.inlineAnnotationNext,
   inline_annotation_prev: inlineAnnotation.inlineAnnotationPrev,
   inline_annotation_goto: inlineAnnotation.inlineAnnotationGoto,
+  cursor_pet_status: cursorPet.cursorPetStatus,
+  cursor_pet_select_egg: cursorPet.cursorPetSelectEgg,
+  cursor_pet_feed: cursorPet.cursorPetFeed,
+  cursor_pet_play: cursorPet.cursorPetPlay,
+  cursor_pet_reset: cursorPet.cursorPetReset,
+  cursor_pet_refresh: cursorPet.cursorPetRefresh,
+  cursor_pet_install_hooks: cursorPet.cursorPetInstallHooks,
+  cursor_pet_open: cursorPet.cursorPetOpen,
+  cursor_pet_clean: cursorPet.cursorPetClean,
+  cursor_pet_medicine: cursorPet.cursorPetMedicine,
+  cursor_pet_discipline: cursorPet.cursorPetDiscipline,
+  cursor_pet_lights_off: cursorPet.cursorPetLightsOff,
+  cursor_pet_treat: cursorPet.cursorPetTreat,
 };
 
 function buildContextualHandlers(ctx: McpHostContext): Record<string, ToolHandler> {
@@ -124,6 +140,11 @@ export class McpToolHost {
     const started = Date.now();
     try {
       checkRateLimit(tool);
+      if (isCursorPetMcpTool(tool) && !isCursorPetEnabled()) {
+        throw new Error(
+          'Cursor Pet MCP tools require cursorToys.cursorPet.enabled in CursorToys settings.'
+        );
+      }
       requireConfirmForDestructive(tool, args, allowDestructiveWithoutConfirm);
 
       let result: unknown;

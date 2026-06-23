@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { isCursorPetEnabled } from '../cursorPet/cursorPetConfig';
 import { McpIpcServer } from './ipcServer';
 import {
   registerMcpServerInCursorConfig,
@@ -8,7 +9,7 @@ import {
 } from './mcpConfig';
 import { McpPromptHost } from './prompts/promptHost';
 import { McpResourceHost } from './resources/resourceHost';
-import type { McpHostContext } from './types';
+import type { McpConnectionInfo, McpHostContext } from './types';
 import type { McpToolHost } from './toolHost';
 
 let ipcServer: McpIpcServer | undefined;
@@ -22,6 +23,22 @@ function isMcpEnabled(): boolean {
 
 function isAutoRegister(): boolean {
   return vscode.workspace.getConfiguration('cursorToys').get<boolean>('mcp.autoRegister', true);
+}
+
+function buildConnectionInfoWithFeatures(base: McpConnectionInfo): McpConnectionInfo {
+  return {
+    ...base,
+    features: {
+      cursorPet: isCursorPetEnabled(),
+    },
+  };
+}
+
+function refreshMcpConnectionFeatures(): void {
+  if (!ipcServer) {
+    return;
+  }
+  writeMcpConnectionInfo(buildConnectionInfoWithFeatures(ipcServer.getConnectionInfo()));
 }
 
 /**
@@ -84,7 +101,7 @@ export async function startMcpHost(context: vscode.ExtensionContext): Promise<vo
     },
   });
 
-  writeMcpConnectionInfo(info);
+  writeMcpConnectionInfo(buildConnectionInfoWithFeatures(info));
 
   if (isAutoRegister()) {
     try {
@@ -129,6 +146,9 @@ export function registerMcpHost(context: vscode.ExtensionContext): void {
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('cursorToys.mcp')) {
         void startMcpHost(context);
+      }
+      if (e.affectsConfiguration('cursorToys.cursorPet.enabled')) {
+        refreshMcpConnectionFeatures();
       }
     })
   );

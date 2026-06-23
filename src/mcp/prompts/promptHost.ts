@@ -1,4 +1,6 @@
 import { MCP_PROMPT_DEFINITIONS } from '../promptCatalog';
+import { filterPromptsForCursorPet, isCursorPetMcpPrompt } from '../cursorPetMcpCatalog';
+import { isCursorPetMcpCatalogEnabled } from '../cursorPetMcpVisibility';
 import { trackMcpEvent } from '../mcpTelemetry';
 
 export interface McpPromptMessage {
@@ -81,6 +83,37 @@ UI mirrors Control Panel → Project tab → Inline annotations (annotations fir
 ${args.tag ? `Focus tag: ${args.tag}` : 'Start with todo, then fix, then note columns.'}
 ${args.workspaceRoot ? `Workspace root: ${args.workspaceRoot}` : ''}`,
 
+  'cursor-pet-care': () => `Care for the user's Cursor Pet companion (requires cursorToys.cursorPet.enabled).
+
+Resource:
+- cursortoys://cursor-pet — current phase, vitals, incubation progress
+
+Tools:
+- cursor_pet_status — full state snapshot
+- cursor_pet_select_egg — start incubation (ember, mist, moss)
+- cursor_pet_feed — how to feed organically (editor code activity)
+- cursor_pet_play — play with the pet (+happiness, optional weight)
+- cursor_pet_clean — clean poop/mess when hygiene is needed
+- cursor_pet_medicine — cure sickness when care.sick is true
+- cursor_pet_discipline — stop a tantrum (+training)
+- cursor_pet_lights_off — turn off lights when sleeping at night
+- cursor_pet_treat — bonus happiness (overuse causes sickness)
+- cursor_pet_refresh — latest view model
+- cursor_pet_install_hooks — install activity bridge scripts
+- cursor_pet_open — open the pet panel
+
+Organic care:
+- **Feed** (hunger): code edits, shell runs — editor only, no manual button
+- **Play** (happiness): chat prompts, agent responses, MCP/subagent activity, or cursor_pet_play
+- **Clean / Medicine / Discipline / Lights / Treat**: agent calls the matching cursor_pet_* MCP tool
+
+Workflow:
+1. Read cursortoys://cursor-pet
+2. If phase is egg_selection or dead, suggest cursor_pet_select_egg
+3. If vitals are low, suggest editor actions (edit code, chat with agent) or cursor_pet_play
+4. If poop, sick, tantrum, or sleeping with lights on, run the matching care tool
+5. If hooks missing, run cursor_pet_install_hooks`,
+
   'notepad-scratchpad': (args) => `Use notepads as a session scratchpad.
 
 Tools:
@@ -115,7 +148,8 @@ ${args.focus ? `Focus category: ${args.focus}` : 'Start with cursortoys://config
  */
 export class McpPromptHost {
   listPrompts(): Array<{ name: string; description?: string }> {
-    return MCP_PROMPT_DEFINITIONS.map((p) => ({
+    const defs = filterPromptsForCursorPet(MCP_PROMPT_DEFINITIONS, isCursorPetMcpCatalogEnabled());
+    return defs.map((p) => ({
       name: p.name,
       description: p.description,
     }));
@@ -123,6 +157,10 @@ export class McpPromptHost {
 
   getPrompt(name: string, args: Record<string, string> = {}): McpPromptResult {
     trackMcpEvent('mcp_prompt_get', { name });
+
+    if (isCursorPetMcpPrompt(name) && !isCursorPetMcpCatalogEnabled()) {
+      throw new Error('Cursor Pet MCP prompts require cursorToys.cursorPet.enabled in CursorToys settings.');
+    }
 
     const def = MCP_PROMPT_DEFINITIONS.find((p) => p.name === name);
     if (!def) {

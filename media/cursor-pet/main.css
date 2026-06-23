@@ -1,0 +1,299 @@
+.cursor-pet-body {
+  margin: 0;
+  padding: 16px;
+  font-family: var(--vscode-font-family);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+}
+
+.pet-shell {
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.pet-header h1 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.pet-subtitle {
+  margin: 0 0 12px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.cursor-pet-body.cursor-pet-sidebar {
+  padding: 8px;
+}
+
+.cursor-pet-body.cursor-pet-sidebar .pet-shell {
+  max-width: none;
+}
+
+.cursor-pet-body.cursor-pet-sidebar .pet-header h1 {
+  font-size: 13px;
+}
+
+.cursor-pet-body.cursor-pet-sidebar .pet-subtitle {
+  display: none;
+}
+
+.pet-hint {
+  margin: 4px 0 0;
+  font-size: 10px;
+  opacity: 0.7;
+  text-align: center;
+}
+
+.pet-hint.hidden {
+  display: none;
+}
+
+#pet-canvas {
+  width: 100%;
+  border: 4px solid #3a2858;
+  border-radius: 6px 6px 0 0;
+  background: #90d0f8;
+  image-rendering: pixelated;
+  cursor: default;
+  box-shadow:
+    inset 0 0 0 2px #7a58a8,
+    inset 0 0 0 4px #5a4080,
+    0 0 0 0 #281840;
+  display: block;
+}
+
+/* Backpack / inventory — accordion below the screen */
+.pet-backpack {
+  margin: 0;
+  border: 4px solid #3a2858;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  background: #f2ead8;
+  box-shadow:
+    inset 0 0 0 2px #7a58a8,
+    inset 0 0 0 4px #5a4080,
+    0 4px 0 #281840;
+  color: #1c1030;
+  overflow: hidden;
+}
+
+.pet-backpack-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: #f2ead8;
+  color: #1c1030;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.pet-backpack-toggle:hover {
+  background: #faf4e8;
+}
+
+.pet-backpack-toggle:focus-visible {
+  outline: 2px solid #58a8f0;
+  outline-offset: -2px;
+}
+
+.pet-backpack-chevron {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  transition: transform 0.15s ease;
+  color: #483068;
+}
+
+.pet-backpack:not(.collapsed) .pet-backpack-chevron {
+  transform: rotate(90deg);
+}
+
+.pet-backpack-panel {
+  padding: 0 10px 10px;
+  border-top: 2px dashed #9078a8;
+}
+
+.pet-backpack.collapsed .pet-backpack-panel {
+  display: none !important;
+}
+
+.pet-backpack:not(.collapsed) .pet-backpack-panel {
+  display: block;
+}
+
+.pet-backpack-frame {
+  padding: 0;
+}
+
+.pet-backpack-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.pet-backpack-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.pet-backpack-title {
+  font-family: ui-monospace, 'Cascadia Mono', 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.pet-backpack-tip {
+  margin: 0 0 8px;
+  font-size: 10px;
+  line-height: 1.45;
+  opacity: 0.92;
+}
+
+.pet-inventory {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pet-inv-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto auto;
+  gap: 4px 6px;
+  align-items: center;
+  font-size: 10px;
+  line-height: 1.2;
+  padding: 4px 6px;
+  background: #e8dcc8;
+  border: 2px solid #483068;
+  box-shadow: inset 0 -2px 0 #c8b8d0;
+}
+
+.pet-inv-row.dim {
+  opacity: 0.55;
+}
+
+.pet-inv-emoji {
+  font-size: 12px;
+  text-align: center;
+}
+
+.pet-inv-name {
+  font-weight: 600;
+}
+
+.pet-inv-effect {
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  opacity: 0.85;
+  text-align: right;
+}
+
+.pet-inv-status {
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  font-weight: 700;
+  text-align: right;
+  min-width: 28px;
+}
+
+.pet-inv-status.on {
+  color: #287820;
+}
+
+.pet-inv-status.off {
+  color: #c03030;
+}
+
+.pet-inv-status.auto {
+  color: #3070c0;
+}
+
+.pet-backpack-hooks {
+  margin: 0 0 8px;
+  font-family: ui-monospace, monospace;
+  font-size: 9px;
+  line-height: 1.4;
+  padding: 4px 6px;
+  background: #e0d4c0;
+  border: 2px dashed #9078a8;
+}
+
+.pet-backpack-hooks.installed {
+  border-style: solid;
+  border-color: #287820;
+  background: #d8ecd0;
+}
+
+.pet-backpack-hooks.missing {
+  border-color: #c85848;
+  background: #f0d8d0;
+}
+
+.pet-backpack-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.pet-pixel-btn {
+  font-family: ui-monospace, 'Cascadia Mono', 'Courier New', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 6px 4px;
+  border: none;
+  cursor: pointer;
+  color: #1c1030;
+  background: #faf4e8;
+  border: 2px solid #483068;
+  box-shadow:
+    inset 0 -3px 0 #d0c4b0,
+    0 2px 0 #281840;
+  border-radius: 0;
+}
+
+.pet-pixel-btn:hover:not(:disabled) {
+  background: #fffaf0;
+}
+
+.pet-pixel-btn:active:not(:disabled) {
+  box-shadow: inset 0 2px 0 #d0c4b0;
+  transform: translateY(2px);
+}
+
+.pet-pixel-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: inset 0 -2px 0 #d0c4b0;
+}
+
+.pet-pixel-btn.primary {
+  background: #58a8f0;
+  box-shadow:
+    inset 0 -3px 0 #3070c0,
+    0 2px 0 #281840;
+  color: #1c1030;
+}
+
+.cursor-pet-body.cursor-pet-sidebar .pet-backpack-tip {
+  font-size: 9px;
+}
+
+.cursor-pet-body.cursor-pet-sidebar .pet-inv-row {
+  font-size: 9px;
+  grid-template-columns: 18px 1fr auto auto;
+}
+
+.cursor-pet-body.cursor-pet-sidebar .pet-backpack-actions {
+  grid-template-columns: 1fr 1fr;
+}
