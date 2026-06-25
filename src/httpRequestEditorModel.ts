@@ -21,6 +21,10 @@ import {
   ASSERT_EXPRESSIONS,
   ASSERT_OPERATORS,
 } from './httpRequestEditorAssertMeta';
+import {
+  isHttpCompactModeEnabled,
+  getHttpResponseLayout,
+} from './httpResponseView';
 import { HTTP_VARIABLE_HELPERS } from './httpRequestEditorHelpers';
 import type {
   HttpRequestEditorInitMessage,
@@ -180,6 +184,8 @@ export function buildHttpRequestEditorState(
     assertOperators: [...ASSERT_OPERATORS],
     assertExpressions: [...ASSERT_EXPRESSIONS],
     helperSuggestions: [...HTTP_VARIABLE_HELPERS],
+    compactMode: isHttpCompactModeEnabled(),
+    responseLayout: getHttpResponseLayout(),
   };
 }
 

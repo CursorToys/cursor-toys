@@ -541,6 +541,77 @@ export function buildHttpRequestEditorHtml(
     .assert-item-body { flex: 1; }
     .assert-expr { font-family: var(--vscode-editor-font-family, monospace); font-size: 0.9em; opacity: 0.9; }
     .empty-state { font-size: 0.85em; opacity: 0.65; font-style: italic; }
+    .editor-split { display: flex; gap: 10px; min-height: 0; flex: 1; }
+    .editor-split.layout-bottom { flex-direction: column; }
+    .editor-split.layout-left,
+    .editor-split.layout-right { flex-direction: row; align-items: stretch; }
+    .editor-split.layout-left { flex-direction: row-reverse; }
+    .editor-split.layout-left .workspace-card,
+    .editor-split.layout-right .workspace-card { flex: 1 1 52%; min-width: 0; }
+    .editor-split.layout-left .response-card,
+    .editor-split.layout-right .response-card {
+      flex: 1 1 48%;
+      min-width: 0;
+      max-height: none;
+    }
+    .workspace-card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .workspace-card .detail-body { flex: 1; min-height: 160px; overflow: auto; }
+    .response-card {
+      border: 1px solid var(--vscode-panel-border, #333);
+      border-radius: 8px;
+      overflow: hidden;
+      min-height: 160px;
+      max-height: 42vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--vscode-editor-background);
+    }
+    .response-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--vscode-panel-border, #333);
+      background: var(--vscode-sideBar-background);
+    }
+    .response-status {
+      font-size: 0.82em;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--vscode-panel-border, #444);
+    }
+    .response-status.ok { color: #3fb950; border-color: #3fb95055; }
+    .response-status.warn { color: #d29922; border-color: #d2992255; }
+    .response-status.err { color: #f85149; border-color: #f8514955; }
+    .response-tabs { display: flex; gap: 4px; padding: 6px 8px 0; border-bottom: 1px solid var(--vscode-panel-border, #333); }
+    .response-tab {
+      border: none;
+      background: transparent;
+      color: inherit;
+      opacity: 0.7;
+      padding: 6px 10px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      font: inherit;
+      font-size: 0.85em;
+    }
+    .response-tab.active { opacity: 1; border-bottom-color: var(--vscode-textLink-foreground); }
+    .response-body { flex: 1; min-height: 0; overflow: auto; padding: 10px; }
+    .response-pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: var(--vscode-editor-font-family, monospace);
+      font-size: 0.85em;
+      line-height: 1.45;
+    }
+    .response-headers { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+    .response-headers td { padding: 4px 6px; vertical-align: top; border-bottom: 1px solid var(--vscode-panel-border, #2a2a2a); }
+    .response-assert { padding: 6px 0; border-bottom: 1px solid var(--vscode-panel-border, #2a2a2a); font-size: 0.85em; }
+    .response-assert.pass { color: #3fb950; }
+    .response-assert.fail { color: #f85149; }
   </style>
 </head>
 <body class="ct-panel-fill">
@@ -561,6 +632,7 @@ export function buildHttpRequestEditorHtml(
       </button>
     </div>
 
+    <div class="editor-split layout-left" id="editorSplit">
     <div class="workspace-card">
       <div class="request-tabs" id="requestTabs"></div>
       <div class="detail-tabs" role="tablist">
@@ -662,6 +734,31 @@ export function buildHttpRequestEditorHtml(
         </div>
       </div>
     </div>
+
+    <div class="response-card" id="responseCard">
+      <div class="response-toolbar">
+        <strong style="font-size:0.85em;opacity:0.85;">Response</strong>
+        <span class="response-status" id="responseStatusBadge">—</span>
+        <span id="responseMeta" style="font-size:0.8em;opacity:0.7;"></span>
+        <span style="flex:1"></span>
+        <button type="button" class="secondary" id="sendResponseChatBtn" disabled>Send to chat</button>
+        <button type="button" class="secondary" id="resendResponseBtn" disabled>Send again</button>
+      </div>
+      <div class="response-tabs" role="tablist">
+        <button type="button" class="response-tab active" data-response-tab="body">Body</button>
+        <button type="button" class="response-tab" data-response-tab="headers">Headers</button>
+        <button type="button" class="response-tab" data-response-tab="raw">Raw</button>
+        <button type="button" class="response-tab" data-response-tab="assertions">Assertions</button>
+      </div>
+      <div class="response-body" id="responseBody">
+        <p class="empty-state" id="responseEmpty">Send a request to see the response here.</p>
+        <pre class="response-pre" id="responseBodyPre" hidden></pre>
+        <table class="response-headers" id="responseHeadersTable" hidden></table>
+        <pre class="response-pre" id="responseRawPre" hidden></pre>
+        <div id="responseAssertions" hidden></div>
+      </div>
+    </div>
+    </div>
   </div>
 
   <div class="ac-dropdown" id="acDropdown" hidden role="listbox"></div>
@@ -690,6 +787,10 @@ export function buildHttpRequestEditorHtml(
       blockEnv: INIT.blockEnv,
       helperSuggestions: INIT.helperSuggestions || [],
       editingAssertionIndex: -1,
+      responsesByBlock: {},
+      responseTab: 'body',
+      compactMode: INIT.compactMode !== false,
+      responseLayout: INIT.responseLayout === 'bottom' ? 'bottom' : INIT.responseLayout === 'right' ? 'right' : 'left',
     };
 
     const els = {
@@ -727,6 +828,18 @@ export function buildHttpRequestEditorHtml(
       body: document.getElementById('body'),
       headersBody: document.getElementById('headersBody'),
       sendBtn: document.getElementById('sendBtn'),
+      responseStatusBadge: document.getElementById('responseStatusBadge'),
+      responseMeta: document.getElementById('responseMeta'),
+      responseEmpty: document.getElementById('responseEmpty'),
+      responseBodyPre: document.getElementById('responseBodyPre'),
+      responseHeadersTable: document.getElementById('responseHeadersTable'),
+      responseRawPre: document.getElementById('responseRawPre'),
+      responseAssertions: document.getElementById('responseAssertions'),
+      sendResponseChatBtn: document.getElementById('sendResponseChatBtn'),
+      resendResponseBtn: document.getElementById('resendResponseBtn'),
+      responseTabButtons: document.querySelectorAll('.response-tab'),
+      editorSplit: document.getElementById('editorSplit'),
+      responseCard: document.getElementById('responseCard'),
       saveBtn: document.getElementById('saveBtn'),
       copyCurlBtn: document.getElementById('copyCurlBtn'),
       openTextBtn: document.getElementById('openTextBtn'),
@@ -1347,6 +1460,104 @@ export function buildHttpRequestEditorHtml(
       });
     }
 
+    function applyEditorLayout() {
+      const layout = state.responseLayout === 'bottom'
+        ? 'bottom'
+        : state.responseLayout === 'right'
+          ? 'right'
+          : 'left';
+      if (els.editorSplit) {
+        els.editorSplit.classList.remove('layout-bottom', 'layout-left', 'layout-right');
+        els.editorSplit.classList.add(
+          layout === 'bottom' ? 'layout-bottom' : layout === 'right' ? 'layout-right' : 'layout-left'
+        );
+      }
+      const showInline = state.compactMode !== false;
+      if (els.responseCard) {
+        els.responseCard.hidden = !showInline;
+      }
+      if (els.editorSplit && !showInline) {
+        els.editorSplit.classList.remove('layout-left', 'layout-right');
+        els.editorSplit.classList.add('layout-bottom');
+      }
+    }
+
+    function statusClass(code) {
+      if (!code) return 'err';
+      if (code >= 200 && code < 300) return 'ok';
+      if (code >= 400) return 'err';
+      return 'warn';
+    }
+
+    function setResponseTab(tab) {
+      state.responseTab = tab;
+      els.responseTabButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.responseTab === tab));
+      const show = (id, visible) => {
+        const el = document.getElementById(id);
+        if (el) el.hidden = !visible;
+      };
+      show('responseEmpty', false);
+      show('responseBodyPre', tab === 'body');
+      show('responseHeadersTable', tab === 'headers');
+      show('responseRawPre', tab === 'raw');
+      show('responseAssertions', tab === 'assertions');
+    }
+
+    function renderResponseForActiveBlock() {
+      const payload = state.responsesByBlock[state.activeBlockIndex];
+      if (!payload) {
+        els.responseStatusBadge.textContent = '—';
+        els.responseStatusBadge.className = 'response-status';
+        els.responseMeta.textContent = '';
+        els.responseEmpty.hidden = false;
+        els.responseBodyPre.hidden = true;
+        els.responseHeadersTable.hidden = true;
+        els.responseRawPre.hidden = true;
+        els.responseAssertions.hidden = true;
+        els.sendResponseChatBtn.disabled = true;
+        els.resendResponseBtn.disabled = false;
+        return;
+      }
+
+      const code = payload.statusCode || 0;
+      els.responseStatusBadge.textContent = code > 0 ? 'HTTP ' + code : 'Error';
+      els.responseStatusBadge.className = 'response-status ' + statusClass(code);
+      const env = payload.envName ? ' · env: ' + payload.envName : '';
+      els.responseMeta.textContent = (payload.executionTimeSeconds || '0') + 's' + env;
+      els.responseEmpty.hidden = true;
+      els.responseBodyPre.textContent = payload.body || '';
+      els.responseRawPre.textContent = payload.rawFormatted || '';
+      const headers = payload.headers || {};
+      els.responseHeadersTable.innerHTML = Object.keys(headers).map((k) =>
+        '<tr><td>' + escHtml(k) + '</td><td>' + escHtml(headers[k]) + '</td></tr>'
+      ).join('') || '<tr><td colspan="2"><em>None</em></td></tr>';
+      const results = payload.assertionResults || [];
+      if (!results.length) {
+        els.responseAssertions.innerHTML = '<p class="empty-state">No assertions were run.</p>';
+      } else {
+        const passed = results.filter((r) => r.passed).length;
+        els.responseAssertions.innerHTML = '<p class="hint">' + passed + '/' + results.length + ' passed</p>' +
+          results.map((r) => {
+            const cls = r.passed ? 'pass' : 'fail';
+            const label = (r.assertion && (r.assertion.description || r.assertion.expression)) || 'assertion';
+            const detail = r.error || String(r.actualValue ?? '');
+            return '<div class="response-assert ' + cls + '"><strong>' + escHtml(label) + '</strong><div>' + escHtml(detail) + '</div></div>';
+          }).join('');
+      }
+      els.sendResponseChatBtn.disabled = false;
+      els.resendResponseBtn.disabled = false;
+      setResponseTab(state.responseTab || 'body');
+    }
+
+    function onResponseMessage(msg) {
+      if (!msg || !msg.payload) return;
+      const idx = typeof msg.blockIndex === 'number' ? msg.blockIndex : state.activeBlockIndex;
+      state.responsesByBlock[idx] = msg.payload;
+      if (idx === state.activeBlockIndex) {
+        renderResponseForActiveBlock();
+      }
+    }
+
     function applyInit(msg) {
       state.blocks = msg.blocks || [];
       state.activeBlockIndex = msg.activeBlockIndex || 0;
@@ -1360,6 +1571,12 @@ export function buildHttpRequestEditorHtml(
       state.resolvedPreview = msg.resolvedPreview || state.resolvedPreview;
       state.globalFileEnv = msg.globalFileEnv;
       state.blockEnv = msg.blockEnv;
+      state.compactMode = msg.compactMode !== false;
+      state.responseLayout = msg.responseLayout === 'bottom'
+        ? 'bottom'
+        : msg.responseLayout === 'right'
+          ? 'right'
+          : 'left';
       els.fileName.textContent = msg.fileName || 'HTTP Request';
       if (msg.filePath) {
         const parts = msg.filePath.split(/[/\\\\]/);
@@ -1374,6 +1591,8 @@ export function buildHttpRequestEditorHtml(
       renderUrlHighlight();
       renderEnvBanner();
       setDetailTab(state.detailTab);
+      applyEditorLayout();
+      renderResponseForActiveBlock();
       if (msg.dirty === false) setDirty(false);
     }
 
@@ -1428,6 +1647,9 @@ export function buildHttpRequestEditorHtml(
       els.body.addEventListener('input', onFormChange);
       els.headersBody.addEventListener('input', onFormChange);
       els.sendBtn.addEventListener('click', () => post('send', { form: readForm(), blockIndex: state.activeBlockIndex }));
+      els.responseTabButtons.forEach((btn) => btn.addEventListener('click', () => setResponseTab(btn.dataset.responseTab)));
+      els.sendResponseChatBtn.addEventListener('click', () => post('sendResponseToChat'));
+      els.resendResponseBtn.addEventListener('click', () => post('send', { form: readForm(), blockIndex: state.activeBlockIndex }));
       els.saveBtn.addEventListener('click', () => post('save', { form: readForm(), blockIndex: state.activeBlockIndex }));
       els.copyCurlBtn.addEventListener('click', () => post('copyCurl', { blockIndex: state.activeBlockIndex }));
       els.openTextBtn.addEventListener('click', () => post('openAsText'));
@@ -1450,6 +1672,7 @@ export function buildHttpRequestEditorHtml(
     window.addEventListener('message', (e) => {
       if (e.data?.type === 'init') applyInit(e.data);
       if (e.data?.type === 'curlImported') onCurlImported(e.data);
+      if (e.data?.type === 'response') onResponseMessage(e.data);
     });
     fillDatalists();
     applyInit(INIT);

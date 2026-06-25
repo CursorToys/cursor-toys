@@ -13,6 +13,7 @@ import {
   getPersonalAgentsPath,
   getPersonalCommandsPaths,
   getPersonalHooksPath,
+  getPersonalHttpPaths,
   getPersonalPlansPaths,
   getPersonalPromptsPaths,
   getPersonalSkillsPaths,
@@ -204,6 +205,16 @@ export async function listProjectHttp(root: string): Promise<ControlAssetItem[]>
     return [];
   }
   return dedupeByPath(await listHttpRecursive(dir, dir));
+}
+
+export async function listPersonalHttp(): Promise<ControlAssetItem[]> {
+  const all: ControlAssetItem[] = [];
+  for (const root of getPersonalHttpPaths()) {
+    if (await pathExists(root)) {
+      all.push(...(await listHttpRecursive(root, root)));
+    }
+  }
+  return dedupeByPath(all);
 }
 
 export function getPersonalScopeLabel(): string {

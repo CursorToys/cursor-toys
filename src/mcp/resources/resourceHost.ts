@@ -9,6 +9,8 @@ import {
   getKanbanPath,
   getNotepadsPath,
   getPersonalAgentsPath,
+  getPersonalHttpPath,
+  getPersonalHttpPaths,
   getPlansPath,
   getPromptsPath,
   getRulesPath,
@@ -117,13 +119,20 @@ export class McpResourceHost {
       }
     }
 
-    if (!template || template.includes('http/{path}')) {
-      const listed = (await http.httpList()) as { files?: string[] };
-      for (const filePath of listed.files ?? []) {
+    if (!template || template.includes('http/{path}') || template.includes('http/personal/{path}')) {
+      const listed = (await http.httpList()) as {
+        files?: Array<{ filePath: string; scope?: string }>;
+      };
+      for (const file of listed.files ?? []) {
+        const filePath = file.filePath;
+        const uri =
+          file.scope === 'personal'
+            ? `cursortoys://http/personal/${encodeURIComponent(filePath)}`
+            : `cursortoys://http/${encodeURIComponent(filePath)}`;
         entries.push({
-          uri: `cursortoys://http/${encodeURIComponent(filePath)}`,
+          uri,
           name: path.basename(filePath),
-          description: 'HTTP request file',
+          description: file.scope === 'personal' ? 'Personal HTTP request file' : 'HTTP request file',
           mimeType: 'text/plain',
         });
       }
@@ -208,7 +217,12 @@ export class McpResourceHost {
         break;
       }
       case 'http': {
-        const filePath = decodeUriSegment(segments.join('/'));
+        let filePath: string;
+        if (segments[0] === 'personal' && segments.length > 1) {
+          filePath = decodeUriSegment(segments.slice(1).join('/'));
+        } else {
+          filePath = decodeUriSegment(segments.join('/'));
+        }
         const data = await http.httpRead({ filePath });
         mimeType = 'text/plain';
         text = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
@@ -328,6 +342,8 @@ export class McpResourceHost {
         kanban: getKanbanPath(workspacePath),
         notepads: getNotepadsPath(workspacePath),
         http: workspacePath ? getHttpPath(workspacePath) : null,
+        personalHttp: getPersonalHttpPath(),
+        personalHttpPaths: getPersonalHttpPaths(),
         commands: getCommandsPath(workspacePath),
         rules: getRulesPath(workspacePath),
         prompts: getPromptsPath(workspacePath),

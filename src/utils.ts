@@ -364,7 +364,7 @@ function directoryHasContent(dirPath: string, maxDepth = 4): boolean {
 function resolveExtensionDataRoot(
   workspacePath: string | undefined,
   isPersonal: boolean,
-  subfolder: 'kanban' | 'notepads'
+  subfolder: 'kanban' | 'notepads' | 'http'
 ): string {
   return resolveExtensionDataSubfolderRoot({
     homePath: getUserHomePath(),
@@ -381,7 +381,7 @@ function resolveExtensionDataRoot(
  * Canonical path for new extension data (always under `.cursortoys/` or configured folder).
  */
 export function getCanonicalExtensionDataPath(
-  subfolder: 'kanban' | 'notepads',
+  subfolder: 'kanban' | 'notepads' | 'http',
   workspacePath?: string,
   isPersonal: boolean = false
 ): string {
@@ -409,7 +409,7 @@ export function getKanbanPath(workspacePath?: string, isPersonal: boolean = fals
  * Returns true when a personal Kanban or notepads folder has content.
  */
 export function extensionDataScopeHasContent(
-  subfolder: 'kanban' | 'notepads',
+  subfolder: 'kanban' | 'notepads' | 'http',
   isPersonal: boolean,
   workspacePath?: string
 ): boolean {
@@ -530,22 +530,89 @@ export function isPlanFile(filePath: string): boolean {
 import { getHttpResponseExtension, isHttpRequestExtension } from './httpRequestExtensions';
 
 /**
- * Checks if a file is an HTTP request file in .{baseFolder}/http/ folder
+ * Checks if a file is an HTTP request file under project or personal http folders.
  * @param filePath The file path to check
  * @returns true if the file is an HTTP request file
  */
 export function isHttpRequestFile(filePath: string): boolean {
   const normalizedPath = filePath.replace(/\\/g, '/');
-  
-  // Check if file is in any base folder's http/ directory
   const baseFolderName = getBaseFolderName();
-  if (!normalizedPath.includes(`/.${baseFolderName}/http/`) && 
-      !normalizedPath.includes('/.cursor/http/')) {
+  const extFolder = getExtensionDataFolderName();
+
+  const inHttpFolder =
+    normalizedPath.includes(`/.${extFolder}/http/`) ||
+    normalizedPath.includes(`/.${baseFolderName}/http/`) ||
+    normalizedPath.includes('/.cursor/http/');
+
+  if (!inHttpFolder) {
     return false;
   }
-  
+
   const ext = getFileExtension(filePath).toLowerCase();
   return isHttpRequestExtension(ext);
+}
+
+/**
+ * Returns true when the file path is under a personal HTTP folder.
+ */
+export function isPersonalHttpPath(filePath: string): boolean {
+  const normalizedPath = filePath.replace(/\\/g, '/');
+  const home = getUserHomePath().replace(/\\/g, '/');
+  if (!normalizedPath.startsWith(home)) {
+    return false;
+  }
+  return isHttpRequestFile(filePath);
+}
+
+/**
+ * Gets all personal HTTP folder roots (canonical + legacy) for listing.
+ */
+export function getPersonalHttpPaths(): string[] {
+  const homePath = getUserHomePath();
+  const baseFolderName = getBaseFolderName();
+  const extFolder = getExtensionDataFolderName();
+  const seen = new Set<string>();
+  const paths: string[] = [];
+
+  for (const candidate of [
+    path.join(homePath, `.${extFolder}`, 'http'),
+    path.join(homePath, `.${baseFolderName}`, 'http'),
+    path.join(homePath, '.cursor', 'http'),
+  ]) {
+    const key = candidate.replace(/\\/g, '/');
+    if (!seen.has(key)) {
+      seen.add(key);
+      paths.push(candidate);
+    }
+  }
+
+  return paths;
+}
+
+/**
+ * Gets the resolved personal HTTP folder for new files.
+ */
+export function getPersonalHttpPath(): string {
+  return resolveExtensionDataRoot(undefined, true, 'http');
+}
+
+/**
+ * Gets the path to the HTTP folder
+ * @param workspacePath Workspace path (ignored when isPersonal is true)
+ * @param isPersonal When true, returns personal HTTP folder under user home
+ * @returns Path to http folder
+ */
+export function getHttpPath(workspacePath: string, isPersonal?: false): string;
+export function getHttpPath(workspacePath: string | undefined, isPersonal: true): string;
+export function getHttpPath(workspacePath?: string, isPersonal: boolean = false): string {
+  if (isPersonal) {
+    return resolveExtensionDataRoot(workspacePath, true, 'http');
+  }
+  if (!workspacePath) {
+    return getPersonalHttpPath();
+  }
+  const baseFolderName = getBaseFolderName();
+  return path.join(workspacePath, `.${baseFolderName}`, 'http');
 }
 
 /**
@@ -637,16 +704,6 @@ export function isProjectRootEnvironmentFile(filePath: string): boolean {
     }
   }
   return false;
-}
-
-/**
- * Gets the path to the HTTP folder
- * @param workspacePath Workspace path
- * @returns Path to .{baseFolder}/http/
- */
-export function getHttpPath(workspacePath: string): string {
-  const baseFolderName = getBaseFolderName();
-  return path.join(workspacePath, `.${baseFolderName}`, 'http');
 }
 
 /**

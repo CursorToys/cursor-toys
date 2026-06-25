@@ -10,6 +10,12 @@ import {
   buildHttpResponsePanelKey,
   HttpResponsePanel,
 } from './httpResponsePanel';
+import { HttpResponseEmitter } from './httpResponseEmitter';
+import type { HttpResponsePayload } from './httpResponseTypes';
+import {
+  isHttpRequestCustomEditorOpen,
+  resolveHttpResponseView,
+} from './httpResponseView';
 import type { AssertionResult } from './assertionTypes';
 import {
   type HttpRequestConfig,
@@ -1329,10 +1335,7 @@ export async function executeHttpRequestFromFile(
     const timeoutConfig = vscode.workspace.getConfiguration('cursorToys');
     const timeout = timeoutConfig.get<number>('httpRequestTimeout', 10);
     const saveFile = timeoutConfig.get<boolean>('httpRequestSaveFile', false);
-    const responseView = timeoutConfig.get<'panel' | 'editor'>(
-      'httpRequestResponseView',
-      'panel'
-    );
+    const responseView = resolveHttpResponseView();
     
     // Show progress
     await vscode.window.withProgress({
@@ -1373,13 +1376,12 @@ export async function executeHttpRequestFromFile(
         
         progress.report({ increment: 50, message: 'Processing response...' });
         
-        // Validate assertions if present
+        // Validate assertions if present and enabled
         let assertionResults: any[] = [];
-        if (assertions.length > 0) {
-          console.log(`[DEBUG] Found ${assertions.length} assertions to validate`);
+        const assertionsEnabled = timeoutConfig.get<boolean>('httpAssertionsEnabled', true);
+        if (assertions.length > 0 && assertionsEnabled) {
           const { validateAssertions } = require('./assertionValidator');
           assertionResults = validateAssertions(assertions, result);
-          console.log(`[DEBUG] Validation returned ${assertionResults.length} results`);
         }
         
         // Format response with payload and assertions
@@ -1400,29 +1402,43 @@ export async function executeHttpRequestFromFile(
           executionTimes.set(responseUri.toString(), executionTimeSeconds);
         }
 
-        if (responseView === 'panel') {
+        const panelKey = buildHttpResponsePanelKey(
+          requestUri,
+          startLine,
+          endLine,
+          sectionTitle
+        );
+        const responsePayload: HttpResponsePayload = {
+          requestLabel: `${config.method || 'GET'} ${config.url}`,
+          statusCode: result.statusCode,
+          statusText: result.statusText,
+          executionTimeSeconds,
+          envName: envUsed && envName ? envName : undefined,
+          headers: result.headers,
+          body: displayBody,
+          requestPayload,
+          assertionResults: assertionResults as AssertionResult[],
+          rawFormatted: responseText,
+          savePath: saveFile ? responsePath : undefined,
+        };
+
+        HttpResponseEmitter.getInstance().fire({
+          requestUri: requestUri.toString(),
+          blockKey: panelKey,
+          startLine,
+          payload: responsePayload,
+        });
+
+        const useInline =
+          responseView === 'inline' && isHttpRequestCustomEditorOpen(requestUri);
+
+        if (useInline) {
           progress.report({ increment: 100, message: 'Response ready' });
-          const panelKey = buildHttpResponsePanelKey(
-            requestUri,
-            startLine,
-            endLine,
-            sectionTitle
-          );
+        } else if (responseView === 'panel' || responseView === 'inline') {
+          progress.report({ increment: 100, message: 'Response ready' });
           HttpResponsePanel.showOrUpdate(
             panelKey,
-            {
-              requestLabel: `${config.method || 'GET'} ${config.url}`,
-              statusCode: result.statusCode,
-              statusText: result.statusText,
-              executionTimeSeconds,
-              envName: envUsed && envName ? envName : undefined,
-              headers: result.headers,
-              body: displayBody,
-              requestPayload,
-              assertionResults: assertionResults as AssertionResult[],
-              rawFormatted: responseText,
-              savePath: saveFile ? responsePath : undefined,
-            },
+            responsePayload,
             { requestUri, startLine, endLine, sectionTitle }
           );
         } else {

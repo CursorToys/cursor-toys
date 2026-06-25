@@ -1,4 +1,5 @@
 import type { HttpRequestAssertionSummary } from './httpRequestEditorTypes';
+import { ASSERT_OPERATORS_NO_VALUE } from './httpRequestEditorAssertMeta';
 import { findRequestLineRange } from './httpRequestEditorSerializer';
 
 function escapeAssertString(value: string): string {
@@ -40,6 +41,9 @@ export function serializeAssertionBlock(
 
     if (desc && desc !== expr && expected) {
       return ` * @assert("${escapeAssertString(desc)}", "${escapeAssertString(expr)}", "${escapeAssertString(op)}", ${formatExpectedValue(expected)})`;
+    }
+    if (desc && desc !== expr && ASSERT_OPERATORS_NO_VALUE.has(op)) {
+      return ` * @assert("${escapeAssertString(desc)}", "${escapeAssertString(expr)}", "${escapeAssertString(op)}")`;
     }
     if (expected) {
       return ` * @assert("${escapeAssertString(expr)}", "${escapeAssertString(op)}", ${formatExpectedValue(expected)})`;

@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.23-1",
+  "version": "2026.6.25-1",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -2180,20 +2180,42 @@
           "cursorToys.httpRequestResponseView": {
             "type": "string",
             "enum": [
+              "inline",
               "panel",
               "editor"
             ],
             "enumDescriptions": [
-              "Show responses in a reusable webview panel (updates in place on re-run)",
+              "Show responses inline in the visual HTTP editor (used when compact mode is on)",
+              "Show responses in a reusable webview panel beside the editor",
               "Open each response in the text editor (legacy behavior; may open many tabs)"
             ],
             "default": "panel",
-            "description": "Where to display HTTP responses after Send Request."
+            "description": "Where to display HTTP responses when compact mode is off. Ignored while compact mode is enabled."
           },
           "cursorToys.httpRequestEditor.enabled": {
             "type": "boolean",
             "default": true,
             "description": "Open .req/.request files from the HTTP folder in the visual request editor (Postman-style) instead of plain text."
+          },
+          "cursorToys.httpRequestEditor.compactMode": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show request and response together in the visual HTTP editor. When disabled, responses use the Response View setting (panel or editor tab)."
+          },
+          "cursorToys.httpRequestEditor.responseLayout": {
+            "type": "string",
+            "enum": [
+              "left",
+              "bottom",
+              "right"
+            ],
+            "enumDescriptions": [
+              "Response panel to the left of the request (default)",
+              "Response panel below the request",
+              "Response panel to the right of the request"
+            ],
+            "default": "left",
+            "description": "Layout of the inline response when compact mode is enabled."
           },
           "cursorToys.httpRequestEditor.autoSave": {
             "type": "boolean",
@@ -2705,7 +2727,7 @@
     "test:command-palette": "npm run compile && node out/cursorToysCommandPalette.test.js",
     "test:extension-data": "npm run compile && node out/utils.extensionData.test.js",
     "test:file-meta": "npm run compile && node out/httpRequestEditorFileMeta.test.js",
-    "test:http": "npm run compile && node out/httpDynamicVariables.test.js && node out/httpRequestExtensions.test.js && node out/httpRequestVariables.test.js && node out/httpVariableResolver.test.js && node out/httpRequestParser.test.js && node out/httpRequestFileNaming.test.js && node out/httpFolderTree.test.js && node out/httpCurlImport.test.js",
+    "test:http": "npm run compile && node out/httpDynamicVariables.test.js && node out/httpRequestExtensions.test.js && node out/httpRequestVariables.test.js && node out/httpVariableResolver.test.js && node out/httpRequestParser.test.js && node out/httpRequestFileNaming.test.js && node out/httpFolderTree.test.js && node out/httpCurlImport.test.js && node out/assertionParser.test.js && node out/assertionValidator.test.js",
     "test:usage-monitor": "npm run compile && node out/providerUsage/openRouterCredits.test.js && node out/providerUsage/openRouterKeyInfo.test.js && node out/providerUsage/openRouterActivity.test.js && node out/providerUsage/usageMonitorPanelState.test.js && node out/providerUsage/deepInfraBilling.test.js",
     "test:mcp": "npm run compile && node out/mcp/security.test.js && node out/mcp/commandRegistry.test.js && node out/mcp/mcpWave4.test.js",
     "test:globalUserAi": "npm run compile && node out/globalUserAiParity.test.js",

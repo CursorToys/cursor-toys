@@ -13,6 +13,8 @@ const BLANK_FORM: HttpRequestFormData = {
   body: '',
 };
 
+export type HttpRequestScope = 'personal' | 'project';
+
 async function listHttpRequestFileNames(httpDir: string): Promise<string[]> {
   const names: string[] = [];
   const dirUri = vscode.Uri.file(httpDir);
@@ -38,19 +40,66 @@ async function listHttpRequestFileNames(httpDir: string): Promise<string[]> {
   return names;
 }
 
+async function resolveHttpRequestScope(
+  workspacePath: string | undefined,
+  scope?: HttpRequestScope | string
+): Promise<HttpRequestScope | undefined> {
+  if (scope === 'personal' || scope === 'project') {
+    return scope;
+  }
+
+  const hasWorkspace =
+    !!workspacePath || !!vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+
+  if (!hasWorkspace) {
+    return 'personal';
+  }
+
+  const pick = await vscode.window.showQuickPick(
+    [
+      {
+        label: 'Project',
+        description: 'Save under workspace .cursor/http (or configured base folder)',
+        scope: 'project' as const,
+      },
+      {
+        label: 'Personal',
+        description: 'Save under ~/.cursortoys/http (shared across projects)',
+        scope: 'personal' as const,
+      },
+    ],
+    { placeHolder: 'Where should the HTTP request be saved?' }
+  );
+
+  return pick?.scope;
+}
+
 /**
- * Creates a new .req file under the workspace HTTP folder and opens the visual editor.
+ * Creates a new .req file under the personal or project HTTP folder and opens the visual editor.
  * File name pattern: YYYY-MM-DD-XX.req (XX increments per day).
  */
-export async function createNewHttpRequest(workspacePath?: string): Promise<void> {
+export async function createNewHttpRequest(
+  workspacePath?: string,
+  scope?: HttpRequestScope | string
+): Promise<void> {
   const resolvedWorkspace =
     workspacePath ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  if (!resolvedWorkspace) {
-    void vscode.window.showErrorMessage('Open a workspace folder to create HTTP requests.');
+
+  const resolvedScope = await resolveHttpRequestScope(resolvedWorkspace, scope);
+  if (!resolvedScope) {
     return;
   }
 
-  const httpDir = getHttpPath(resolvedWorkspace);
+  if (resolvedScope === 'project' && !resolvedWorkspace) {
+    void vscode.window.showErrorMessage('Open a workspace folder to create project HTTP requests.');
+    return;
+  }
+
+  const httpDir =
+    resolvedScope === 'personal'
+      ? getHttpPath(undefined, true)
+      : getHttpPath(resolvedWorkspace!);
+
   try {
     await vscode.workspace.fs.createDirectory(vscode.Uri.file(httpDir));
   } catch {

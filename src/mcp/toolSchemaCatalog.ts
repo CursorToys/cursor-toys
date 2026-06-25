@@ -549,12 +549,13 @@ export const MCP_TOOL_DEFINITIONS: ToolDefinition[] = [
   },
   {
     name: 'http_create',
-    description: 'Create HTTP request file',
+    description: 'Create HTTP request file (project or personal scope)',
     inputSchema: {
       name: z.string().optional(),
       method: z.string().optional(),
       url: z.string().optional(),
       body: z.string().optional(),
+      scope: z.enum(['project', 'personal']).optional(),
     },
   },
   {

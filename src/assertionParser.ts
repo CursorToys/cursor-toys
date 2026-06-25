@@ -1,4 +1,71 @@
 import { Assertion, AssertionOperator } from './assertionTypes';
+import { ASSERT_OPERATORS_NO_VALUE } from './httpRequestEditorAssertMeta';
+
+const KNOWN_OPERATORS = new Set<string>([
+  'equals',
+  'notEquals',
+  'gt',
+  'gte',
+  'lt',
+  'lte',
+  'contains',
+  'notContains',
+  'startsWith',
+  'endsWith',
+  'matches',
+  'notMatches',
+  'isNull',
+  'isNotNull',
+  'isEmpty',
+  'isNotEmpty',
+  'isDefined',
+  'isUndefined',
+  'isTruthy',
+  'isFalsy',
+  'isNumber',
+  'isString',
+  'isBoolean',
+  'isArray',
+  'isJson',
+  'in',
+  'notIn',
+  'between',
+  'length',
+]);
+
+function normalizeOperatorToken(value: string): string {
+  return value.trim().replace(/^["']|["']$/g, '');
+}
+
+function canonicalizeOperator(value: string): AssertionOperator {
+  const token = normalizeOperatorToken(value).toLowerCase();
+  for (const op of KNOWN_OPERATORS) {
+    if (op.toLowerCase() === token) {
+      return op as AssertionOperator;
+    }
+  }
+  return token as AssertionOperator;
+}
+
+function isNoValueOperator(value: string): boolean {
+  const token = normalizeOperatorToken(value).toLowerCase();
+  for (const op of ASSERT_OPERATORS_NO_VALUE) {
+    if (op.toLowerCase() === token) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isKnownOperator(value: string): boolean {
+  const token = normalizeOperatorToken(value).toLowerCase();
+  for (const op of KNOWN_OPERATORS) {
+    if (op.toLowerCase() === token) {
+      return true;
+    }
+  }
+  return false;
+}
 
 /**
  * Extracts assertions from HTTP request file content.
@@ -83,7 +150,7 @@ function parseAssertionLine(line: string): Assertion | null {
   if (match4) {
     const description = match4[1].trim();
     const expression = match4[2].trim();
-    const operator = match4[3].trim() as AssertionOperator;
+    const operator = canonicalizeOperator(match4[3]);
     const expectedRaw = match4[4].trim();
     const expected = parseExpectedValue(expectedRaw);
     
@@ -95,40 +162,51 @@ function parseAssertionLine(line: string): Assertion | null {
     };
   }
   
-  // Try 3-parameter format: @assert("expression", "operator", value)
-  // IMPORTANT: Test this BEFORE the 3-param with description to avoid false matches
-  // Use non-greedy matching for the value part
-  const assertRegexWithValue = /@assert\s*\(\s*"([^"]*)"\s*,\s*"([^"]*)"\s*,\s*(.+?)\s*\)\s*$/;
-  const matchWithValue = line.match(assertRegexWithValue);
-  
-  if (matchWithValue) {
-    const expression = matchWithValue[1].trim();
-    const operator = matchWithValue[2].trim() as AssertionOperator;
-    const expectedRaw = matchWithValue[3].trim();
-    const expected = parseExpectedValue(expectedRaw);
-    
-    return {
-      expression,
-      operator,
-      expected,
-    };
-  }
-  
-  // Try 3-parameter format with description: @assert("description", "expression", "operator")
-  // This will only match if the third param is NOT followed by a comma
+  // Try 3-parameter format with description and no-value operator:
+  // @assert("description", "expression", "operator")
   const assertRegex3ParamsDesc = /@assert\s*\(\s*"([^"]*)"\s*,\s*"([^"]*)"\s*,\s*"([^"]*)"\s*\)\s*$/;
   const match3Desc = line.match(assertRegex3ParamsDesc);
-  
+
   if (match3Desc) {
     const description = match3Desc[1].trim();
     const expression = match3Desc[2].trim();
-    const operator = match3Desc[3].trim() as AssertionOperator;
-    
+    const operatorRaw = match3Desc[3].trim();
+
+    if (isNoValueOperator(operatorRaw)) {
+      return {
+        description,
+        expression,
+        operator: canonicalizeOperator(operatorRaw),
+        expected: null,
+      };
+    }
+  }
+
+  // Try 3-parameter format: @assert("expression", "operator", value)
+  const assertRegexWithValue = /@assert\s*\(\s*"([^"]*)"\s*,\s*"([^"]*)"\s*,\s*(.+?)\s*\)\s*$/;
+  const matchWithValue = line.match(assertRegexWithValue);
+
+  if (matchWithValue) {
+    const first = matchWithValue[1].trim();
+    const second = matchWithValue[2].trim();
+    const expectedRaw = matchWithValue[3].trim();
+
+    // @assert("desc", "expr", "op") misread as expr/op/value when op has no value
+    if (isKnownOperator(expectedRaw) && isNoValueOperator(expectedRaw)) {
+      return {
+        description: first,
+        expression: second,
+        operator: canonicalizeOperator(expectedRaw),
+        expected: null,
+      };
+    }
+
+    const expected = parseExpectedValue(expectedRaw);
+
     return {
-      description,
-      expression,
-      operator,
-      expected: null,
+      expression: first,
+      operator: canonicalizeOperator(second),
+      expected,
     };
   }
   
@@ -138,8 +216,8 @@ function parseAssertionLine(line: string): Assertion | null {
   
   if (matchNoValue) {
     const expression = matchNoValue[1].trim();
-    const operator = matchNoValue[2].trim() as AssertionOperator;
-    
+    const operator = canonicalizeOperator(matchNoValue[2]);
+
     return {
       expression,
       operator,

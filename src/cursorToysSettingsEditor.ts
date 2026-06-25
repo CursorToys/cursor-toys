@@ -278,8 +278,30 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       const current = config.get<string>(settingKey, 'panel');
       const picked = await vscode.window.showQuickPick(
         [
-          { label: 'panel', description: 'Reusable response panel' },
-          { label: 'editor', description: 'Open each response in editor' },
+          { label: 'panel', description: 'Reusable response panel (when compact mode is off)' },
+          { label: 'editor', description: 'Open each response in editor tab' },
+          { label: 'inline', description: 'Legacy: same as compact mode on' },
+        ],
+        { placeHolder: `Current: ${current}` }
+      );
+      if (!picked) {
+        return;
+      }
+      await updateGlobalSetting(settingKey, picked.label);
+      return;
+    }
+
+    case 'cursorToys.httpRequestEditor.compactMode':
+      await pickBoolean(settingKey, true);
+      return;
+
+    case 'cursorToys.httpRequestEditor.responseLayout': {
+      const current = config.get<string>(settingKey, 'left');
+      const picked = await vscode.window.showQuickPick(
+        [
+          { label: 'left', description: 'Response to the left of the request' },
+          { label: 'bottom', description: 'Response below the request' },
+          { label: 'right', description: 'Response to the right of the request' },
         ],
         { placeHolder: `Current: ${current}` }
       );

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { getHttpPath } from './utils';
+import { getHttpPath, getPersonalHttpPaths } from './utils';
+import { getPersonalScopeLabel } from './control/assetLister';
 import { buildHttpFolderTree, type HttpFolderTreeEntry } from './httpFolderTree';
 import {
   getHttpRequestBlocks,
@@ -41,7 +42,7 @@ function isHttpTreeFile(filePath: string): boolean {
 }
 
 /**
- * Tree data provider for workspace HTTP request files and runnable blocks.
+ * Tree data provider for personal and workspace HTTP request files.
  */
 export class UserHttpTreeProvider implements vscode.TreeDataProvider<HttpTreeElement> {
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<HttpTreeElement | undefined | void>();
@@ -140,37 +141,60 @@ export class UserHttpTreeProvider implements vscode.TreeDataProvider<HttpTreeEle
   }
 
   private async loadRootChildren(): Promise<HttpTreeItem[]> {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      return [];
-    }
+    const categories: HttpTreeItem[] = [];
 
-    const httpPath = getHttpPath(workspaceFolder.uri.fsPath);
-    const folderUri = vscode.Uri.file(httpPath);
-
-    try {
-      await vscode.workspace.fs.stat(folderUri);
-    } catch {
-      return [];
-    }
-
-    const files = await this.readDirectoryRecursive(httpPath, httpPath);
-    if (files.length === 0) {
-      return [];
-    }
-
-    const grouped = this.groupFilesByFolder(files);
-    const workspaceName = workspaceFolder.name || 'Project';
-
-    return [
-      {
+    const personalFiles = await this.collectFilesFromRoots(getPersonalHttpPaths());
+    if (personalFiles.length > 0) {
+      categories.push({
         uri: vscode.Uri.file(''),
-        fileName: `${workspaceName} (workspace)`,
-        filePath: httpPath,
+        fileName: `${getPersonalScopeLabel()} (personal)`,
+        filePath: getPersonalHttpPaths()[0] ?? '',
         type: 'category',
-        children: grouped,
-      },
-    ];
+        children: this.groupFilesByFolder(personalFiles),
+      });
+    }
+
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      const httpPath = getHttpPath(workspaceFolder.uri.fsPath);
+      const workspaceFiles = await this.collectFilesFromRoots([httpPath]);
+      if (workspaceFiles.length > 0) {
+        const workspaceName = workspaceFolder.name || 'Project';
+        categories.push({
+          uri: vscode.Uri.file(''),
+          fileName: `${workspaceName} (workspace)`,
+          filePath: httpPath,
+          type: 'category',
+          children: this.groupFilesByFolder(workspaceFiles),
+        });
+      }
+    }
+
+    return categories;
+  }
+
+  private async collectFilesFromRoots(roots: string[]): Promise<HttpTreeItem[]> {
+    const seen = new Set<string>();
+    const files: HttpTreeItem[] = [];
+
+    for (const root of roots) {
+      try {
+        await vscode.workspace.fs.stat(vscode.Uri.file(root));
+      } catch {
+        continue;
+      }
+      const rootFiles = await this.readDirectoryRecursive(root, root);
+      for (const file of rootFiles) {
+        const key = file.filePath.replace(/\\/g, '/');
+        if (seen.has(key)) {
+          continue;
+        }
+        seen.add(key);
+        files.push(file);
+      }
+    }
+
+    return files;
   }
 
   private async loadRequestChildren(fileItem: HttpTreeItem): Promise<HttpTreeItem[]> {

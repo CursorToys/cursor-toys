@@ -78,6 +78,8 @@ export interface HttpRequestEditorInitMessage {
     description: string;
     kind: 'helper';
   }>;
+  compactMode: boolean;
+  responseLayout: 'left' | 'bottom' | 'right';
 }
 
 /** Messages webview → extension. */
@@ -99,6 +101,7 @@ export type HttpRequestEditorInboundMessage =
   | { command: 'createEnvironment' }
   | { command: 'saveAssertions'; blockIndex: number; assertions: HttpRequestAssertionSummary[]; silent?: boolean }
   | { command: 'importCurl'; text: string; blockIndex: number }
-  | { command: 'newRequest' };
+  | { command: 'newRequest' }
+  | { command: 'sendResponseToChat' };
 
 export const HTTP_REQUEST_EDITOR_VIEW_TYPE = 'cursorToys.httpRequest';

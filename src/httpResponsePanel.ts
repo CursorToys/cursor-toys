@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import type { AssertionResult } from './assertionTypes';
+import type { HttpResponsePayload } from './httpResponseTypes';
+import { sendHttpExchangeToChat } from './httpResponseChat';
 import {
   buildPanelHeader,
   buildWebviewDocument,
@@ -8,19 +10,7 @@ import {
   getExtensionUri,
 } from './webviewUi';
 
-export interface HttpResponsePanelData {
-  requestLabel: string;
-  statusCode: number;
-  statusText: string;
-  executionTimeSeconds: string;
-  envName?: string;
-  headers: Record<string, string>;
-  body: string;
-  requestPayload?: string;
-  assertionResults?: AssertionResult[];
-  rawFormatted: string;
-  savePath?: string;
-}
+export type HttpResponsePanelData = HttpResponsePayload;
 
 /** Context needed to re-run the same HTTP request block from the response panel. */
 export interface HttpResendContext {
@@ -98,6 +88,10 @@ export class HttpResponsePanel {
       }
       if (msg.command === 'resend') {
         await this.resendRequest();
+        return;
+      }
+      if (msg.command === 'sendToChat') {
+        await sendHttpExchangeToChat(this.data);
       }
     });
 
@@ -318,6 +312,7 @@ function buildHtml(data: HttpResponsePanelData, webview: vscode.Webview): string
     `<span class="hint">${escapeHtml(data.executionTimeSeconds)}s${env}</span>` +
     `<span class="ct-spacer"></span>` +
     `<button type="button" id="resendBtn" class="ct-btn primary">Send again</button>` +
+    `<button type="button" id="sendChatBtn" class="ct-btn secondary">Send to chat</button>` +
     `<button type="button" id="copyBtn" class="ct-btn secondary">Copy response</button>` +
     `</div>` +
     saved +
@@ -381,6 +376,7 @@ function buildHtml(data: HttpResponsePanelData, webview: vscode.Webview): string
       });
     }
     document.getElementById('resendBtn')?.addEventListener('click', () => vscode.postMessage({ command: 'resend' }));
+    document.getElementById('sendChatBtn')?.addEventListener('click', () => vscode.postMessage({ command: 'sendToChat' }));
     document.getElementById('copyBtn')?.addEventListener('click', () => vscode.postMessage({ command: 'copy' }));`;
 
   if (!extensionUri) {

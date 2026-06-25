@@ -1,5 +1,23 @@
-import { Assertion, AssertionResult, ResponseData } from './assertionTypes';
+import { Assertion, AssertionResult, ResponseData, AssertionOperator } from './assertionTypes';
 import { HttpRequestResult } from './httpRequestExecutor';
+
+const KNOWN_OPERATORS: AssertionOperator[] = [
+  'equals', 'notEquals', 'gt', 'gte', 'lt', 'lte',
+  'contains', 'notContains', 'startsWith', 'endsWith', 'matches', 'notMatches',
+  'isNull', 'isNotNull', 'isEmpty', 'isNotEmpty', 'isDefined', 'isUndefined',
+  'isTruthy', 'isFalsy', 'isNumber', 'isString', 'isBoolean', 'isArray', 'isJson',
+  'in', 'notIn', 'between', 'length',
+];
+
+function canonicalizeOperator(value: string): AssertionOperator {
+  const token = String(value).trim().toLowerCase();
+  for (const op of KNOWN_OPERATORS) {
+    if (op.toLowerCase() === token) {
+      return op;
+    }
+  }
+  return token as AssertionOperator;
+}
 
 /**
  * Validates assertions against HTTP response
@@ -66,9 +84,10 @@ function evaluateAssertion(
   // Resolve the expression to get actual value
   const actualValue = resolveExpression(assertion.expression, responseData);
   
-  // Evaluate based on operator
+  // Evaluate based on operator (case-insensitive)
+  const normalizedOperator = canonicalizeOperator(assertion.operator);
   const passed = evaluateOperator(
-    assertion.operator,
+    normalizedOperator,
     actualValue,
     assertion.expected
   );

@@ -10,6 +10,8 @@ import {
   createHttpDocsSkill,
   envNameFromProjectEnvFileName,
   getHttpPath,
+  getPersonalHttpPath,
+  getPersonalHttpPaths,
   getProjectEnvFilePath,
   getProjectEnvRoot,
   isHttpRequestFile,
@@ -48,25 +50,51 @@ async function listHttpFilesRecursive(dir: string): Promise<string[]> {
 }
 
 export async function httpList(): Promise<unknown> {
-  const workspacePath = requireWorkspace();
-  const httpPath = getHttpPath(workspacePath);
-  const files = await listHttpFilesRecursive(httpPath);
+  const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const personalHttpPaths = getPersonalHttpPaths();
+  const personalFiles = new Set<string>();
+
+  for (const root of personalHttpPaths) {
+    for (const filePath of await listHttpFilesRecursive(root)) {
+      personalFiles.add(filePath.replace(/\\/g, '/'));
+    }
+  }
+
+  let projectHttpPath: string | null = null;
+  const projectFiles = new Set<string>();
+  if (workspacePath) {
+    projectHttpPath = getHttpPath(workspacePath);
+    for (const filePath of await listHttpFilesRecursive(projectHttpPath)) {
+      projectFiles.add(filePath.replace(/\\/g, '/'));
+    }
+  }
+
+  const allFiles = [...new Set([...personalFiles, ...projectFiles])].sort();
+
   return {
-    httpPath,
-    files: files.map((f) => ({
-      filePath: f,
-      relativePath: path.relative(workspacePath, f).replace(/\\/g, '/'),
+    personalHttpPaths,
+    personalHttpPath: getPersonalHttpPath(),
+    httpPath: projectHttpPath,
+    files: allFiles.map((filePath) => ({
+      filePath,
+      relativePath: workspacePath
+        ? path.relative(workspacePath, filePath).replace(/\\/g, '/')
+        : path.basename(filePath),
+      scope: personalFiles.has(filePath) ? 'personal' : 'project',
     })),
   };
 }
 
 export async function httpRead(args: Record<string, unknown>): Promise<unknown> {
-  const workspacePath = requireWorkspace();
+  const workspacePath = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   let filePath = args.filePath as string | undefined;
   if (!filePath) {
     throw new Error('filePath is required');
   }
   if (!path.isAbsolute(filePath)) {
+    if (!workspacePath) {
+      throw new Error('No workspace folder open for relative filePath');
+    }
     filePath = path.join(workspacePath, filePath);
   }
   const raw = await vscode.workspace.fs.readFile(vscode.Uri.file(filePath));
@@ -77,8 +105,14 @@ export async function httpRead(args: Record<string, unknown>): Promise<unknown> 
 }
 
 export async function httpCreate(args: Record<string, unknown>): Promise<unknown> {
-  const workspacePath = requireWorkspace();
-  const httpPath = getHttpPath(workspacePath);
+  const scope = args.scope === 'personal' ? 'personal' : 'project';
+  let httpPath: string;
+  if (scope === 'personal') {
+    httpPath = getHttpPath(undefined, true);
+  } else {
+    const workspacePath = requireWorkspace();
+    httpPath = getHttpPath(workspacePath);
+  }
   await vscode.workspace.fs.createDirectory(vscode.Uri.file(httpPath));
   const baseName = sanitizeFileName(String(args.name ?? 'new-request').trim() || 'new-request');
   const method = String(args.method ?? 'GET').toUpperCase();
@@ -96,7 +130,8 @@ export async function httpCreate(args: Record<string, unknown>): Promise<unknown
     '',
   ].join('\n');
   await vscode.workspace.fs.writeFile(vscode.Uri.file(filePath), Buffer.from(content, 'utf8'));
-  return httpRead({ filePath });
+  const created = (await httpRead({ filePath })) as Record<string, unknown>;
+  return { ...created, scope };
 }
 
 export async function httpUpdate(args: Record<string, unknown>): Promise<unknown> {

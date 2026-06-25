@@ -1,6 +1,6 @@
 import * as path from 'path';
 
-export type ExtensionDataSubfolder = 'kanban' | 'notepads';
+export type ExtensionDataSubfolder = 'kanban' | 'notepads' | 'http';
 
 /**
  * Normalizes the extension data folder name (e.g. cursortoys).
@@ -47,7 +47,7 @@ export interface ResolveExtensionDataRootOptions {
 }
 
 /**
- * Resolves the active read/write root for Kanban or Notepads.
+ * Resolves the active read/write root for Kanban, Notepads, or HTTP.
  * Prefers `.cursortoys/` when it has content; otherwise falls back to legacy `.{baseFolder}/`.
  * When both are empty, returns the canonical extension data path for new files.
  */
@@ -87,7 +87,7 @@ export function resolveExtensionDataSubfolderRoot(
 }
 
 /**
- * Returns true when the path is under extension data or legacy notepad/kanban folders.
+ * Returns true when the path is under extension data or legacy notepad/kanban/http folders.
  */
 export function isExtensionDataSubfolderPath(
   filePath: string,

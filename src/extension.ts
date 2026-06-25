@@ -5,7 +5,7 @@ import { importDeeplink } from './deeplinkImporter';
 import { importRemoteSkillFromGitHubFolderUrl, validateGitHubSkillFolderUrl } from './skillRemoteImporter';
 import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist, createSkillFromStructure } from './shareableImporter';
-import { getFileTypeFromPath, isAllowedExtension, isHttpRequestFile, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getKanbanPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getProjectEnvFilePath, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, getPersonalAgentsPath, getAgentsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, isHttpRequestFile, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getKanbanPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getPersonalHttpPaths, getProjectEnvFilePath, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, getPersonalAgentsPath, getAgentsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { EnvCodeLensProvider } from './envCodeLensProvider';
@@ -2162,7 +2162,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const newHttpRequest = vscode.commands.registerCommand(
     'cursor-toys.newHttpRequest',
-    (workspacePath?: string) => createNewHttpRequest(workspacePath)
+    (workspacePath?: string, scope?: string) => createNewHttpRequest(workspacePath, scope)
   );
 
   const refreshUserHttp = vscode.commands.registerCommand(
@@ -4878,30 +4878,38 @@ Detailed instructions for the agent.
 
   const createHttpWatchers = (): vscode.FileSystemWatcher[] => {
     const watchers: vscode.FileSystemWatcher[] = [];
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-    if (!workspaceFolder) {
-      return watchers;
+    const roots = new Set<string>();
+
+    for (const personalRoot of getPersonalHttpPaths()) {
+      roots.add(personalRoot);
     }
 
-    const httpPath = getHttpPath(workspaceFolder.uri.fsPath);
-    const folderUri = vscode.Uri.file(httpPath);
-    const watcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(folderUri, '**/*')
-    );
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+      roots.add(getHttpPath(workspaceFolder.uri.fsPath));
+    }
 
-    watcher.onDidCreate(() => {
-      userHttpTreeProvider.refresh();
-    });
+    for (const httpPath of roots) {
+      const folderUri = vscode.Uri.file(httpPath);
+      const watcher = vscode.workspace.createFileSystemWatcher(
+        new vscode.RelativePattern(folderUri, '**/*')
+      );
 
-    watcher.onDidDelete(() => {
-      userHttpTreeProvider.refresh();
-    });
+      watcher.onDidCreate(() => {
+        userHttpTreeProvider.refresh();
+      });
 
-    watcher.onDidChange((uri) => {
-      userHttpTreeProvider.invalidateFile(uri.fsPath);
-    });
+      watcher.onDidDelete(() => {
+        userHttpTreeProvider.refresh();
+      });
 
-    watchers.push(watcher);
+      watcher.onDidChange((uri) => {
+        userHttpTreeProvider.invalidateFile(uri.fsPath);
+      });
+
+      watchers.push(watcher);
+    }
+
     return watchers;
   };
 

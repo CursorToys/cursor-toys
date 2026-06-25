@@ -88,7 +88,14 @@ export const MCP_RESOURCE_DEFINITIONS: McpResourceDef[] = [
     kind: 'template',
     name: 'http-request',
     uriTemplate: 'cursortoys://http/{path}',
-    description: 'HTTP request file content',
+    description: 'HTTP request file content (project or absolute personal path)',
+    mimeType: 'text/plain',
+  },
+  {
+    kind: 'template',
+    name: 'http-personal',
+    uriTemplate: 'cursortoys://http/personal/{path}',
+    description: 'Personal HTTP request file under ~/.cursortoys/http or ~/.cursor/http',
     mimeType: 'text/plain',
   },
   {

@@ -509,6 +509,15 @@
         body: fileRows(p.agents || [], I.sparkle, 'No personal agents'),
       },
       {
+        id: 'p-http',
+        icon: I.globe,
+        title: 'HTTP',
+        count: (p.http || []).length,
+        body:
+          httpFileRows(p.http || [], I.globe, 'No personal HTTP requests') +
+          actionRow('New personal HTTP request', 'cursor-toys.newHttpRequest', undefined, ['personal']),
+      },
+      {
         id: 'p-note',
         icon: I.doc,
         title: 'Notepads',

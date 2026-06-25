@@ -23,6 +23,9 @@ import { getProjectEnvFilePath, isHttpRequestFile } from './utils';
 import { EnvironmentManager } from './environmentManager';
 import { curlToFormData } from './httpCurlImport';
 import { createNewHttpRequest } from './httpRequestEditorCommands';
+import { HttpResponseEmitter } from './httpResponseEmitter';
+import { sendHttpExchangeToChat } from './httpResponseChat';
+import type { HttpResponsePayload } from './httpResponseTypes';
 
 function isEditorEnabled(): boolean {
   return vscode.workspace
@@ -83,6 +86,7 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
       dirty: false,
       saving: false,
       htmlReady: false,
+      lastResponse: undefined as HttpResponsePayload | undefined,
     };
 
     const pushState = (): void => {
@@ -152,6 +156,32 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
       pushState();
     });
 
+    const responseSub = HttpResponseEmitter.getInstance().onDidEmit((event) => {
+      if (event.requestUri !== document.uri.toString()) {
+        return;
+      }
+      state.lastResponse = event.payload;
+      const blocks = getHttpRequestBlocks(document);
+      const blockIndex =
+        event.startLine !== undefined
+          ? blocks.findIndex((block) => block.startLine === event.startLine)
+          : state.activeBlockIndex;
+      void webviewPanel.webview.postMessage({
+        type: 'response',
+        blockIndex: blockIndex >= 0 ? blockIndex : state.activeBlockIndex,
+        payload: event.payload,
+      });
+    });
+
+    const configSub = vscode.workspace.onDidChangeConfiguration((e) => {
+      if (
+        e.affectsConfiguration('cursorToys.httpRequestEditor.compactMode') ||
+        e.affectsConfiguration('cursorToys.httpRequestEditor.responseLayout')
+      ) {
+        pushState();
+      }
+    });
+
     const changeSub = vscode.workspace.onDidChangeTextDocument((e) => {
       if (e.document.uri.toString() !== document.uri.toString()) {
         return;
@@ -165,6 +195,8 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
     webviewPanel.onDidDispose(() => {
       changeSub.dispose();
       envSub.dispose();
+      responseSub.dispose();
+      configSub.dispose();
     });
 
     webviewPanel.webview.onDidReceiveMessage(
@@ -394,6 +426,14 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
           case 'newRequest': {
             const wf = vscode.workspace.getWorkspaceFolder(document.uri);
             await createNewHttpRequest(wf?.uri.fsPath);
+            break;
+          }
+          case 'sendResponseToChat': {
+            if (state.lastResponse) {
+              await sendHttpExchangeToChat(state.lastResponse);
+            } else {
+              void vscode.window.showWarningMessage('No HTTP response to send to chat.');
+            }
             break;
           }
           default:

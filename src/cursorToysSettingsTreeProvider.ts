@@ -220,6 +220,20 @@ export const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
         settingKey: 'cursorToys.httpRequestResponseView',
       },
       {
+        id: 'http-compact-mode',
+        label: 'Compact Mode',
+        kind: 'setting',
+        iconId: 'layout',
+        settingKey: 'cursorToys.httpRequestEditor.compactMode',
+      },
+      {
+        id: 'http-response-layout',
+        label: 'Response Layout',
+        kind: 'setting',
+        iconId: 'split-horizontal',
+        settingKey: 'cursorToys.httpRequestEditor.responseLayout',
+      },
+      {
         id: 'http-env',
         label: 'Default Environment',
         kind: 'setting',

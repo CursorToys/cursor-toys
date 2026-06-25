@@ -54,6 +54,7 @@ function runTests(): void {
   const templates = MCP_RESOURCE_DEFINITIONS.filter((r) => r.kind === 'template');
   assert.ok(staticResources.some((r) => r.uri === 'cursortoys://config'));
   assert.ok(templates.some((r) => r.uriTemplate.includes('kanban/{status}')));
+  assert.ok(templates.some((r) => r.uriTemplate === 'cursortoys://http/personal/{path}'), 'http personal resource template');
 
   const promptHost = new McpPromptHost();
   const listed = promptHost.listPrompts();

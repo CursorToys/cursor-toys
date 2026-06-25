@@ -1,6 +1,25 @@
 # CursorToys
 
-![](https://i.imgur.com/oxTZoZH.jpeg)
+![](https://i.imgur.com/s1yX64Y.jpeg)
+
+## v2026.6.25-1 - HTTP personal library, inline responses, assertion fixes
+
+### Added
+
+- **Personal HTTP requests** — shared request files under `~/.cursortoys/http/` (canonical) with legacy read support for `~/.cursor/http/`; listed in the HTTP Explorer tree (Personal category), Control Panel Personal tab, and MCP `http_list` / `http_create` (`scope: personal`).
+- **Inline HTTP response** — visual HTTP editor shows request + response in one view (Postman/Insomnia-style); controlled by `cursorToys.httpRequestEditor.compactMode` (default `true`). When disabled, responses use `cursorToys.httpRequestResponseView` (`panel` or `editor`).
+- **Response layout** — `cursorToys.httpRequestEditor.responseLayout`: `left` (default), `bottom`, or `right` when compact mode is on.
+- **Send to chat** — **Send to chat** on inline response toolbar and HTTP response panel sends raw request + response to Cursor chat.
+- **Assertion tests** — unit tests for `@assert` parsing and validation (`isArray`, `isJson`, `res.body.data`, nested paths).
+
+### Fixed
+
+- **HTTP assertions** — `@assert("description", "res.body.data", "isArray")` no longer misparsed; operators are case-insensitive; `cursorToys.httpAssertionsEnabled` is respected when sending requests.
+
+### Changed
+
+- **MCP** — `cursortoys://http/personal/{path}` resource template; config snapshot includes `personalHttp` paths; `http_list` returns personal + project files with `scope`.
+- **CLI note** — `npx cursortoys http test` still targets project HTTP folders until the external CLI adds personal HTTP support.
 
 ## v2026.6.23-1 - HTTP New Request and cURL import
 
