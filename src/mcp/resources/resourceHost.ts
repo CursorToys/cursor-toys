@@ -365,6 +365,9 @@ export class McpResourceHost {
       cursorPet: {
         enabled: config.get<boolean>('cursorPet.enabled', false),
       },
+      chat: {
+        autoSubmit: config.get<boolean>('chat.autoSubmit', true),
+      },
     };
   }
 }

@@ -53,8 +53,12 @@ export function buildChatToolHandlers(): Record<
       if (!text.trim()) {
         throw new Error('text is required');
       }
-      const submit = args.submit !== false;
-      const result = await injectTextToChat(text, { submit });
+      const submit =
+        typeof args.submit === 'boolean' ? (args.submit as boolean) : undefined;
+      const result = await injectTextToChat(
+        text,
+        submit !== undefined ? { submit } : undefined
+      );
       return result;
     },
   };

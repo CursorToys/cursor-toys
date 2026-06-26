@@ -5,7 +5,7 @@ import { importDeeplink } from './deeplinkImporter';
 import { importRemoteSkillFromGitHubFolderUrl, validateGitHubSkillFolderUrl } from './skillRemoteImporter';
 import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist, createSkillFromStructure } from './shareableImporter';
-import { getFileTypeFromPath, isAllowedExtension, isHttpRequestFile, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getKanbanPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getPersonalHttpPaths, getProjectEnvFilePath, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, getPersonalAgentsPath, getAgentsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
+import { getFileTypeFromPath, isAllowedExtension, isHttpRequestFile, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getKanbanPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getPersonalHttpPaths, getProjectEnvFilePath, getEnvFilePath, getHttpEnvContext, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, getPersonalAgentsPath, getAgentsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
 import { DeeplinkCodeLensProvider } from './codelensProvider';
 import { HttpCodeLensProvider } from './httpCodeLensProvider';
 import { EnvCodeLensProvider } from './envCodeLensProvider';
@@ -75,7 +75,12 @@ import {
 import { initKanbanStatusBar } from './kanbanStatusBar';
 import { initNotepadsStatusBar } from './notepadsStatusBar';
 import { CursorToysUtilsTreeProvider } from './utilsTreeProvider';
-import { injectTextToChat, notifyPasteWithoutSubmit, removeLegacyRemoteChatSkill } from './chatInjection';
+import {
+  injectTextToChat,
+  isChatAutoSubmitEnabled,
+  notifyPasteWithoutSubmit,
+  removeLegacyRemoteChatSkill,
+} from './chatInjection';
 import * as fs from 'fs';
 import { syncExplorerViewVisibility, syncSidebarViewVisibility } from './sidebarVisibility';
 import { ProjectRegistry } from './projects/projectRegistry';
@@ -386,8 +391,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
       if (text && text.trim()) {
         const result = await injectTextToChat(text.trim());
-        if (result.pasted && !result.submitted) {
-          notifyPasteWithoutSubmit('CursorToys');
+        if (result.pasted) {
+          if (result.submitted) {
+            void vscode.window.showInformationMessage('Sent to chat.');
+          } else if (!isChatAutoSubmitEnabled()) {
+            void vscode.window.showInformationMessage('Pasted to chat (not sent).');
+          } else {
+            notifyPasteWithoutSubmit('CursorToys');
+          }
         }
       }
     })
@@ -4163,20 +4174,38 @@ Detailed instructions for the agent.
   const selectEnvironmentCommand = vscode.commands.registerCommand(
     'cursor-toys.selectEnvironment',
     async () => {
-      const workspaceFolders = vscode.workspace.workspaceFolders;
-      if (!workspaceFolders || workspaceFolders.length === 0) {
-        vscode.window.showErrorMessage('No workspace folder open');
-        return;
+      const activeDoc = vscode.window.activeTextEditor?.document;
+      let envCtx =
+        activeDoc && isHttpRequestFile(activeDoc.uri.fsPath)
+          ? getHttpEnvContext(activeDoc.uri.fsPath)
+          : null;
+
+      if (!envCtx) {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+          vscode.window.showErrorMessage('No workspace folder open');
+          return;
+        }
+        const workspacePath = workspaceFolders[0].uri.fsPath;
+        envCtx = {
+          envRoot: workspacePath,
+          workspacePath,
+          scope: 'project',
+        };
       }
 
-      const workspacePath = workspaceFolders[0].uri.fsPath;
       const envManager = EnvironmentManager.getInstance();
-      const availableEnvs = envManager.getAvailableEnvironments(workspacePath);
+      const availableEnvs = envManager.getAvailableEnvironments(
+        envCtx.workspacePath,
+        envCtx.envRoot
+      );
 
       if (availableEnvs.length === 0) {
-        vscode.window.showWarningMessage(
-          'No environment files found at the project root. Create .env / .env.dev at the workspace root.'
-        );
+        const hint =
+          envCtx.scope === 'personal'
+            ? 'No environment files found in the personal HTTP folder. Create .env / .env.dev there.'
+            : 'No environment files found at the project root. Create .env / .env.dev at the workspace root.';
+        vscode.window.showWarningMessage(hint);
         return;
       }
 
@@ -4193,7 +4222,7 @@ Detailed instructions for the agent.
 
       if (selected) {
         envManager.setActiveEnvironment(selected.label);
-        envManager.clearCache(); // Clear cache to reload variables
+        envManager.clearCache();
         vscode.window.showInformationMessage(`Environment set to: ${selected.label}`);
       }
     }
@@ -4203,17 +4232,33 @@ Detailed instructions for the agent.
   const createEnvironmentCommand = vscode.commands.registerCommand(
     'cursor-toys.createEnvironment',
     async () => {
-      const workspaceFolders = vscode.workspace.workspaceFolders;
-      if (!workspaceFolders || workspaceFolders.length === 0) {
-        vscode.window.showErrorMessage('No workspace folder open');
-        return;
+      const activeDoc = vscode.window.activeTextEditor?.document;
+      let envCtx =
+        activeDoc && isHttpRequestFile(activeDoc.uri.fsPath)
+          ? getHttpEnvContext(activeDoc.uri.fsPath)
+          : null;
+
+      if (!envCtx) {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+          vscode.window.showErrorMessage('No workspace folder open');
+          return;
+        }
+        const workspacePath = workspaceFolders[0].uri.fsPath;
+        envCtx = {
+          envRoot: workspacePath,
+          workspacePath,
+          scope: 'project',
+        };
       }
 
-      const workspacePath = workspaceFolders[0].uri.fsPath;
       const envManager = EnvironmentManager.getInstance();
 
       const envName = await vscode.window.showInputBox({
-        prompt: 'Enter environment name (e.g., staging, qa, prod)',
+        prompt:
+          envCtx.scope === 'personal'
+            ? 'Enter environment name (creates .env.{name} in personal HTTP folder)'
+            : 'Enter environment name (e.g., staging, qa, prod)',
         placeHolder: 'staging',
         validateInput: (value) => {
           if (!value || value.trim().length === 0) {
@@ -4227,12 +4272,15 @@ Detailed instructions for the agent.
       });
 
       if (envName) {
-        const created = await envManager.createEnvironment(envName, workspacePath);
+        const created = await envManager.createEnvironment(
+          envName,
+          envCtx.workspacePath,
+          envCtx.envRoot
+        );
         if (created) {
           vscode.window.showInformationMessage(`Environment '${envName}' created successfully`);
           
-          // Open the file
-          const filePath = getProjectEnvFilePath(workspacePath, envName);
+          const filePath = getEnvFilePath(envCtx.envRoot, envName);
           const fileUri = vscode.Uri.file(filePath);
           const document = await vscode.workspace.openTextDocument(fileUri);
           await vscode.window.showTextDocument(document);

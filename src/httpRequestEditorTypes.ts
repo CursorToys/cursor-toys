@@ -64,6 +64,7 @@ export interface HttpRequestEditorInitMessage {
   dirty: boolean;
   projectEnvs: string[];
   activeProjectEnv: string;
+  envScope: 'personal' | 'project';
   globalFileEnv?: string;
   blockEnv?: string;
   envVariables: HttpRequestEnvVariableSummary[];
@@ -91,7 +92,7 @@ export type HttpRequestEditorInboundMessage =
   | { command: 'send'; form: HttpRequestFormData; blockIndex: number }
   | { command: 'copyCurl'; blockIndex: number }
   | { command: 'openAsText' }
-  | { command: 'setProjectEnv'; envName: string }
+  | { command: 'setProjectEnv'; envName: string; blockIndex?: number }
   | { command: 'addFileVar'; key: string; value: string }
   | { command: 'updateFileVar'; originalKey: string; key: string; value: string }
   | { command: 'removeFileVar'; key: string }
@@ -102,6 +103,7 @@ export type HttpRequestEditorInboundMessage =
   | { command: 'saveAssertions'; blockIndex: number; assertions: HttpRequestAssertionSummary[]; silent?: boolean }
   | { command: 'importCurl'; text: string; blockIndex: number }
   | { command: 'newRequest' }
-  | { command: 'sendResponseToChat' };
+  | { command: 'sendResponseToChat' }
+  | { command: 'copyResponse'; part: string };
 
 export const HTTP_REQUEST_EDITOR_VIEW_TYPE = 'cursorToys.httpRequest';

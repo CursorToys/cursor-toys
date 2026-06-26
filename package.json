@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.25-1",
+  "version": "2026.6.25-2",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -1948,6 +1948,11 @@
             "default": true,
             "description": "Show the What's New panel automatically after install or when the extension is updated. You can still open it from the command palette."
           },
+          "cursorToys.chat.autoSubmit": {
+            "type": "boolean",
+            "default": true,
+            "description": "When enabled, Send to Chat actions auto-submit the message. When disabled, text is pasted in the chat composer so you can review and send manually."
+          },
           "cursorToys.linkType": {
             "type": "string",
             "enum": [
@@ -2210,11 +2215,11 @@
               "right"
             ],
             "enumDescriptions": [
-              "Response panel to the left of the request (default)",
+              "Response panel to the left of the request",
               "Response panel below the request",
-              "Response panel to the right of the request"
+              "Response panel to the right of the request (default)"
             ],
-            "default": "left",
+            "default": "right",
             "description": "Layout of the inline response when compact mode is enabled."
           },
           "cursorToys.httpRequestEditor.autoSave": {

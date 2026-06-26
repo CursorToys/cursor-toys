@@ -264,6 +264,13 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       return;
     }
 
+    case 'cursorToys.chat.autoSubmit':
+      await pickBoolean(settingKey, true, {
+        on: 'Auto-submit messages',
+        off: 'Paste only (send manually)',
+      });
+      return;
+
     case 'cursorToys.httpRequestTimeout':
       await pickNumber(settingKey, 10, 'HTTP request timeout (seconds)', (n) =>
         n <= 0 ? 'Must be > 0' : null
@@ -296,7 +303,7 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       return;
 
     case 'cursorToys.httpRequestEditor.responseLayout': {
-      const current = config.get<string>(settingKey, 'left');
+      const current = config.get<string>(settingKey, 'right');
       const picked = await vscode.window.showQuickPick(
         [
           { label: 'left', description: 'Response to the left of the request' },

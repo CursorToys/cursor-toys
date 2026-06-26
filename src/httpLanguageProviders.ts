@@ -6,7 +6,7 @@ import {
   listVariableDefinitions,
   mergeCustomVariables,
 } from './httpRequestVariables';
-import { isHttpRequestFile } from './utils';
+import { isHttpRequestFile, getHttpEnvContext } from './utils';
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as const;
 
@@ -107,10 +107,14 @@ export class HttpRequestHoverProvider implements vscode.HoverProvider {
     }
 
     const envName = getEnvironmentForSection(document, position.line);
-    const workspacePath = getWorkspacePath();
-    if (envName && workspacePath) {
+    const envCtx = getHttpEnvContext(document.uri.fsPath);
+    if (envName && envCtx) {
       const envManager = EnvironmentManager.getInstance();
-      const envVars = envManager.loadEnvironment(envName, workspacePath);
+      const envVars = envManager.loadEnvironment(
+        envName,
+        envCtx.workspacePath,
+        envCtx.envRoot
+      );
       const value = envVars?.get(varName.toLowerCase());
       if (value !== undefined) {
         const md = new vscode.MarkdownString();
@@ -157,7 +161,7 @@ export class HttpRequestCompletionProvider implements vscode.CompletionItemProvi
     const textBefore = lineText.substring(0, position.character);
 
     if (textBefore.match(/^#\s*@env\s*$/)) {
-      return this.envDecoratorCompletions();
+      return this.envDecoratorCompletions(document);
     }
 
     if (PLACEHOLDER_RE.test(textBefore) || textBefore.endsWith('{{')) {
@@ -187,13 +191,17 @@ export class HttpRequestCompletionProvider implements vscode.CompletionItemProvi
     return [];
   }
 
-  private envDecoratorCompletions(): vscode.CompletionItem[] {
-    const workspacePath = getWorkspacePath();
-    if (!workspacePath) {
+  private envDecoratorCompletions(
+    document: vscode.TextDocument
+  ): vscode.CompletionItem[] {
+    const envCtx = getHttpEnvContext(document.uri.fsPath);
+    if (!envCtx) {
       return [];
     }
     const envManager = EnvironmentManager.getInstance();
-    return envManager.getAvailableEnvironments(workspacePath).map((envName) => {
+    return envManager
+      .getAvailableEnvironments(envCtx.workspacePath, envCtx.envRoot)
+      .map((envName) => {
       const item = new vscode.CompletionItem(envName, vscode.CompletionItemKind.Value);
       item.detail = `Environment: ${envName}`;
       item.insertText = envName;
@@ -237,10 +245,14 @@ export class HttpRequestCompletionProvider implements vscode.CompletionItemProvi
     }
 
     const envName = getEnvironmentForSection(document, line);
-    const workspacePath = getWorkspacePath();
-    if (envName && workspacePath) {
+    const envCtx = getHttpEnvContext(document.uri.fsPath);
+    if (envName && envCtx) {
       const envManager = EnvironmentManager.getInstance();
-      const envVars = envManager.loadEnvironment(envName, workspacePath);
+      const envVars = envManager.loadEnvironment(
+        envName,
+        envCtx.workspacePath,
+        envCtx.envRoot
+      );
       envVars?.forEach((value, key) => {
         const item = new vscode.CompletionItem(key, vscode.CompletionItemKind.Variable);
         item.detail = `Environment: ${envName}`;

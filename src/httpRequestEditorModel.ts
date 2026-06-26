@@ -21,6 +21,7 @@ import {
   ASSERT_EXPRESSIONS,
   ASSERT_OPERATORS,
 } from './httpRequestEditorAssertMeta';
+import { getHttpEnvContext } from './utils';
 import {
   isHttpCompactModeEnabled,
   getHttpResponseLayout,
@@ -122,11 +123,15 @@ export function buildHttpRequestEditorState(
   const block = blocks[safeIndex];
   const form: HttpRequestFormData = formFromFileBlock(text, block);
 
+  const envCtx = getHttpEnvContext(document.uri.fsPath);
   const workspacePath =
-    vscode.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath ?? '';
+    envCtx?.workspacePath ??
+    vscode.workspace.getWorkspaceFolder(document.uri)?.uri.fsPath ??
+    '';
+  const envRoot = envCtx?.envRoot;
   const envManager = EnvironmentManager.getInstance();
-  const projectEnvs = workspacePath
-    ? envManager.getAvailableEnvironments(workspacePath)
+  const projectEnvs = envCtx
+    ? envManager.getAvailableEnvironments(workspacePath, envRoot)
     : [];
   const managerActiveEnv = envManager.getActiveEnvironment();
   const activeProjectEnv = resolveActiveProjectEnv(projectEnvs, managerActiveEnv);
@@ -137,8 +142,12 @@ export function buildHttpRequestEditorState(
   const envVars: HttpRequestEnvVariableSummary[] = [];
   const sectionEnv = getEnvironmentForSection(document, block.startLine);
   const effectiveEnvForLoad = sectionEnv || activeProjectEnv || undefined;
-  if (workspacePath && effectiveEnvForLoad) {
-    const loaded = envManager.loadEnvironment(effectiveEnvForLoad, workspacePath);
+  if (envCtx && effectiveEnvForLoad) {
+    const loaded = envManager.loadEnvironment(
+      effectiveEnvForLoad,
+      workspacePath,
+      envRoot
+    );
     if (loaded) {
       for (const [key, value] of loaded.entries()) {
         envVars.push({
@@ -161,7 +170,8 @@ export function buildHttpRequestEditorState(
     document,
     block.startLine,
     workspacePath,
-    activeProjectEnv
+    activeProjectEnv,
+    envRoot
   );
 
   return {
@@ -175,6 +185,7 @@ export function buildHttpRequestEditorState(
     dirty,
     projectEnvs,
     activeProjectEnv,
+    envScope: envCtx?.scope ?? 'project',
     globalFileEnv: globalFileEnv ?? undefined,
     blockEnv: blockEnv ?? undefined,
     envVariables: envVars,

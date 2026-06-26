@@ -187,15 +187,33 @@ export function buildHttpRequestEditorHtml(
     .detail-pane.active {
       display: flex;
     }
+    .request-url-block .row,
+    .request-url-block .hint {
+      flex-shrink: 0;
+    }
     #pane-request .row,
     #pane-request .hint,
     #pane-request > .field-label {
       flex-shrink: 0;
     }
+    #pane-request.detail-pane {
+      flex: 1;
+      min-height: 460px;
+    }
     #pane-request #body {
       flex: 1;
-      min-height: 400px;
+      min-height: 280px;
       resize: none;
+    }
+    .response-body-content {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .response-body-content .response-body-area {
+      flex: 1;
+      min-height: 280px;
     }
 
     .request-tabs {
@@ -296,6 +314,134 @@ export function buildHttpRequestEditorHtml(
       color: var(--vscode-badge-foreground);
     }
 
+    .pane-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 8px 12px 10px;
+      border-bottom: 1px solid var(--ct-hair, rgba(128,128,128,0.25));
+      flex-shrink: 0;
+    }
+    .pane-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      flex: 1;
+      min-width: 0;
+    }
+    .pane-bar-center {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .pane-bar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .request-url-block {
+      padding: 12px 14px 0;
+      flex-shrink: 0;
+    }
+    [hidden] {
+      display: none !important;
+    }
+    .part-select {
+      width: auto;
+      min-width: 132px;
+      max-width: 180px;
+      font-size: 12px;
+      padding: 7px 10px;
+      border-radius: 7px;
+    }
+    .response-pane-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: nowrap;
+    }
+    .response-pane-bar .pane-bar-left {
+      flex: 0 0 auto;
+    }
+    .response-pane-bar .part-select {
+      width: 148px;
+      min-width: 148px;
+      max-width: 148px;
+    }
+    .response-pane-bar .pane-bar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      flex-wrap: nowrap;
+    }
+    .response-pane-bar .response-status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-start;
+      min-width: 118px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .response-pane-bar .response-timing {
+      display: inline-block;
+      min-width: 56px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .response-pane-bar .pane-bar-right .ct-btn,
+    .response-pane-bar .pane-bar-right button {
+      flex-shrink: 0;
+    }
+    .response-pane-bar #copyResponseBtn {
+      min-width: 72px;
+    }
+    .request-pane-bar .detail-tabs {
+      padding: 0;
+      gap: 6px;
+    }
+    .response-timing {
+      font-size: 0.82em;
+      color: var(--ct-mute, inherit);
+      font-family: var(--ct-mono, monospace);
+      white-space: nowrap;
+    }
+    .response-status.idle {
+      color: var(--ct-mute, inherit);
+      border-color: var(--ct-hair, rgba(128,128,128,0.25));
+      font-weight: 500;
+    }
+    .response-empty-panel {
+      flex: 1;
+      min-height: 280px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 24px 16px;
+      border-radius: 8px;
+      border: 1px dashed var(--ct-hair, rgba(128,128,128,0.35));
+      background: var(--vscode-editor-inactiveSelectionBackground, rgba(128,128,128,0.06));
+      text-align: center;
+    }
+    .response-empty-panel strong {
+      font-size: 0.95em;
+    }
+    .response-empty-panel p {
+      margin: 0;
+      font-size: 0.85em;
+      color: var(--ct-mute, inherit);
+      max-width: 320px;
+      line-height: 1.5;
+    }
     .method-pill {
       font-size: 0.68em;
       font-weight: 700;
@@ -554,64 +700,53 @@ export function buildHttpRequestEditorHtml(
       min-width: 0;
       max-height: none;
     }
-    .workspace-card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-    .workspace-card .detail-body { flex: 1; min-height: 160px; overflow: auto; }
-    .response-card {
-      border: 1px solid var(--vscode-panel-border, #333);
-      border-radius: 8px;
-      overflow: hidden;
-      min-height: 160px;
-      max-height: 42vh;
+    .response-card.workspace-card {
+      min-height: 560px;
+    }
+    .response-card .detail-body {
+      flex: 1;
+      min-height: 200px;
+    }
+    .response-card .detail-pane.active {
       display: flex;
       flex-direction: column;
-      background: var(--vscode-editor-background);
+      min-height: 0;
     }
-    .response-toolbar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      padding: 8px 10px;
-      border-bottom: 1px solid var(--vscode-panel-border, #333);
-      background: var(--vscode-sideBar-background);
+    .response-card .detail-pane textarea.response-body-area {
+      flex: 1;
+      min-height: 280px;
+      resize: none;
+      font-family: var(--vscode-editor-font-family, monospace);
+      font-size: 0.92em;
+    }
+    .response-card .detail-pane pre.response-pre {
+      flex: 1;
+      min-height: 280px;
+      margin: 0;
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--ct-hair, var(--vscode-input-border));
+      background: var(--vscode-input-background);
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: var(--vscode-editor-font-family, monospace);
+      font-size: 0.92em;
+      line-height: 1.45;
+      overflow: auto;
     }
     .response-status {
       font-size: 0.82em;
       font-weight: 600;
-      padding: 2px 8px;
+      padding: 4px 10px;
       border-radius: 999px;
-      border: 1px solid var(--vscode-panel-border, #444);
+      border: 1px solid var(--ct-hair, rgba(128,128,128,0.25));
     }
     .response-status.ok { color: #3fb950; border-color: #3fb95055; }
     .response-status.warn { color: #d29922; border-color: #d2992255; }
     .response-status.err { color: #f85149; border-color: #f8514955; }
-    .response-tabs { display: flex; gap: 4px; padding: 6px 8px 0; border-bottom: 1px solid var(--vscode-panel-border, #333); }
-    .response-tab {
-      border: none;
-      background: transparent;
-      color: inherit;
-      opacity: 0.7;
-      padding: 6px 10px;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
-      font: inherit;
-      font-size: 0.85em;
-    }
-    .response-tab.active { opacity: 1; border-bottom-color: var(--vscode-textLink-foreground); }
-    .response-body { flex: 1; min-height: 0; overflow: auto; padding: 10px; }
-    .response-pre {
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-family: var(--vscode-editor-font-family, monospace);
-      font-size: 0.85em;
-      line-height: 1.45;
-    }
-    .response-headers { width: 100%; border-collapse: collapse; font-size: 0.85em; }
-    .response-headers td { padding: 4px 6px; vertical-align: top; border-bottom: 1px solid var(--vscode-panel-border, #2a2a2a); }
-    .response-assert { padding: 6px 0; border-bottom: 1px solid var(--vscode-panel-border, #2a2a2a); font-size: 0.85em; }
-    .response-assert.pass { color: #3fb950; }
-    .response-assert.fail { color: #f85149; }
+    .response-assert { padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 0.88em; background: var(--vscode-textCodeBlock-background); border-left: 3px solid var(--vscode-textLink-foreground); }
+    .response-assert.pass { border-left-color: #3fb950; }
+    .response-assert.fail { border-left-color: #f85149; color: #f85149; }
   </style>
 </head>
 <body class="ct-panel-fill">
@@ -625,24 +760,30 @@ export function buildHttpRequestEditorHtml(
       <button type="button" class="secondary" id="newRequestBtn">New request</button>
       <button type="button" class="secondary" id="openTextBtn">Open as text</button>
       <button type="button" id="saveBtn">Save</button>
-      <button type="button" id="copyCurlBtn">Copy cURL</button>
-      <button type="button" class="send-btn" id="sendBtn">
-        Send
-        <svg class="send-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 1.5L14.5 8L1.5 14.5V9.5L10.5 8L1.5 6.5V1.5Z"/></svg>
-      </button>
     </div>
 
-    <div class="editor-split layout-left" id="editorSplit">
+    <div class="editor-split layout-right" id="editorSplit">
     <div class="workspace-card">
       <div class="request-tabs" id="requestTabs"></div>
-      <div class="detail-tabs" role="tablist">
-        <button type="button" class="detail-tab active" data-detail="request">Request</button>
-        <button type="button" class="detail-tab" data-detail="headers">Headers</button>
-        <button type="button" class="detail-tab" data-detail="tests">Tests <span class="badge" id="testsBadge" hidden>0</span></button>
-        <button type="button" class="detail-tab detail-tab-icon" data-detail="environment">
-          <span class="detail-tab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.8 7.8 0 0 0 .1-3l1.7-1.3-1.8-3.1-2 .8a7.6 7.6 0 0 0-2.6-1.5l-.3-2.1H8.5l-.3 2.1c-1 .3-1.8.8-2.6 1.5l-2-.8L1.8 9.2l1.7 1.3a7.8 7.8 0 0 0 0 3l-1.7 1.3 1.8 3.1 2-.8c.8.7 1.6 1.2 2.6 1.5l.3 2.1h3.6l.3-2.1c1-.3 1.8-.8 2.6-1.5l2 .8 1.8-3.1z"/></svg></span>
-          Env
-        </button>
+      <div class="pane-bar request-pane-bar">
+        <div class="pane-bar-left">
+          <div class="detail-tabs request-detail-tabs" role="tablist">
+            <button type="button" class="detail-tab active" data-detail="request">Request</button>
+            <button type="button" class="detail-tab" data-detail="headers">Headers</button>
+            <button type="button" class="detail-tab" data-detail="tests">Tests <span class="badge" id="testsBadge" hidden>0</span></button>
+            <button type="button" class="detail-tab detail-tab-icon" data-detail="environment">
+              <span class="detail-tab-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 13.5a7.8 7.8 0 0 0 .1-3l1.7-1.3-1.8-3.1-2 .8a7.6 7.6 0 0 0-2.6-1.5l-.3-2.1H8.5l-.3 2.1c-1 .3-1.8.8-2.6 1.5l-2-.8L1.8 9.2l1.7 1.3a7.8 7.8 0 0 0 0 3l-1.7 1.3 1.8 3.1 2-.8c.8.7 1.6 1.2 2.6 1.5l.3 2.1h3.6l.3-2.1c1-.3 1.8-.8 2.6-1.5l2 .8 1.8-3.1z"/></svg></span>
+              Env
+            </button>
+          </div>
+        </div>
+        <div class="pane-bar-right">
+          <button type="button" class="secondary" id="copyCurlBtn">Copy cURL</button>
+          <button type="button" class="send-btn" id="sendBtn">
+            Send
+            <svg class="send-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 1.5L14.5 8L1.5 14.5V9.5L10.5 8L1.5 6.5V1.5Z"/></svg>
+          </button>
+        </div>
       </div>
       <div class="detail-body">
         <div class="detail-pane active" id="pane-request" data-detail="request">
@@ -663,7 +804,7 @@ export function buildHttpRequestEditorHtml(
             </div>
           </div>
           <p class="hint"><span style="color:#58a6ff">■</span> # @var &nbsp; <span style="color:#3fb950">■</span> .env &nbsp; <span style="color:#d2a8ff">■</span> helper &nbsp; <span style="color:#f85149">■</span> missing — paste cURL in URL to import like Postman</p>
-          <label class="field-label">Body</label>
+          <label class="field-label" for="body">Body</label>
           <textarea id="body" class="var-ac-input" placeholder="JSON, form data, etc." autocomplete="off" spellcheck="false"></textarea>
         </div>
 
@@ -684,7 +825,7 @@ export function buildHttpRequestEditorHtml(
             <span class="env-pane-meta" id="envBannerMeta" hidden></span>
           </div>
           <div class="env-pane-section">
-            <p class="subheading">Workspace / file (.env at project root)</p>
+            <p class="subheading" id="envFolderHeading">Workspace / file (.env at project root)</p>
             <div class="env-row">
               <span id="projectEnvPills"></span>
               <button type="button" class="ghost icon-btn" id="selectEnvBtn" title="Pick environment">⋯</button>
@@ -735,27 +876,46 @@ export function buildHttpRequestEditorHtml(
       </div>
     </div>
 
-    <div class="response-card" id="responseCard">
-      <div class="response-toolbar">
-        <strong style="font-size:0.85em;opacity:0.85;">Response</strong>
-        <span class="response-status" id="responseStatusBadge">—</span>
-        <span id="responseMeta" style="font-size:0.8em;opacity:0.7;"></span>
-        <span style="flex:1"></span>
-        <button type="button" class="secondary" id="sendResponseChatBtn" disabled>Send to chat</button>
-        <button type="button" class="secondary" id="resendResponseBtn" disabled>Send again</button>
+    <div class="response-card workspace-card" id="responseCard">
+      <div class="pane-bar response-pane-bar">
+        <div class="pane-bar-left">
+          <select id="responsePartSelect" class="part-select" aria-label="Response view">
+            <option value="body">Body</option>
+            <option value="headers">Headers</option>
+            <option value="raw">Raw</option>
+            <option value="assertions">Assertions</option>
+          </select>
+        </div>
+        <div class="pane-bar-right">
+          <span class="response-status idle" id="responseStatusBadge">No response</span>
+          <span class="response-timing" id="responseMeta">—</span>
+          <button type="button" class="send-btn" id="resendResponseBtn" disabled>Send again</button>
+          <button type="button" class="secondary" id="sendResponseChatBtn" disabled>Send to chat</button>
+          <button type="button" class="secondary" id="copyResponseBtn" disabled title="Copy visible section">Copy</button>
+        </div>
       </div>
-      <div class="response-tabs" role="tablist">
-        <button type="button" class="response-tab active" data-response-tab="body">Body</button>
-        <button type="button" class="response-tab" data-response-tab="headers">Headers</button>
-        <button type="button" class="response-tab" data-response-tab="raw">Raw</button>
-        <button type="button" class="response-tab" data-response-tab="assertions">Assertions</button>
-      </div>
-      <div class="response-body" id="responseBody">
-        <p class="empty-state" id="responseEmpty">Send a request to see the response here.</p>
-        <pre class="response-pre" id="responseBodyPre" hidden></pre>
-        <table class="response-headers" id="responseHeadersTable" hidden></table>
-        <pre class="response-pre" id="responseRawPre" hidden></pre>
-        <div id="responseAssertions" hidden></div>
+      <div class="detail-body">
+        <div class="detail-pane active" id="response-pane-body" data-response-tab="body">
+          <div class="response-empty-panel" id="responseEmpty">
+            <strong>No response yet</strong>
+            <p>Send the request to see status, timing, body, headers, and assertion results here.</p>
+          </div>
+          <div class="response-body-content" id="responseBodyContent" hidden>
+            <label class="field-label" for="responseBodyArea">Body</label>
+            <textarea id="responseBodyArea" class="response-body-area" readonly spellcheck="false" placeholder="Response body"></textarea>
+          </div>
+        </div>
+        <div class="detail-pane" id="response-pane-headers" data-response-tab="headers">
+          <label class="field-label">Response headers</label>
+          <table class="headers-table" id="responseHeadersTable"></table>
+        </div>
+        <div class="detail-pane" id="response-pane-raw" data-response-tab="raw">
+          <label class="field-label">Raw response</label>
+          <pre class="response-pre" id="responseRawPre"></pre>
+        </div>
+        <div class="detail-pane" id="response-pane-assertions" data-response-tab="assertions">
+          <div id="responseAssertions"></div>
+        </div>
       </div>
     </div>
     </div>
@@ -789,8 +949,9 @@ export function buildHttpRequestEditorHtml(
       editingAssertionIndex: -1,
       responsesByBlock: {},
       responseTab: 'body',
+      envScope: INIT.envScope || 'project',
       compactMode: INIT.compactMode !== false,
-      responseLayout: INIT.responseLayout === 'bottom' ? 'bottom' : INIT.responseLayout === 'right' ? 'right' : 'left',
+      responseLayout: INIT.responseLayout === 'bottom' ? 'bottom' : INIT.responseLayout === 'left' ? 'left' : 'right',
     };
 
     const els = {
@@ -831,13 +992,17 @@ export function buildHttpRequestEditorHtml(
       responseStatusBadge: document.getElementById('responseStatusBadge'),
       responseMeta: document.getElementById('responseMeta'),
       responseEmpty: document.getElementById('responseEmpty'),
-      responseBodyPre: document.getElementById('responseBodyPre'),
+      responseBodyContent: document.getElementById('responseBodyContent'),
+      responseBodyArea: document.getElementById('responseBodyArea'),
       responseHeadersTable: document.getElementById('responseHeadersTable'),
       responseRawPre: document.getElementById('responseRawPre'),
       responseAssertions: document.getElementById('responseAssertions'),
+      responsePartSelect: document.getElementById('responsePartSelect'),
       sendResponseChatBtn: document.getElementById('sendResponseChatBtn'),
       resendResponseBtn: document.getElementById('resendResponseBtn'),
-      responseTabButtons: document.querySelectorAll('.response-tab'),
+      copyResponseBtn: document.getElementById('copyResponseBtn'),
+      responsePanes: document.querySelectorAll('.response-card .detail-pane'),
+      envFolderHeading: document.getElementById('envFolderHeading'),
       editorSplit: document.getElementById('editorSplit'),
       responseCard: document.getElementById('responseCard'),
       saveBtn: document.getElementById('saveBtn'),
@@ -849,8 +1014,8 @@ export function buildHttpRequestEditorHtml(
       selectEnvBtn: document.getElementById('selectEnvBtn'),
       createEnvBtn: document.getElementById('createEnvBtn'),
       addVarBtn: document.getElementById('addVarBtn'),
-      detailTabButtons: document.querySelectorAll('.detail-tab'),
-      detailPanes: document.querySelectorAll('.detail-pane'),
+      detailTabButtons: document.querySelectorAll('.request-pane-bar .detail-tab[data-detail]'),
+      detailPanes: document.querySelectorAll('.workspace-card > .detail-body > .detail-pane'),
     };
 
     let saveTimer = null;
@@ -1160,8 +1325,12 @@ export function buildHttpRequestEditorHtml(
 
     function setDetailTab(tab) {
       state.detailTab = tab;
-      els.detailTabButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.detail === tab));
-      els.detailPanes.forEach((pane) => pane.classList.toggle('active', pane.dataset.detail === tab));
+      els.detailTabButtons.forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.detail === tab);
+      });
+      els.detailPanes.forEach((pane) => {
+        pane.classList.toggle('active', pane.dataset.detail === tab);
+      });
     }
 
     function readForm() {
@@ -1186,11 +1355,13 @@ export function buildHttpRequestEditorHtml(
       els.envBannerSource.hidden = !effective;
       let meta = '';
       if (p.envSource === 'block' && state.blockEnv) {
-        meta = 'Using .env.' + state.blockEnv + ' from block # @env (workspace picker applies when no override)';
+        meta = 'Block # @env → .env.' + state.blockEnv + ' — pick another env below to change';
       } else if (p.envSource === 'file' && state.globalFileEnv) {
-        meta = 'Using .env.' + state.globalFileEnv + ' from file # @env (workspace picker applies when no override)';
+        meta = 'File # @env → .env.' + state.globalFileEnv + ' — pick another env below to change';
       } else if (!hasWorkspaceEnvs()) {
-        meta = 'No .env files at project root — use + to create one';
+        meta = state.envScope === 'personal'
+          ? 'No .env files in personal HTTP folder — use + to create one'
+          : 'No .env files at project root — use + to create one';
       }
       els.envBannerMeta.textContent = meta;
       els.envBannerMeta.hidden = !meta;
@@ -1221,8 +1392,8 @@ export function buildHttpRequestEditorHtml(
         if (isEffective) cls += ' effective';
         pill.className = cls;
         pill.textContent = name + (isEffective && !isActive ? ' ✓' : '');
-        pill.title = 'Select workspace environment .env.' + name;
-        pill.addEventListener('click', () => post('setProjectEnv', { envName: name }));
+        pill.title = 'Use .env.' + name + ' for this request (updates # @env in file)';
+        pill.addEventListener('click', () => post('setProjectEnv', { envName: name, blockIndex: state.activeBlockIndex }));
         const openBtn = document.createElement('button');
         openBtn.type = 'button';
         openBtn.className = 'ghost icon-btn env-open-btn';
@@ -1489,48 +1660,92 @@ export function buildHttpRequestEditorHtml(
       return 'warn';
     }
 
+    function applyEnvScopeUi() {
+      if (!els.envFolderHeading) {
+        return;
+      }
+      els.envFolderHeading.textContent = state.envScope === 'personal'
+        ? 'Personal HTTP folder (.env files)'
+        : 'Workspace / file (.env at project root)';
+    }
+
     function setResponseTab(tab) {
       state.responseTab = tab;
-      els.responseTabButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.responseTab === tab));
-      const show = (id, visible) => {
-        const el = document.getElementById(id);
-        if (el) el.hidden = !visible;
+      if (els.responsePartSelect) {
+        els.responsePartSelect.value = tab;
+      }
+      els.responsePanes.forEach((pane) => {
+        pane.classList.toggle('active', pane.dataset.responseTab === tab);
+      });
+      updateCopyResponseLabel();
+    }
+
+    function updateCopyResponseLabel() {
+      if (!els.copyResponseBtn) {
+        return;
+      }
+      const titles = {
+        body: 'Copy response body',
+        headers: 'Copy response headers',
+        raw: 'Copy raw response',
+        assertions: 'Copy assertions',
       };
-      show('responseEmpty', false);
-      show('responseBodyPre', tab === 'body');
-      show('responseHeadersTable', tab === 'headers');
-      show('responseRawPre', tab === 'raw');
-      show('responseAssertions', tab === 'assertions');
+      els.copyResponseBtn.textContent = 'Copy';
+      els.copyResponseBtn.title = titles[state.responseTab] || 'Copy visible section';
+      els.copyResponseBtn.disabled = !state.responsesByBlock[state.activeBlockIndex];
+    }
+
+    function getActiveResponsePayload() {
+      return state.responsesByBlock[state.activeBlockIndex] || null;
+    }
+
+    function getResponseCopyText(tab) {
+      const payload = getActiveResponsePayload();
+      if (!payload) {
+        return '';
+      }
+      if (tab === 'headers') {
+        const headers = payload.headers || {};
+        return Object.entries(headers).map(([k, v]) => k + ': ' + v).join('\\n');
+      }
+      if (tab === 'raw') {
+        return payload.rawFormatted || '';
+      }
+      return payload.body || '';
     }
 
     function renderResponseForActiveBlock() {
       const payload = state.responsesByBlock[state.activeBlockIndex];
       if (!payload) {
-        els.responseStatusBadge.textContent = '—';
-        els.responseStatusBadge.className = 'response-status';
-        els.responseMeta.textContent = '';
-        els.responseEmpty.hidden = false;
-        els.responseBodyPre.hidden = true;
-        els.responseHeadersTable.hidden = true;
-        els.responseRawPre.hidden = true;
-        els.responseAssertions.hidden = true;
+        els.responseStatusBadge.textContent = 'No response';
+        els.responseStatusBadge.className = 'response-status idle';
+        els.responseMeta.textContent = '—';
+        if (els.responseEmpty) els.responseEmpty.hidden = false;
+        if (els.responseBodyContent) els.responseBodyContent.hidden = true;
+        els.responseHeadersTable.innerHTML = '<tr><td colspan="2"><span class="empty-state">No response yet</span></td></tr>';
+        els.responseRawPre.textContent = '';
+        els.responseAssertions.innerHTML = '<p class="empty-state">Send a request to see assertion results.</p>';
         els.sendResponseChatBtn.disabled = true;
         els.resendResponseBtn.disabled = false;
+        els.copyResponseBtn.disabled = true;
+        setResponseTab(state.responseTab || 'body');
         return;
       }
 
       const code = payload.statusCode || 0;
       els.responseStatusBadge.textContent = code > 0 ? 'HTTP ' + code : 'Error';
       els.responseStatusBadge.className = 'response-status ' + statusClass(code);
-      const env = payload.envName ? ' · env: ' + payload.envName : '';
-      els.responseMeta.textContent = (payload.executionTimeSeconds || '0') + 's' + env;
-      els.responseEmpty.hidden = true;
-      els.responseBodyPre.textContent = payload.body || '';
+      els.responseMeta.textContent = (payload.executionTimeSeconds || '0') + 's';
+      if (els.responseEmpty) els.responseEmpty.hidden = true;
+      if (els.responseBodyContent) els.responseBodyContent.hidden = false;
+      if (els.responseBodyArea) {
+        els.responseBodyArea.value = payload.body || '';
+      }
       els.responseRawPre.textContent = payload.rawFormatted || '';
       const headers = payload.headers || {};
       els.responseHeadersTable.innerHTML = Object.keys(headers).map((k) =>
-        '<tr><td>' + escHtml(k) + '</td><td>' + escHtml(headers[k]) + '</td></tr>'
-      ).join('') || '<tr><td colspan="2"><em>None</em></td></tr>';
+        '<tr><td><input class="h-key" value="' + escAttr(k) + '" readonly /></td><td><input class="h-val var-ac-input" value="' + escAttr(headers[k]) + '" readonly /></td></tr>'
+      ).join('') || '<tr><td colspan="2"><span class="empty-state">None</span></td></tr>';
       const results = payload.assertionResults || [];
       if (!results.length) {
         els.responseAssertions.innerHTML = '<p class="empty-state">No assertions were run.</p>';
@@ -1546,6 +1761,7 @@ export function buildHttpRequestEditorHtml(
       }
       els.sendResponseChatBtn.disabled = false;
       els.resendResponseBtn.disabled = false;
+      els.copyResponseBtn.disabled = false;
       setResponseTab(state.responseTab || 'body');
     }
 
@@ -1572,11 +1788,12 @@ export function buildHttpRequestEditorHtml(
       state.globalFileEnv = msg.globalFileEnv;
       state.blockEnv = msg.blockEnv;
       state.compactMode = msg.compactMode !== false;
+      state.envScope = msg.envScope || 'project';
       state.responseLayout = msg.responseLayout === 'bottom'
         ? 'bottom'
-        : msg.responseLayout === 'right'
-          ? 'right'
-          : 'left';
+        : msg.responseLayout === 'left'
+          ? 'left'
+          : 'right';
       els.fileName.textContent = msg.fileName || 'HTTP Request';
       if (msg.filePath) {
         const parts = msg.filePath.split(/[/\\\\]/);
@@ -1590,6 +1807,7 @@ export function buildHttpRequestEditorHtml(
       applyForm(msg.form, true);
       renderUrlHighlight();
       renderEnvBanner();
+      applyEnvScopeUi();
       setDetailTab(state.detailTab);
       applyEditorLayout();
       renderResponseForActiveBlock();
@@ -1647,9 +1865,12 @@ export function buildHttpRequestEditorHtml(
       els.body.addEventListener('input', onFormChange);
       els.headersBody.addEventListener('input', onFormChange);
       els.sendBtn.addEventListener('click', () => post('send', { form: readForm(), blockIndex: state.activeBlockIndex }));
-      els.responseTabButtons.forEach((btn) => btn.addEventListener('click', () => setResponseTab(btn.dataset.responseTab)));
+      if (els.responsePartSelect) {
+        els.responsePartSelect.addEventListener('change', () => setResponseTab(els.responsePartSelect.value));
+      }
       els.sendResponseChatBtn.addEventListener('click', () => post('sendResponseToChat'));
       els.resendResponseBtn.addEventListener('click', () => post('send', { form: readForm(), blockIndex: state.activeBlockIndex }));
+      els.copyResponseBtn.addEventListener('click', () => post('copyResponse', { part: state.responseTab }));
       els.saveBtn.addEventListener('click', () => post('save', { form: readForm(), blockIndex: state.activeBlockIndex }));
       els.copyCurlBtn.addEventListener('click', () => post('copyCurl', { blockIndex: state.activeBlockIndex }));
       els.openTextBtn.addEventListener('click', () => post('openAsText'));

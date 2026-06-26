@@ -4,8 +4,11 @@ import * as path from 'path';
 import {
   getProjectEnvFilePath,
   getProjectEnvRoot,
+  getEnvFilePath,
   envNameFromProjectEnvFileName,
   listProjectEnvFileNames,
+  listEnvFileNames,
+  getPersonalHttpPath,
 } from './utils';
 
 /**
@@ -19,6 +22,15 @@ export class EnvironmentManager {
   public readonly onDidChangeEnvironment: vscode.Event<string> = this._onDidChangeEnvironment.event;
   private fileWatchers: Map<string, vscode.FileSystemWatcher> = new Map();
   private workspacePaths: Set<string> = new Set();
+  private personalHttpWatcher: vscode.FileSystemWatcher | undefined;
+
+  private resolveEnvRoot(workspacePath: string, envRoot?: string): string {
+    return envRoot ?? getProjectEnvRoot(workspacePath);
+  }
+
+  private cacheKey(envRoot: string, envName: string): string {
+    return `${envRoot}:${envName}`;
+  }
 
   private constructor() {
     // File watchers are set up when the extension activates
@@ -55,16 +67,21 @@ export class EnvironmentManager {
    * @param workspacePath Workspace path
    * @returns Variable map or null if the environment file was not found
    */
-  public loadEnvironment(envName: string, workspacePath: string): Map<string, string> | null {
-    const cacheKey = `${workspacePath}:${envName}`;
+  public loadEnvironment(
+    envName: string,
+    workspacePath: string,
+    envRoot?: string
+  ): Map<string, string> | null {
+    const root = this.resolveEnvRoot(workspacePath, envRoot);
+    const cacheKey = this.cacheKey(root, envName);
     if (this.environmentsCache.has(cacheKey)) {
       return this.environmentsCache.get(cacheKey)!;
     }
 
-    let envFilePath = getProjectEnvFilePath(workspacePath, envName);
+    let envFilePath = getEnvFilePath(root, envName);
 
     if (!fs.existsSync(envFilePath) && envName !== 'default') {
-      envFilePath = getProjectEnvFilePath(workspacePath, 'default');
+      envFilePath = getEnvFilePath(root, 'default');
       if (!fs.existsSync(envFilePath)) {
         return null;
       }
@@ -121,8 +138,13 @@ export class EnvironmentManager {
   /**
    * Replaces {{varName}} placeholders using environment variables
    */
-  public replaceVariables(text: string, envName: string, workspacePath: string): string {
-    const variables = this.loadEnvironment(envName, workspacePath);
+  public replaceVariables(
+    text: string,
+    envName: string,
+    workspacePath: string,
+    envRoot?: string
+  ): string {
+    const variables = this.loadEnvironment(envName, workspacePath, envRoot);
 
     if (!variables) {
       return text;
@@ -148,8 +170,13 @@ export class EnvironmentManager {
   /**
    * Returns variable names that could not be resolved
    */
-  public validateVariables(text: string, envName: string, workspacePath: string): string[] {
-    const variables = this.loadEnvironment(envName, workspacePath);
+  public validateVariables(
+    text: string,
+    envName: string,
+    workspacePath: string,
+    envRoot?: string
+  ): string[] {
+    const variables = this.loadEnvironment(envName, workspacePath, envRoot);
 
     if (!variables) {
       const allVars: string[] = [];
@@ -184,10 +211,11 @@ export class EnvironmentManager {
   /**
    * Lists available environment names from project-root .env files
    */
-  public getAvailableEnvironments(workspacePath: string): string[] {
+  public getAvailableEnvironments(workspacePath: string, envRoot?: string): string[] {
+    const root = this.resolveEnvRoot(workspacePath, envRoot);
     const envNames: string[] = [];
 
-    for (const fileName of listProjectEnvFileNames(workspacePath)) {
+    for (const fileName of listEnvFileNames(root)) {
       const envName = envNameFromProjectEnvFileName(fileName);
       if (envName) {
         envNames.push(envName);
@@ -201,9 +229,22 @@ export class EnvironmentManager {
     this.environmentsCache.clear();
   }
 
-  public clearEnvironmentCache(envName: string, workspacePath: string): void {
-    const cacheKey = `${workspacePath}:${envName}`;
-    this.environmentsCache.delete(cacheKey);
+  public clearEnvironmentCache(
+    envName: string,
+    workspacePath: string,
+    envRoot?: string
+  ): void {
+    const root = this.resolveEnvRoot(workspacePath, envRoot);
+    this.environmentsCache.delete(this.cacheKey(root, envName));
+  }
+
+  public clearEnvRootCache(envRoot: string): void {
+    const prefix = `${envRoot}:`;
+    for (const key of [...this.environmentsCache.keys()]) {
+      if (key.startsWith(prefix)) {
+        this.environmentsCache.delete(key);
+      }
+    }
   }
 
   public clearWorkspaceCache(workspacePath: string): void {
@@ -225,6 +266,27 @@ export class EnvironmentManager {
     });
 
     this.updateFileWatchers();
+    this.setupPersonalHttpEnvWatcher();
+  }
+
+  private setupPersonalHttpEnvWatcher(): void {
+    if (this.personalHttpWatcher) {
+      return;
+    }
+    const personalRoot = getPersonalHttpPath();
+    const pattern = new vscode.RelativePattern(vscode.Uri.file(personalRoot), '.env*');
+    const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+    watcher.onDidChange(() => {
+      this.clearEnvRootCache(personalRoot);
+      this._onDidChangeEnvironment.fire(this.activeEnvironment);
+    });
+    watcher.onDidCreate(() => {
+      this.clearEnvRootCache(personalRoot);
+    });
+    watcher.onDidDelete(() => {
+      this.clearEnvRootCache(personalRoot);
+    });
+    this.personalHttpWatcher = watcher;
   }
 
   private updateFileWatchers(): void {
@@ -273,6 +335,10 @@ export class EnvironmentManager {
   }
 
   public dispose(): void {
+    if (this.personalHttpWatcher) {
+      this.personalHttpWatcher.dispose();
+      this.personalHttpWatcher = undefined;
+    }
     for (const watcher of this.fileWatchers.values()) {
       watcher.dispose();
     }
@@ -284,8 +350,13 @@ export class EnvironmentManager {
   /**
    * Creates a new project-root environment file with a template
    */
-  public async createEnvironment(envName: string, workspacePath: string): Promise<boolean> {
-    const filePath = getProjectEnvFilePath(workspacePath, envName);
+  public async createEnvironment(
+    envName: string,
+    workspacePath: string,
+    envRoot?: string
+  ): Promise<boolean> {
+    const root = this.resolveEnvRoot(workspacePath, envRoot);
+    const filePath = getEnvFilePath(root, envName);
 
     if (fs.existsSync(filePath)) {
       return false;

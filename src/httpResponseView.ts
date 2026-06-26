@@ -19,7 +19,7 @@ export function isHttpCompactModeEnabled(): boolean {
 export function getHttpResponseLayout(): HttpResponseLayout {
   const layout = vscode.workspace
     .getConfiguration('cursorToys')
-    .get<string>('httpRequestEditor.responseLayout', 'left');
+    .get<string>('httpRequestEditor.responseLayout', 'right');
   if (layout === 'bottom') {
     return 'bottom';
   }

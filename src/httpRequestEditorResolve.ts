@@ -37,7 +37,8 @@ export function buildVariablePreview(
   document: vscode.TextDocument,
   blockStartLine: number,
   workspacePath: string,
-  activeProjectEnv: string
+  activeProjectEnv: string,
+  envRoot?: string
 ): {
   effectiveEnv: string;
   envSource: 'block' | 'file' | 'workspace';
@@ -62,8 +63,8 @@ export function buildVariablePreview(
 
   const envManager = EnvironmentManager.getInstance();
   const envMap =
-    workspacePath && effectiveEnv
-      ? envManager.loadEnvironment(effectiveEnv, workspacePath)
+    effectiveEnv
+      ? envManager.loadEnvironment(effectiveEnv, workspacePath, envRoot)
       : null;
 
   const parts = [
@@ -106,13 +107,13 @@ export function buildVariablePreview(
   }
 
   let resolvedUrl = form.url;
-  const dotenvVariables =
-    workspacePath && effectiveEnv
-      ? envManager.loadEnvironment(effectiveEnv, workspacePath) ?? undefined
-      : undefined;
+  const dotenvVariables = effectiveEnv
+    ? envManager.loadEnvironment(effectiveEnv, workspacePath, envRoot) ?? undefined
+    : undefined;
   resolvedUrl = resolveHttpVariables({
     content: resolvedUrl,
     workspacePath,
+    envRoot,
     envName: effectiveEnv || null,
     customVariables: fileVars,
     dotenvVariables: dotenvVariables ?? undefined,

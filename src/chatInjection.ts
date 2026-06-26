@@ -114,8 +114,17 @@ async function trySubmitComposer(cmds: readonly string[]): Promise<boolean> {
 }
 
 export interface InjectTextToChatOptions {
-  /** When false, paste only and leave the composer for the user to edit and submit. Default: true. */
+  /** When false, paste only and leave the composer for the user to edit and submit. Default: cursorToys.chat.autoSubmit. */
   submit?: boolean;
+}
+
+/**
+ * Whether Send to Chat flows should auto-submit after pasting (cursorToys.chat.autoSubmit).
+ */
+export function isChatAutoSubmitEnabled(): boolean {
+  return vscode.workspace
+    .getConfiguration('cursorToys')
+    .get<boolean>('chat.autoSubmit', true);
 }
 
 /**
@@ -125,7 +134,8 @@ export async function injectTextToChat(
   text: string,
   options?: InjectTextToChatOptions
 ): Promise<InjectTextToChatResult> {
-  const shouldSubmit = options?.submit !== false;
+  const shouldSubmit =
+    options?.submit !== undefined ? options.submit : isChatAutoSubmitEnabled();
   const t = (text || '').trim();
   if (!t) {
     return { pasted: false, submitted: false };

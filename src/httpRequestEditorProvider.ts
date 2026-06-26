@@ -19,7 +19,7 @@ import {
   type HttpRequestFormData,
   type HttpRequestAssertionSummary,
 } from './httpRequestEditorTypes';
-import { getProjectEnvFilePath, isHttpRequestFile } from './utils';
+import { getEnvFilePath, getHttpEnvContext, isHttpRequestFile } from './utils';
 import { EnvironmentManager } from './environmentManager';
 import { curlToFormData } from './httpCurlImport';
 import { createNewHttpRequest } from './httpRequestEditorCommands';
@@ -148,6 +148,19 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
         block.endLine,
         block.kind === 'section' ? block.title : undefined
       );
+    };
+
+    const applyEnvToActiveBlock = async (envName: string): Promise<void> => {
+      const blocks = getHttpRequestBlocks(document);
+      const block = blocks[state.activeBlockIndex];
+      if (!block) {
+        return;
+      }
+      const next =
+        block.kind === 'section'
+          ? setBlockEnvInFile(document.getText(), block.startLine, envName)
+          : setFileGlobalEnv(document.getText(), envName);
+      await replaceDocument(next);
     };
 
     pushState();
@@ -293,30 +306,49 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
             const envManager = EnvironmentManager.getInstance();
             envManager.setActiveEnvironment(raw.envName);
             envManager.clearCache();
+            await applyEnvToActiveBlock(raw.envName);
             pushState();
             break;
           }
           case 'selectEnvironment': {
+            const envManager = EnvironmentManager.getInstance();
+            const previousEnv = envManager.getActiveEnvironment();
             await vscode.commands.executeCommand('cursor-toys.selectEnvironment');
+            const selectedEnv = envManager.getActiveEnvironment();
+            if (selectedEnv && selectedEnv !== previousEnv) {
+              await applyEnvToActiveBlock(selectedEnv);
+            }
             pushState();
             break;
           }
           case 'createEnvironment': {
-            const wf = vscode.workspace.getWorkspaceFolder(document.uri);
-            if (wf) {
-              const name = await vscode.window.showInputBox({
-                prompt: 'New environment name (creates .env.{name} at project root)',
-                validateInput: (v) =>
-                  /^\w+$/.test(v.trim()) ? null : 'Use letters, numbers, underscore',
-              });
-              if (name?.trim()) {
-                await EnvironmentManager.getInstance().createEnvironment(
-                  name.trim(),
-                  wf.uri.fsPath
-                );
-                EnvironmentManager.getInstance().setActiveEnvironment(name.trim());
-                pushState();
-              }
+            const envCtx = getHttpEnvContext(document.uri.fsPath);
+            if (!envCtx) {
+              void vscode.window.showErrorMessage(
+                'Could not resolve environment folder for this request file.'
+              );
+              break;
+            }
+            const prompt =
+              envCtx.scope === 'personal'
+                ? 'New environment name (creates .env.{name} in personal HTTP folder)'
+                : 'New environment name (creates .env.{name} at project root)';
+            const name = await vscode.window.showInputBox({
+              prompt,
+              validateInput: (v) =>
+                /^\w+$/.test(v.trim()) ? null : 'Use letters, numbers, underscore',
+            });
+            if (name?.trim()) {
+              const envManager = EnvironmentManager.getInstance();
+              await envManager.createEnvironment(
+                name.trim(),
+                envCtx.workspacePath,
+                envCtx.envRoot
+              );
+              envManager.setActiveEnvironment(name.trim());
+              envManager.clearCache();
+              await applyEnvToActiveBlock(name.trim());
+              pushState();
             }
             break;
           }
@@ -349,12 +381,9 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
             break;
           }
           case 'openProjectEnvFile': {
-            const wf = vscode.workspace.getWorkspaceFolder(document.uri);
-            if (wf?.uri.fsPath && raw.envName) {
-              const envPath = getProjectEnvFilePath(
-                wf.uri.fsPath,
-                raw.envName
-              );
+            const envCtx = getHttpEnvContext(document.uri.fsPath);
+            if (envCtx?.envRoot && raw.envName) {
+              const envPath = getEnvFilePath(envCtx.envRoot, raw.envName);
               try {
                 await vscode.window.showTextDocument(
                   vscode.Uri.file(envPath),
@@ -434,6 +463,26 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
             } else {
               void vscode.window.showWarningMessage('No HTTP response to send to chat.');
             }
+            break;
+          }
+          case 'copyResponse': {
+            const payload = state.lastResponse;
+            if (!payload) {
+              void vscode.window.showWarningMessage('No HTTP response to copy.');
+              break;
+            }
+            let text = payload.body || '';
+            if (raw.part === 'headers') {
+              text = Object.entries(payload.headers ?? {})
+                .map(([key, value]) => `${key}: ${value}`)
+                .join('\n');
+            } else if (raw.part === 'raw') {
+              text = payload.rawFormatted || '';
+            }
+            await vscode.env.clipboard.writeText(text);
+            const partLabel =
+              raw.part === 'headers' ? 'headers' : raw.part === 'raw' ? 'raw response' : 'body';
+            void vscode.window.showInformationMessage(`Response ${partLabel} copied to clipboard.`);
             break;
           }
           default:

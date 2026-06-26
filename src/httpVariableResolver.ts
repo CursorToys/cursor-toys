@@ -15,6 +15,7 @@ export interface ResolvedVariable {
 export interface ResolveVariablesOptions {
   content: string;
   workspacePath?: string;
+  envRoot?: string;
   envName?: string | null;
   customVariables?: Map<string, string>;
   dotenvVariables?: Map<string, string>;
@@ -65,10 +66,15 @@ export function resolveHttpVariables(options: ResolveVariablesOptions): string {
 
   result = replaceCustomVariables(result, custom);
 
-  if (options.workspacePath && options.envName) {
+  if (options.workspacePath !== undefined && options.envName) {
     const { EnvironmentManager } = require('./environmentManager') as typeof import('./environmentManager');
     const envManager = EnvironmentManager.getInstance();
-    result = envManager.replaceVariables(result, options.envName, options.workspacePath);
+    result = envManager.replaceVariables(
+      result,
+      options.envName,
+      options.workspacePath,
+      options.envRoot
+    );
   }
 
   if (options.resolveDynamic !== false) {

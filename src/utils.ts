@@ -636,14 +636,76 @@ export function getProjectEnvRoot(workspacePath: string): string {
   return workspacePath;
 }
 
+export type HttpEnvScope = 'personal' | 'project';
+
+export interface HttpEnvContext {
+  envRoot: string;
+  workspacePath: string;
+  scope: HttpEnvScope;
+}
+
+/**
+ * Returns the directory that holds .env files for a given HTTP request file.
+ * Personal requests use the personal HTTP folder; project requests use the workspace root.
+ */
+export function getHttpEnvRoot(requestPath: string): string | undefined {
+  const normalized = path.normalize(requestPath);
+  for (const httpRoot of getPersonalHttpPaths()) {
+    const rel = path.relative(httpRoot, normalized);
+    if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+      return httpRoot;
+    }
+  }
+  const folders = vscode.workspace.workspaceFolders;
+  if (!folders?.length) {
+    return undefined;
+  }
+  for (const folder of folders) {
+    const ws = folder.uri.fsPath;
+    const rel = path.relative(ws, normalized);
+    if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+      return ws;
+    }
+  }
+  return folders[0].uri.fsPath;
+}
+
+/**
+ * Resolves HTTP environment context (root folder + scope) for a request file path.
+ */
+export function getHttpEnvContext(requestPath: string): HttpEnvContext | null {
+  const envRoot = getHttpEnvRoot(requestPath);
+  if (!envRoot) {
+    return null;
+  }
+  for (const httpRoot of getPersonalHttpPaths()) {
+    const rel = path.relative(httpRoot, path.normalize(requestPath));
+    if (!rel.startsWith('..') && !path.isAbsolute(rel)) {
+      const workspacePath =
+        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
+      return { envRoot, workspacePath, scope: 'personal' };
+    }
+  }
+  return { envRoot, workspacePath: envRoot, scope: 'project' };
+}
+
+/**
+ * Resolves the file path for a named HTTP environment under an env root folder.
+ * @param envRoot Folder containing .env files
+ * @param envName Environment name (`default` maps to `.env`)
+ */
+export function getEnvFilePath(envRoot: string, envName: string): string {
+  const fileName = envName === 'default' ? '.env' : `.env.${envName}`;
+  return path.join(envRoot, fileName);
+}
+
 /**
  * Resolves the file path for a named HTTP environment at the project root
  * @param workspacePath Workspace path
  * @param envName Environment name (`default` maps to `.env`)
  */
 export function getProjectEnvFilePath(workspacePath: string, envName: string): string {
-  const fileName = envName === 'default' ? '.env' : `.env.${envName}`;
-  return path.join(getProjectEnvRoot(workspacePath), fileName);
+  return getEnvFilePath(getProjectEnvRoot(workspacePath), envName);
 }
 
 /**
@@ -664,15 +726,14 @@ export function envNameFromProjectEnvFileName(fileName: string): string | null {
 }
 
 /**
- * Lists runnable .env* files at the project root (excludes `.env.example`)
+ * Lists runnable .env* files in a folder (excludes `.env.example`)
  */
-export function listProjectEnvFileNames(workspacePath: string): string[] {
-  const root = getProjectEnvRoot(workspacePath);
-  if (!fs.existsSync(root)) {
+export function listEnvFileNames(envRoot: string): string[] {
+  if (!fs.existsSync(envRoot)) {
     return [];
   }
   try {
-    return fs.readdirSync(root).filter((file) => {
+    return fs.readdirSync(envRoot).filter((file) => {
       if (!file.startsWith('.env')) {
         return false;
       }
@@ -681,6 +742,13 @@ export function listProjectEnvFileNames(workspacePath: string): string[] {
   } catch {
     return [];
   }
+}
+
+/**
+ * Lists runnable .env* files at the project root (excludes `.env.example`)
+ */
+export function listProjectEnvFileNames(workspacePath: string): string[] {
+  return listEnvFileNames(getProjectEnvRoot(workspacePath));
 }
 
 /**

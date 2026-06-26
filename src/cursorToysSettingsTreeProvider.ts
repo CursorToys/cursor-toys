@@ -271,6 +271,22 @@ export const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
     ],
   },
   {
+    id: 'chat',
+    label: 'Chat',
+    kind: 'category',
+    iconId: 'comment-discussion',
+    children: [
+      {
+        id: 'chat-auto-submit',
+        label: 'Auto-submit on Send to Chat',
+        kind: 'setting',
+        iconId: 'send',
+        settingKey: 'cursorToys.chat.autoSubmit',
+        description: 'Paste only when off; you send manually',
+      },
+    ],
+  },
+  {
     id: 'secrets',
     label: 'API Keys',
     kind: 'category',

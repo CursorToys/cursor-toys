@@ -2,6 +2,21 @@
 
 ![](https://i.imgur.com/s1yX64Y.jpeg)
 
+## v2026.6.25-2 - Chat auto-submit and HTTP editor polish
+
+### Added
+
+- **Chat auto-submit setting** — `cursorToys.chat.autoSubmit` (default `true`). When disabled, Send to Chat and HTTP **Send to chat** paste into the composer without submitting, so you can review before sending.
+
+### Changed
+
+- **HTTP response panel (inline)** — response side uses the same card layout as the request (toolbar, detail tabs, headers table, body textarea); default position is **right** instead of left.
+- **Personal HTTP environments** — `.env` / `.env.*` files in the personal HTTP folder (`~/.cursortoys/http/`) are loaded when running personal request files; create/select env from the visual editor or command palette without a workspace.
+- **HTTP env picker** — selecting an environment in the visual editor now updates `# @env` in the request file (file header or active section), so the chosen env is used when sending.
+- **HTTP editor layout** — response bar uses a dropdown (Body / Headers / Raw / Assertions), HTTP status and timing grouped with actions on the right; clearer empty state before the first send.
+- **Response layout default** — `cursorToys.httpRequestEditor.responseLayout` now defaults to `right` (was `left`).
+- **MCP** — config snapshot includes `chat.autoSubmit`; `chat_inject` respects the setting when `submit` is omitted.
+
 ## v2026.6.25-1 - HTTP personal library, inline responses, assertion fixes
 
 ### Added

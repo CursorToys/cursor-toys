@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { injectTextToChat, isChatAutoSubmitEnabled } from './chatInjection';
 
 const DEEPLINK_BASE = 'cursor://anysphere.cursor-deeplink/prompt';
 export const MAX_DEEPLINK_LENGTH = 8000;
@@ -25,23 +26,40 @@ export async function sendToChat(text: string, prompt?: string): Promise<boolean
     ? `${prompt}\n\n---\n\n${text}`
     : text;
 
+  if (!isChatAutoSubmitEnabled()) {
+    const result = await injectTextToChat(fullText, { submit: false });
+    if (result.pasted) {
+      void vscode.window.showInformationMessage('Pasted to chat (not sent).');
+      return true;
+    }
+    void vscode.window.showErrorMessage('Could not paste into chat.');
+    return false;
+  }
+
   try {
     await vscode.commands.executeCommand('workbench.action.chat.open', fullText);
-    vscode.window.showInformationMessage('Sent to chat.');
+    void vscode.window.showInformationMessage('Sent to chat.');
     return true;
   } catch {
-    // Fallback: open via deeplink (e.g. when command not available or from external context)
-    const deeplink = buildPromptDeeplink(fullText);
-    if (deeplink.length > MAX_DEEPLINK_LENGTH) {
-      vscode.window.showErrorMessage(
-        `Text too long (${deeplink.length} characters). Limit: ${MAX_DEEPLINK_LENGTH} characters.`
+    const injected = await injectTextToChat(fullText, { submit: true });
+    if (injected.pasted) {
+      void vscode.window.showInformationMessage(
+        injected.submitted ? 'Sent to chat.' : 'Pasted to chat (not sent).'
       );
-      return false;
+      return true;
     }
-    await vscode.env.openExternal(vscode.Uri.parse(deeplink));
-    vscode.window.showInformationMessage('Sent to Cursor chat!');
-    return true;
   }
+
+  const deeplink = buildPromptDeeplink(fullText);
+  if (deeplink.length > MAX_DEEPLINK_LENGTH) {
+    vscode.window.showErrorMessage(
+      `Text too long (${deeplink.length} characters). Limit: ${MAX_DEEPLINK_LENGTH} characters.`
+    );
+    return false;
+  }
+  await vscode.env.openExternal(vscode.Uri.parse(deeplink));
+  vscode.window.showInformationMessage('Sent to Cursor chat!');
+  return true;
 }
 
 /**

@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { mergeCustomVariables } from './httpRequestVariables';
 import { resolveHttpVariables } from './httpVariableResolver';
-import { getHttpResponsePath } from './utils';
+import { getHttpResponsePath, getHttpEnvContext } from './utils';
 import { EnvironmentManager } from './environmentManager';
 import {
   buildHttpResponsePanelKey,
@@ -1295,22 +1295,31 @@ export async function executeHttpRequestFromFile(
     }
 
     const workspaceFolders = vscode.workspace.workspaceFolders;
-    const workspacePath = workspaceFolders?.[0]?.uri.fsPath;
+    const envCtx = getHttpEnvContext(document.uri.fsPath);
+    const workspacePath =
+      envCtx?.workspacePath ?? workspaceFolders?.[0]?.uri.fsPath;
+    const envRoot = envCtx?.envRoot;
     const envManager = EnvironmentManager.getInstance();
-    const dotenvVariables = envName && workspacePath
-      ? envManager.loadEnvironment(envName, workspacePath) ?? undefined
+    const dotenvVariables = envName && envCtx
+      ? envManager.loadEnvironment(envName, workspacePath ?? '', envRoot) ?? undefined
       : undefined;
 
     if (fileVariables.size > 0 || envName || dotenvVariables) {
       content = resolveHttpVariables({
         content,
         workspacePath,
+        envRoot,
         envName,
         customVariables: fileVariables,
         dotenvVariables: dotenvVariables ?? undefined,
       });
-      if (envName && workspacePath) {
-        const unresolvedVars = envManager.validateVariables(content, envName, workspacePath);
+      if (envName && envCtx) {
+        const unresolvedVars = envManager.validateVariables(
+          content,
+          envName,
+          workspacePath ?? '',
+          envRoot
+        );
         if (unresolvedVars.length > 0) {
           vscode.window.showWarningMessage(
             `Unresolved variables in environment '${envName}': ${unresolvedVars.join(', ')}`
@@ -1627,15 +1636,19 @@ export async function copyCurlCommand(
     }
 
     const workspaceFolders = vscode.workspace.workspaceFolders;
-    const workspacePath = workspaceFolders?.[0]?.uri.fsPath;
+    const envCtx = getHttpEnvContext(document.uri.fsPath);
+    const workspacePath =
+      envCtx?.workspacePath ?? workspaceFolders?.[0]?.uri.fsPath;
+    const envRoot = envCtx?.envRoot;
     const envManager = EnvironmentManager.getInstance();
-    const dotenvVariables = envName && workspacePath
-      ? envManager.loadEnvironment(envName, workspacePath) ?? undefined
+    const dotenvVariables = envName && envCtx
+      ? envManager.loadEnvironment(envName, workspacePath ?? '', envRoot) ?? undefined
       : undefined;
 
     content = resolveHttpVariables({
       content,
       workspacePath,
+      envRoot,
       envName,
       customVariables: fileVariables,
       dotenvVariables: dotenvVariables ?? undefined,
