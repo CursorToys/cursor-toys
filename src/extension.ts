@@ -553,6 +553,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     [
       { scheme: 'file', pattern: '**/.cursor/**' },
       { scheme: 'file', pattern: '**/.claude/**' },
+      { scheme: 'file', pattern: '**/.agents/**' },
       { scheme: 'file', pattern: '**/.vscode/**' },
       { scheme: 'file', pattern: '**/.ai/**' },
     ],
@@ -1110,10 +1111,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const filePath = fileUri.fsPath;
         const normalizedPath = filePath.replace(/\\/g, '/');
 
-        // Verify file is in commands folder (supports .cursor, .claude, or custom base folder)
+        // Verify file is in commands folder (supports .cursor, .claude, .agents, or custom base folder)
         const baseFolderName = getBaseFolderName();
         const isInCommandsFolder = normalizedPath.includes('/.cursor/commands/') || 
                                    normalizedPath.includes('/.claude/commands/') ||
+                                   normalizedPath.includes('/.agents/commands/') ||
                                    normalizedPath.includes(`/.${baseFolderName}/commands/`);
         
         if (!isInCommandsFolder) {
@@ -1132,7 +1134,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const fileContent = await vscode.workspace.fs.readFile(fileUri);
         const fileName = path.basename(filePath);
 
-        // Determine destination path using configuration (~/.cursor/commands or ~/.claude/commands)
+        // Determine destination path using configuration (~/.cursor/commands, ~/.claude/commands, or ~/.agents/commands)
         const userCommandsPath = getCommandsPath(undefined, true);
         const destinationUri = vscode.Uri.file(path.join(userCommandsPath, fileName));
 
@@ -1237,6 +1239,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           const baseFolderName = getBaseFolderName();
           const isInSkillsFolder = normalizedPath.includes('/.cursor/skills/') || 
                                    normalizedPath.includes('/.claude/skills/') ||
+                                   normalizedPath.includes('/.agents/skills/') ||
                                    normalizedPath.includes(`/.${baseFolderName}/skills/`);
           
           if (!isInSkillsFolder || !normalizedPath.endsWith('/SKILL.md')) {
@@ -1261,6 +1264,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         
         const isInSkillsFolder = normalizedPath.includes('/.cursor/skills/') || 
                                  normalizedPath.includes('/.claude/skills/') ||
+                                 normalizedPath.includes('/.agents/skills/') ||
                                  normalizedPath.includes(`/.${baseFolderName}/skills/`);
         
         if (!isInSkillsFolder) {
@@ -1278,7 +1282,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         // Get skill folder name
         const skillFolderName = path.basename(skillFolderPath);
         
-        // Determine destination path using configuration (~/.cursor/skills or ~/.claude/skills)
+        // Determine destination path using configuration (~/.cursor/skills, ~/.claude/skills, or ~/.agents/skills)
         const userSkillsPath = getSkillsPath(undefined, true);
         const destinationPath = path.join(userSkillsPath, skillFolderName);
         const destinationUri = vscode.Uri.file(destinationPath);
@@ -2617,6 +2621,12 @@ Detailed instructions for the agent.
   claudeSkillsWatcher.onDidChange(() => userSkillsTreeProvider.refresh());
   claudeSkillsWatcher.onDidCreate(() => userSkillsTreeProvider.refresh());
   claudeSkillsWatcher.onDidDelete(() => userSkillsTreeProvider.refresh());
+
+  // Also watch .agents/skills for compatibility
+  const agentsSkillsWatcher = vscode.workspace.createFileSystemWatcher('**/.agents/skills/**/SKILL.md');
+  agentsSkillsWatcher.onDidChange(() => userSkillsTreeProvider.refresh());
+  agentsSkillsWatcher.onDidCreate(() => userSkillsTreeProvider.refresh());
+  agentsSkillsWatcher.onDidDelete(() => userSkillsTreeProvider.refresh());
 
   /**
    * Helper function to get URI from hooks command argument (can be HooksFileItem or vscode.Uri)
@@ -5176,6 +5186,7 @@ Detailed instructions for the agent.
     addSkillRemoteCommand,
     skillsWatcher,
     claudeSkillsWatcher,
+    agentsSkillsWatcher,
     createHooksFileCommand,
     openHooksCommand,
     deleteHooksCommand,

@@ -62,7 +62,7 @@ export async function generateDeeplink(
         fileType = null;
       }
       if (!fileType) {
-        vscode.window.showErrorMessage('File must be in .cursor/commands/, .claude/commands/, .cursor/rules/, .cursor/prompts/ or .cursor/skills/');
+        vscode.window.showErrorMessage('File must be in .cursor/commands/, .claude/commands/, .agents/commands/, .cursor/rules/, .cursor/prompts/ or .cursor/skills/');
         return null;
       }
     }

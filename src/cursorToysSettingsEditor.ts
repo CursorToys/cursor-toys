@@ -225,6 +225,7 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
         [
           { label: 'cursor', description: '.cursor/commands' },
           { label: 'claude', description: '.claude/commands' },
+          { label: 'agents', description: '.agents/commands' },
         ],
         { placeHolder: `Current: ${current}` }
       );
@@ -251,9 +252,10 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       const current = config.get<string>(settingKey, 'both');
       const picked = await vscode.window.showQuickPick(
         [
-          { label: 'both', description: 'Show .cursor and .claude' },
+          { label: 'both', description: 'Show .cursor, .claude, and .agents' },
           { label: 'cursor', description: 'Show .cursor only' },
           { label: 'claude', description: 'Show .claude only' },
+          { label: 'agents', description: 'Show .agents only' },
         ],
         { placeHolder: `Current: ${current}` }
       );

@@ -163,17 +163,19 @@ GET https://api.example.com/user/123
 
 ### 📚 Personal Libraries
 
-**Your commands and prompts, everywhere** — personal (`~/.cursor/`) and project (`.cursor/`) libraries in the Control panel and optional Explorer trees.
+**Your commands and prompts, everywhere** — personal (`~/.cursor/`, `~/.claude/`, or `~/.agents/` when configured) and project (`.{baseFolder}/`) libraries in the Control panel and optional Explorer trees.
 
 - Browse, rename, delete, and reveal files; filter by extension.
 - Organize with folders and drag-and-drop.
 - Share from the tree via CursorToys format or deeplink.
+- **Folder settings:** `cursorToys.commandsFolder` (`cursor` | `claude` | `agents`); `cursorToys.personalCommandsView` (`both` shows all three, or pick one); `cursorToys.baseFolder` for workspace paths (e.g. `agents` → `.agents/`).
 
 ### 🎓 Skills Management
 
 **Manage Agent Skills visually** — personal and workspace skills in one tree.
 
-- Folder hierarchy mirrors disk; auto-detects `SKILL.md`.
+- Folder hierarchy mirrors disk; auto-detects `SKILL.md` under `.cursor/skills/`, `.claude/skills/`, and `.agents/skills/`.
+- **Add Skill Remote** — Command Palette, Skills sidebar, or Control Panel: paste a GitHub repo or folder URL, pick discovered skills, import to personal or project library. MCP: `skill_remote_discover`, `skill_remote_import`.
 - Share individual skills or folders as bundles; CodeLens on `SKILL.md`.
 - Create templates, move skills to personal library, import from links.
 
@@ -243,7 +245,7 @@ GET https://api.example.com/user/123
 
 - Enable: **CursorToys → Control panel → Config** or `cursorToys.mcp.enabled` in settings.
 - Auto-registers in `~/.cursor/mcp.json` when `cursorToys.mcp.autoRegister` is on (uses Cursor's embedded Node runtime).
-- **Tools** (~150+): Kanban, Notepads, HTTP, anchors, assets, hooks, plans, clipboard, chat, settings, DeepSpec integration, plus `cursortoys_execute` dispatcher.
+- **Tools** (~150+): Kanban, Notepads, HTTP, anchors, assets, hooks, plans, clipboard, chat, settings, DeepSpec integration, remote skill import (`skill_remote_discover`, `skill_remote_import`), plus `cursortoys_execute` dispatcher.
 - **Resources** (`cursortoys://…`): config snapshot, kanban columns/cards, notepads, HTTP files, anchors, assets, plans, hooks, clipboard history.
 - **Prompts**: `kanban-workflow`, `http-test-suite`, `project-inventory`, `share-and-import`, `anchor-navigation`, `notepad-scratchpad`.
 - Security: destructive ops require `confirm: true`; secrets redacted; optional audit log at `.cursortoys/mcp-audit.log`.
@@ -367,6 +369,7 @@ Click **Send Request** above the file → response in the panel.
 | HTTP | Send HTTP Request | CodeLens on `.req` files |
 | HTTP | New HTTP Request | Command Palette, HTTP sidebar `+`, Explorer `.cursor/http/` |
 | HTTP | Select HTTP Environment | Command Palette |
+| Skills | Add Skill Remote | Command Palette, Skills sidebar |
 | Share | Generate / Share (commands, rules, prompts) | Context menu, CodeLens |
 | Chat | Send Selection to Chat | Context menu |
 | Tools | Minify File / Trim & Minify Clipboard | Command Palette |
@@ -376,6 +379,15 @@ Click **Send Request** above the file → response in the panel.
 Most actions are also on **CodeLens** and **right-click context menus**. Full list: Command Palette → `CursorToys:`.
 
 ## ✨ What's New
+
+**v2026.6.27-1** — see [CHANGELOG](CHANGELOG.md)
+
+- **Add Skill Remote** — import Agent Skills from GitHub repo or folder URLs (Command Palette, Skills sidebar, MCP).
+- **`.agents` folder** — configure `cursorToys.commandsFolder`, `personalCommandsView`, or `baseFolder` for `.agents/` alongside `.cursor` and `.claude`.
+- **Cursor Pet** — disabling the feature now removes auto-installed activity hooks from `hooks.json`.
+- **Removed** Skills Marketplace / recommendations catalog — use remote import or share/import flows instead.
+
+**v2026.6.25-2** — chat auto-submit (`cursorToys.chat.autoSubmit`), HTTP editor polish, personal HTTP environments.
 
 **v2026.6.23-1** — see [CHANGELOG](CHANGELOG.md)
 

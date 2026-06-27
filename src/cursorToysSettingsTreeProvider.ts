@@ -92,7 +92,7 @@ export const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
         kind: 'setting',
         iconId: 'folder-library',
         settingKey: 'cursorToys.commandsFolder',
-        description: 'cursor or claude',
+        description: 'cursor, claude, or agents',
       },
       {
         id: 'configure-keys',

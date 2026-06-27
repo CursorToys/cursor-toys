@@ -66,9 +66,10 @@ export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'pro
        normalizedPath.includes(`/.${baseFolderName}/`))) {
     return 'hooks';
   }
-  // Commands can be in .cursor/commands/, .claude/commands/, or custom base folder
+  // Commands can be in .cursor/commands/, .claude/commands/, .agents/commands/, or custom base folder
   if (normalizedPath.includes('/.cursor/commands/') || 
       normalizedPath.includes('/.claude/commands/') ||
+      normalizedPath.includes('/.agents/commands/') ||
       normalizedPath.includes(`/.${baseFolderName}/commands/`)) {
     return 'command';
   }
@@ -120,10 +121,11 @@ export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'pro
   if (isProjectRootEnvironmentFile(filePath)) {
     return 'env';
   }
-  // Skills can be in .cursor/skills/, .claude/skills/, or custom base folder
+  // Skills can be in .cursor/skills/, .claude/skills/, .agents/skills/, or custom base folder
   // Check personal folder first (home directory)
   if (normalizedPath.includes(`${normalizedHomePath}/.cursor/skills/`) || 
       normalizedPath.includes(`${normalizedHomePath}/.claude/skills/`) ||
+      normalizedPath.includes(`${normalizedHomePath}/.agents/skills/`) ||
       normalizedPath.includes(`${normalizedHomePath}/.${baseFolderName}/skills/`)) {
     const fileName = path.basename(filePath);
     if (fileName === 'SKILL.md') {
@@ -133,6 +135,7 @@ export function getFileTypeFromPath(filePath: string): 'command' | 'rule' | 'pro
   // Check workspace folder
   if (normalizedPath.includes(`/.cursor/skills/`) || 
       normalizedPath.includes(`/.claude/skills/`) ||
+      normalizedPath.includes(`/.agents/skills/`) ||
       normalizedPath.includes(`/.${baseFolderName}/skills/`)) {
     const fileName = path.basename(filePath);
     if (fileName === 'SKILL.md') {
@@ -233,12 +236,18 @@ export function getBaseFolderName(): string {
 }
 
 /**
- * Gets the commands folder name based on configuration ('cursor' or 'claude')
+ * Gets the commands folder name based on configuration ('cursor', 'claude', or 'agents')
  */
-export function getCommandsFolderName(): 'cursor' | 'claude' {
+export function getCommandsFolderName(): 'cursor' | 'claude' | 'agents' {
   const config = vscode.workspace.getConfiguration('cursorToys');
   const folderName = config.get<string>('commandsFolder', 'cursor');
-  return folderName === 'claude' ? 'claude' : 'cursor';
+  if (folderName === 'claude') {
+    return 'claude';
+  }
+  if (folderName === 'agents') {
+    return 'agents';
+  }
+  return 'cursor';
 }
 
 /**
@@ -275,6 +284,10 @@ export function getPersonalCommandsPaths(): string[] {
   
   if (viewMode === 'both' || viewMode === 'claude') {
     paths.push(path.join(homePath, '.claude', 'commands'));
+  }
+
+  if (viewMode === 'both' || viewMode === 'agents') {
+    paths.push(path.join(homePath, '.agents', 'commands'));
   }
   
   return paths;
@@ -874,19 +887,20 @@ export function getSkillsPath(workspacePath?: string, isUser: boolean = false): 
 
 /**
  * Gets the paths to the skills folders to show in Personal Skills view
- * @returns Array of folder paths (includes both .cursor and .claude for compatibility)
+ * @returns Array of folder paths (includes .cursor, .claude, and .agents for compatibility)
  */
 export function getPersonalSkillsPaths(): string[] {
   const homePath = getUserHomePath();
   const baseFolderName = getBaseFolderName();
   const paths: string[] = [];
   
-  // Always include .cursor and .claude for skills (both are supported)
+  // Always include standard personal config folders for skills
   paths.push(path.join(homePath, '.cursor', 'skills'));
   paths.push(path.join(homePath, '.claude', 'skills'));
+  paths.push(path.join(homePath, '.agents', 'skills'));
   
   // Also include configured base folder if different
-  if (baseFolderName !== 'cursor' && baseFolderName !== 'claude') {
+  if (baseFolderName !== 'cursor' && baseFolderName !== 'claude' && baseFolderName !== 'agents') {
     paths.push(path.join(homePath, `.${baseFolderName}`, 'skills'));
   }
   

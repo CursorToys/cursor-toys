@@ -23,6 +23,7 @@ import {
   installCursorPetHookBridge,
   isCursorPetBridgeInstalled,
   readActivityTail,
+  uninstallCursorPetHookBridge,
 } from './cursorPetHookInstaller';
 import { CursorPetTranscriptWatcher } from './cursorPetTranscriptWatcher';
 import type { CursorPetViewModel, EggSkin } from './types';
@@ -100,6 +101,7 @@ export class CursorPetService {
     if (!enabled) {
       this.stopRuntime();
       this.statusBarItem?.hide();
+      await this.removeHooksOnDisable();
       return;
     }
     await this.store.load();
@@ -107,6 +109,16 @@ export class CursorPetService {
     this.startRuntime();
     this.setupStatusBar();
     this.updateStatusBar();
+  }
+
+  private async removeHooksOnDisable(): Promise<void> {
+    try {
+      await uninstallCursorPetHookBridge();
+      this.bridgeInstalled = false;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      vscode.window.showWarningMessage(`Cursor Pet: failed to remove activity hooks. ${message}`);
+    }
   }
 
   /**

@@ -203,8 +203,8 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
   }
 
   /**
-   * Creates a source folder category item (.cursor or .claude)
-   * @param sourceName Source folder name (cursor or claude)
+   * Creates a source folder category item (.cursor, .claude, or .agents)
+   * @param sourceName Source folder name (cursor, claude, or agents)
    * @param items Items to group under this source
    * @returns A folder item representing the source category
    */
@@ -290,6 +290,8 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
         personalLabel = 'Personal (~/.cursor)';
       } else if (viewMode === 'claude') {
         personalLabel = 'Personal (~/.claude)';
+      } else if (viewMode === 'agents') {
+        personalLabel = 'Personal (~/.agents)';
       }
       
       items.push({
@@ -459,7 +461,7 @@ export class UserCommandsTreeProvider implements vscode.TreeDataProvider<Command
   /**
    * Get the base commands path from a file path
    * @param filePath Full file path
-   * @returns Base commands path (.cursor/commands or .claude/commands)
+   * @returns Base commands path (.cursor/commands, .claude/commands, or .agents/commands)
    */
   private getBasePath(filePath: string): string {
     // Check personal commands paths first

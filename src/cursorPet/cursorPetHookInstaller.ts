@@ -4,9 +4,14 @@ import * as vscode from 'vscode';
 import { getPersonalHooksPath, hooksFileExists, parseHooksFile } from '../hooksManager';
 import { ALL_HOOK_EVENTS } from '../hookScriptUtils';
 import { CURSOR_PET_BRIDGE_HOOK_EVENTS } from './cursorPetActivity';
+import {
+  CURSOR_PET_BRIDGE_SCRIPT,
+  CURSOR_PET_FEED_SCRIPT,
+  stripCursorPetHookEntries,
+} from './cursorPetHookEntries';
 
-const BRIDGE_SCRIPT_NAME = 'cursor-pet-bridge.js';
-const FEED_SCRIPT_NAME = 'cursor-pet-feed.js';
+const BRIDGE_SCRIPT_NAME = CURSOR_PET_BRIDGE_SCRIPT;
+const FEED_SCRIPT_NAME = CURSOR_PET_FEED_SCRIPT;
 
 export const CURSOR_PET_BRIDGE_EVENTS = [...CURSOR_PET_BRIDGE_HOOK_EVENTS];
 
@@ -95,6 +100,43 @@ export async function installCursorPetHookBridge(): Promise<{ installed: boolean
   );
 
   return { installed: true, events: registered };
+}
+
+/**
+ * Removes Cursor Pet hook registrations and bundled hook scripts from the personal hooks folder.
+ */
+export async function uninstallCursorPetHookBridge(): Promise<{
+  removed: boolean;
+  removedCount: number;
+}> {
+  const hooksPath = getPersonalHooksPath();
+  let removedCount = 0;
+
+  if (await hooksFileExists(hooksPath)) {
+    const config = await parseHooksFile(hooksPath);
+    if (config) {
+      const result = stripCursorPetHookEntries(config);
+      removedCount = result.removedCount;
+      if (removedCount > 0) {
+        await vscode.workspace.fs.writeFile(
+          vscode.Uri.file(hooksPath),
+          Buffer.from(JSON.stringify(result.config, null, 2), 'utf8')
+        );
+      }
+    }
+  }
+
+  const hooksDir = getPersonalHooksDir();
+  for (const scriptName of [BRIDGE_SCRIPT_NAME, FEED_SCRIPT_NAME]) {
+    const scriptPath = path.join(hooksDir, scriptName);
+    try {
+      await vscode.workspace.fs.delete(vscode.Uri.file(scriptPath), { useTrash: false });
+    } catch {
+      // Script may not exist
+    }
+  }
+
+  return { removed: removedCount > 0, removedCount };
 }
 
 /**

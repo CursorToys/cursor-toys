@@ -2,6 +2,24 @@
 
 ![](https://i.imgur.com/s1yX64Y.jpeg)
 
+## v2026.6.27-1 - Remote skills, `.agents` folder, Cursor Pet hook cleanup
+
+### Added
+
+- **Add Skill Remote** — `CursorToys: Add Skill Remote` imports Agent Skills from a GitHub repository or folder URL; discovers folders containing `SKILL.md`, lets you pick skills and target scope (personal or project). Optional GitHub token for private repos (same as Gist integration).
+- **MCP remote skills** — `skill_remote_discover` lists skills in a GitHub URL; `skill_remote_import` imports selected folders (`scope`, optional `folderPaths`, `confirm: true`).
+- **`.agents` folder support** — `.agents/` is a first-class personal config folder alongside `.cursor` and `.claude`: `cursorToys.commandsFolder` accepts `agents`; `cursorToys.personalCommandsView` includes `agents` and `both` lists all three; skills discovery and CodeLens cover `~/.agents/skills/`; set `cursorToys.baseFolder` to `agents` for workspace resources under `.agents/`.
+- **Cursor Pet hook cleanup** — disabling `cursorToys.cursorPet.enabled` removes Cursor Pet entries from personal `hooks.json` and deletes `cursor-pet-bridge.js` / `cursor-pet-feed.js` from the hooks folder (other hooks are preserved).
+
+### Removed
+
+- **Recommendations / Skills Marketplace** — removed Tech Leads Club catalog browser, startup checks, and related settings (`cursorToys.recommendationsEnabled`, `recommendationsCheckOnStartup`, `recommendationsSuggestInterval`, `cursorToys.skillsRegistryUrl`). Commands `cursor-toys.browseRecommendations`, `checkRecommendations`, and `refreshRecommendations` are gone. Use **Add Skill Remote** or import/share flows instead.
+
+### Changed
+
+- **Skills import flow** — remote import refactored into `skillRemoteImportFlow` with GitHub URL validation, repo tree discovery, and unit tests (`skillRemoteImporter.test.ts`).
+- **Personal commands view** — `both` now shows `.cursor`, `.claude`, and `.agents` command folders.
+
 ## v2026.6.25-2 - Chat auto-submit and HTTP editor polish
 
 ### Added
