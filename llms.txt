@@ -334,33 +334,13 @@ Share files and bundles via GitHub Gist for maximum compatibility.
 **Configuration:**
 - `cursorToys.gistDefaultVisibility`: Default visibility (`public`, `private`, or `ask`)
 
-### 11. Smart Recommendations
-AI-powered suggestions for commands, prompts, and rules based on project context.
+### 11. Agent Skills (local)
+Manage personal and project Agent Skills in the Explorer tree and Control Panel.
 
 **Features:**
-- Automatic project context detection (languages, frameworks, tools)
-- Marketplace browser with elegant visual interface
-- Tag-based search and filtering
-- Multi-select installation
-- YAML frontmatter support for metadata
-- Smart caching (memory and disk)
-
-**Supported Contexts:**
-- Languages: JavaScript, TypeScript, Python, Java, Go, Rust, Ruby, PHP, Elixir
-- Frameworks: React, Next.js, Vue, Angular, Svelte, Express, NestJS
-- Tools: Jest, Vitest, Playwright, Cypress, Docker, Kubernetes, Terraform
-
-**Commands:**
-- `cursor-toys.checkRecommendations`: Check recommendations for current project
-- `cursor-toys.browseRecommendations`: Open recommendations marketplace browser
-- `cursor-toys.refreshRecommendations`: Clear cache and refresh recommendations
-
-**Configuration:**
-- `cursorToys.recommendationsEnabled`: Enable/disable recommendations (default: true)
-- `cursorToys.recommendationsCheckOnStartup`: Check on workspace open (default: true)
-- `cursorToys.recommendationsSuggestInterval`: Days between suggestions (default: 7)
-- `cursorToys.recommendationsIndexUrl`: URL to remote recommendations index
-- `cursorToys.recommendationsIndexGistId`: Alternative Gist ID for recommendations index
+- Folder hierarchy mirrors disk; auto-detects `SKILL.md`
+- Share, import from URL, remote GitHub import (`cursor-toys.addSkillRemote`)
+- Personal (`~/.cursor/skills/`) and project (`.{baseFolder}/skills/`) scopes
 
 ## Folder Structure
 
@@ -520,13 +500,6 @@ Maximum compatibility format:
 ### GitHub Gist Settings
 - `cursorToys.gistDefaultVisibility`: Default visibility (`public`, `private`, `ask`, default: `ask`)
 
-### Recommendations Settings
-- `cursorToys.recommendationsEnabled`: Enable recommendations (default: `true`)
-- `cursorToys.recommendationsCheckOnStartup`: Check on workspace open (default: `true`)
-- `cursorToys.recommendationsSuggestInterval`: Days between suggestions (default: `7`)
-- `cursorToys.recommendationsIndexUrl`: URL to remote recommendations index
-- `cursorToys.recommendationsIndexGistId`: Alternative Gist ID for recommendations index
-
 ## Commands Reference
 
 ### Sharing Commands
@@ -643,11 +616,6 @@ Maximum compatibility format:
 - `cursor-toys.sendToChat`: Send Text to Chat
 - `cursor-toys.sendSelectionToChat`: Send Selection to Chat
 - `cursor-toys.copySelectionAsPrompt`: Copy Selection as Prompt Link
-
-### Recommendations Commands
-- `cursor-toys.checkRecommendations`: Check Recommendations for this Project
-- `cursor-toys.browseRecommendations`: Browse Recommendations Marketplace
-- `cursor-toys.refreshRecommendations`: Refresh Recommendations Cache
 
 ### GitHub Gist Commands
 - `cursor-toys.configureGitHubToken`: Configure GitHub Token
@@ -825,8 +793,6 @@ src/
 ├── userHooksTreeProvider.ts    # Tree view for hooks
 ├── userSkillsTreeProvider.ts   # Tree view for skills
 ├── hooksManager.ts             # Hooks file management
-├── recommendationsManager.ts   # Recommendations system
-├── recommendationsBrowserPanel.ts # Recommendations UI
 ├── gistManager.ts             # GitHub Gist integration
 ├── minifier.ts                # File minification
 ├── clipboardProcessor.ts      # Clipboard processing

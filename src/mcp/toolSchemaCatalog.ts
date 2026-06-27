@@ -293,12 +293,9 @@ function buildRefineToolDefinitions(): ToolDefinition[] {
   ];
 }
 
-function buildRecommendationsToolDefinitions(): ToolDefinition[] {
+function buildMcpbToolDefinitions(): ToolDefinition[] {
   const confirm = { confirm: z.boolean().optional() };
   return [
-    { name: 'recommendations_check', description: 'Check recommendations/skills registry for project', inputSchema: {} },
-    { name: 'recommendations_browse', description: 'Browse skills registry data', inputSchema: {} },
-    { name: 'recommendations_refresh', description: 'Refresh recommendations cache', inputSchema: {} },
     { name: 'mcpb_list', description: 'List installed MCPB packages', inputSchema: {} },
     { name: 'mcpb_install', description: 'Install MCPB from .mcpb file path', inputSchema: { filePath: z.string().optional() } },
     { name: 'mcpb_uninstall', description: 'Uninstall MCPB package', inputSchema: { serverId: z.string(), ...confirm } },
@@ -752,7 +749,7 @@ export const MCP_TOOL_DEFINITIONS: ToolDefinition[] = [
   ...buildChatToolDefinitions(),
   ...buildClipboardToolDefinitions(),
   ...buildRefineToolDefinitions(),
-  ...buildRecommendationsToolDefinitions(),
+  ...buildMcpbToolDefinitions(),
   ...buildUsageToolDefinitions(),
   ...buildSettingsToolDefinitions(),
   ...buildDeepspecToolDefinitions(),

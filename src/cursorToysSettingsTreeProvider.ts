@@ -383,50 +383,6 @@ export const SETTINGS_ITEMS: CursorToysSettingsTreeItem[] = [
     ],
   },
   {
-    id: 'recommendations',
-    label: 'Recommendations',
-    kind: 'category',
-    iconId: 'lightbulb',
-    children: [
-      {
-        id: 'rec-enabled',
-        label: 'Enabled',
-        kind: 'setting',
-        iconId: 'check',
-        settingKey: 'cursorToys.recommendationsEnabled',
-      },
-      {
-        id: 'rec-startup',
-        label: 'Check on Startup',
-        kind: 'setting',
-        iconId: 'rocket',
-        settingKey: 'cursorToys.recommendationsCheckOnStartup',
-      },
-      {
-        id: 'rec-interval',
-        label: 'Suggest Interval (days)',
-        kind: 'setting',
-        iconId: 'calendar',
-        settingKey: 'cursorToys.recommendationsSuggestInterval',
-      },
-    ],
-  },
-  {
-    id: 'skills',
-    label: 'Skills',
-    kind: 'category',
-    iconId: 'mortar-board',
-    children: [
-      {
-        id: 'skills-registry',
-        label: 'Registry URL',
-        kind: 'setting',
-        iconId: 'link',
-        settingKey: 'cursorToys.skillsRegistryUrl',
-      },
-    ],
-  },
-  {
     id: 'mcp',
     label: 'MCP Server',
     kind: 'category',

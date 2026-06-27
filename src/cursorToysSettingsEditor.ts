@@ -397,31 +397,6 @@ export async function editCursorToysSetting(settingKey: string): Promise<void> {
       return;
     }
 
-    case 'cursorToys.recommendationsEnabled':
-      await pickBoolean(settingKey, true, { on: 'Enable recommendations', off: 'Disable recommendations' });
-      return;
-
-    case 'cursorToys.recommendationsCheckOnStartup':
-      await pickBoolean(settingKey, true, {
-        on: 'Check on workspace open',
-        off: 'Skip startup check',
-      });
-      return;
-
-    case 'cursorToys.recommendationsSuggestInterval':
-      await pickNumber(settingKey, 7, 'Days between recommendation prompts', (n) =>
-        n < 1 ? 'Minimum 1 day' : null
-      );
-      return;
-
-    case 'cursorToys.skillsRegistryUrl':
-      await pickString(
-        settingKey,
-        'https://raw.githubusercontent.com/tech-leads-club/agent-skills/refs/heads/main/packages/skills-catalog/skills-registry.json',
-        'Agent Skills registry URL'
-      );
-      return;
-
     case 'cursorToys.mcp.enabled': {
       const next = await pickBoolean(settingKey, false, {
         on: 'Enable built-in CursorToys MCP server',

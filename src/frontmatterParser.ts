@@ -165,16 +165,6 @@ function parseValue(value: string): any {
 }
 
 /**
- * Validates frontmatter metadata for recommendations
- * @param metadata Parsed metadata
- * @returns True if valid for recommendations
- */
-export function validateRecommendationMetadata(metadata: FrontmatterMetadata): boolean {
-  // At minimum, should have description or tags
-  return !!(metadata.description || (metadata.tags && metadata.tags.length > 0));
-}
-
-/**
  * Extracts tags from metadata, normalizes them
  * @param metadata Parsed metadata
  * @returns Array of normalized tags

@@ -2,7 +2,7 @@
   "name": "cursor-toys",
   "displayName": "CursorToys - Cursor supercharged",
   "description": "Supercharge your Cursor AI workflow! Share commands instantly, test APIs in-editor, manage personal libraries, and boost team collaboration. The ultimate productivity toolkit for Cursor users.",
-  "version": "2026.6.25-2",
+  "version": "2026.6.27-1",
   "publisher": "godrix",
   "icon": "resources/icon.png",
   "author": {
@@ -773,24 +773,9 @@
         "icon": "$(zap)"
       },
       {
-        "command": "cursor-toys.checkRecommendations",
-        "title": "CursorToys: Check Recommendations for this Project",
-        "icon": "$(compass)"
-      },
-      {
         "command": "cursor-toys.showReleaseNotes",
         "title": "CursorToys: What's New",
         "icon": "$(megaphone)"
-      },
-      {
-        "command": "cursor-toys.browseRecommendations",
-        "title": "CursorToys: Browse Recommendations Marketplace",
-        "icon": "$(search)"
-      },
-      {
-        "command": "cursor-toys.refreshRecommendations",
-        "title": "CursorToys: Refresh Recommendations Cache",
-        "icon": "$(refresh)"
       },
       {
         "command": "cursor-toys.spending.refresh",
@@ -2306,27 +2291,6 @@
             ],
             "default": "ask",
             "description": "Default visibility when creating GitHub Gists"
-          },
-          "cursorToys.recommendationsEnabled": {
-            "type": "boolean",
-            "default": true,
-            "description": "Enable CursorToys recommendations based on project context"
-          },
-          "cursorToys.recommendationsCheckOnStartup": {
-            "type": "boolean",
-            "default": true,
-            "description": "Check for recommendations when opening a workspace"
-          },
-          "cursorToys.recommendationsSuggestInterval": {
-            "type": "number",
-            "default": 7,
-            "minimum": 1,
-            "description": "Days between recommendation suggestions (default: 7)"
-          },
-          "cursorToys.skillsRegistryUrl": {
-            "type": "string",
-            "default": "https://raw.githubusercontent.com/tech-leads-club/agent-skills/refs/heads/main/packages/skills-catalog/skills-registry.json",
-            "description": "URL to Agent Skills registry from Tech Leads Club. Contains community-driven skills catalog for AI coding assistants."
           },
           "cursorToys.geminiModel": {
             "type": "string",

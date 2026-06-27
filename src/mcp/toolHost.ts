@@ -24,7 +24,7 @@ import { buildShareToolHandlers } from './services/shareTools';
 import { buildChatToolHandlers } from './services/chatTools';
 import { buildClipboardToolHandlers } from './services/clipboardTools';
 import { buildRefineToolHandlers } from './services/refineTools';
-import { buildRecommendationsToolHandlers } from './services/recommendationsTools';
+import { buildMcpbToolHandlers } from './services/mcpbTools';
 import { buildUsageToolHandlers } from './services/usageTools';
 import { buildSettingsToolHandlers } from './services/settingsTools';
 import { buildDeepspecToolHandlers } from './services/deepspecTools';
@@ -114,7 +114,7 @@ function buildContextualHandlers(ctx: McpHostContext): Record<string, ToolHandle
   return {
     ...buildShareToolHandlers(ctx),
     ...buildRefineToolHandlers(ctx),
-    ...buildRecommendationsToolHandlers(ctx),
+    ...buildMcpbToolHandlers(ctx),
     ...buildUsageToolHandlers(ctx),
     ...buildSettingsToolHandlers(ctx),
     ...buildMcpSkillToolHandlers(ctx),

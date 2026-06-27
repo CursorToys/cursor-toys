@@ -55,8 +55,6 @@ import { minifyFile, formatMinificationStats, detectFileType } from './minifier'
 import { trimClipboardAuto, trimClipboardWithPrompt } from './clipboardProcessor';
 import { refineSelectedText, refineClipboard, refineAndGetText, processWithPrompt, configureGeminiApiKey, removeGeminiApiKey } from './textRefiner';
 import { GistManager } from './gistManager';
-import { RecommendationsManager } from './recommendationsManager';
-import { RecommendationsBrowserPanel } from './recommendationsBrowserPanel';
 import { checkAndShowReleaseNotes, ReleaseNotesPanel, loadChangelogSection } from './releaseNotesPanel';
 import { installMcpbPackage, uninstallMcpbPackage, getMcpbRoot } from './mcpbInstaller';
 import { UserMcpbTreeProvider, McpbPackageItem } from './userMcpbTreeProvider';
@@ -302,8 +300,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const envManager = EnvironmentManager.getInstance();
   envManager.setupFileWatchers();
   
-  // Initialize Recommendations Manager
-  const recsManager = RecommendationsManager.getInstance(context);
 
   // Show release notes when extension is updated (async, non-blocking)
   checkAndShowReleaseNotes(context).catch(() => {});
@@ -4646,15 +4642,6 @@ Detailed instructions for the agent.
     }
   );
 
-  // Skills Marketplace commands
-  const browseSkillsMarketplaceCommand = vscode.commands.registerCommand('cursor-toys.browseRecommendations', async () => {
-    await RecommendationsBrowserPanel.createOrShow(context, recsManager);
-  });
-
-  const refreshSkillsCommand = vscode.commands.registerCommand('cursor-toys.refreshRecommendations', async () => {
-    await recsManager.clearCache();
-  });
-
   const showReleaseNotesCommand = vscode.commands.registerCommand('cursor-toys.showReleaseNotes', async () => {
     const pkg = context.extension.packageJSON as { version?: string };
     const version = pkg?.version ?? '0.0.0';
@@ -5228,8 +5215,6 @@ Detailed instructions for the agent.
     shareFolderViaGistCommand,
     configureGitHubTokenCommand,
     removeGitHubTokenCommand,
-    browseSkillsMarketplaceCommand,
-    refreshSkillsCommand,
     showReleaseNotesCommand,
     installMcpbCommand,
     userCommandsExplorerTreeView,

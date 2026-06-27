@@ -56,7 +56,6 @@ Everything below follows that pattern: short path from intent to action, progres
 | [🤖 AI Text Refinement](#-ai-text-refinement) | Polish selected text or clipboard with Google Gemini. |
 | [📚 Personal Libraries](#-personal-libraries) | Reusable personal commands and prompts across all projects. |
 | [🎓 Skills Management](#-skills-management) | Browse, organize, and share Cursor Agent Skills. |
-| [🎯 Skills Marketplace](#-skills-marketplace) | Discover and install community skills from Tech Leads Club. |
 | [📓 Notepads](#-notepads) | Personal and project markdown notes in `.cursortoys/notepads/`. |
 | [📋 Kanban Board](#-kanban-board) | File-backed board in `.cursortoys/kanban/` (personal + workspace). |
 | [📎 Clipboard Manager](#-clipboard-manager) | Copy/cut history, snippet slots (`clip01`), saved terminal commands. |
@@ -91,7 +90,7 @@ Explorer sidebar trees (`cursorToys.sidebar.explorerViews`) remain available for
 
 - **`Ctrl+T` / `Cmd+T`** — open the palette from anywhere (status bar **CursorToys** item does the same).
 - **Most-used first** — entries reorder as you use them (counts stored in extension global state).
-- Includes: import, skills marketplace, new notepad, Kanban board, usage monitor, minify/trim tools, spending refresh, and more.
+- Includes: import, new notepad, Kanban board, usage monitor, minify/trim tools, spending refresh, and more.
 - Command: **CursorToys: Command Palette** (formerly “Show Menu”).
 
 ### 🌳 Project Tree Generation
@@ -177,14 +176,6 @@ GET https://api.example.com/user/123
 - Folder hierarchy mirrors disk; auto-detects `SKILL.md`.
 - Share individual skills or folders as bundles; CodeLens on `SKILL.md`.
 - Create templates, move skills to personal library, import from links.
-
-### 🎯 Skills Marketplace
-
-**Install community skills in one click** — catalog from Tech Leads Club.
-
-- Browse by category, search by name/author, view on GitHub.
-- **CursorToys: Browse Marketplace** → Install in Cursor.
-- Smart memory and disk caching for fast browsing.
 
 ### 📓 Notepads
 

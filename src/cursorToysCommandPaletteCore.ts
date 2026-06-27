@@ -23,13 +23,6 @@ export const CURSOR_TOYS_MENU_ITEMS: readonly CursorToysMenuItem[] = [
     commandId: 'cursor-toys.showReleaseNotes',
   },
   {
-    id: 'skills-marketplace',
-    label: '$(compass) Open Skills Marketplace',
-    description: 'Browse Agent Skills from Tech Leads Club',
-    detail: 'Marketplace',
-    commandId: 'cursor-toys.browseRecommendations',
-  },
-  {
     id: 'import-url',
     label: '$(cloud-download) Import from URL',
     description: 'Import command, prompt or rule from deeplink or Gist',
