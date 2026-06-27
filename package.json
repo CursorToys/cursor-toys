@@ -1973,7 +1973,7 @@
             "type": "string",
             "default": "cursor",
             "pattern": "^[a-zA-Z0-9_-]+$",
-            "description": "Base folder name for storing commands, rules, prompts and HTTP files (e.g., 'cursor', 'vscode', 'ai'). Note: Rules and prompts are Cursor-specific features."
+            "description": "Base folder name for storing commands, rules, prompts and HTTP files (e.g., 'cursor', 'claude', 'agents', 'vscode', 'ai'). Note: Rules and prompts are Cursor-specific features."
           },
           "cursorToys.globalCursorPath": {
             "type": "string",
@@ -1990,29 +1990,33 @@
             "type": "string",
             "enum": [
               "cursor",
-              "claude"
+              "claude",
+              "agents"
             ],
             "enumDescriptions": [
               "Use .cursor/commands folder (default)",
-              "Use .claude/commands folder"
+              "Use .claude/commands folder",
+              "Use .agents/commands folder"
             ],
             "default": "cursor",
-            "description": "Folder to save commands: 'cursor' for .cursor/commands or 'claude' for .claude/commands. Only the commands folder is configurable; rules and prompts always use .cursor"
+            "description": "Folder to save commands: 'cursor' for .cursor/commands, 'claude' for .claude/commands, or 'agents' for .agents/commands. Only the commands folder is configurable; rules and prompts use the configured baseFolder"
           },
           "cursorToys.personalCommandsView": {
             "type": "string",
             "enum": [
               "both",
               "cursor",
-              "claude"
+              "claude",
+              "agents"
             ],
             "enumDescriptions": [
-              "Show commands from both .cursor and .claude folders",
+              "Show commands from .cursor, .claude, and .agents folders",
               "Show commands from .cursor folder only",
-              "Show commands from .claude folder only"
+              "Show commands from .claude folder only",
+              "Show commands from .agents folder only"
             ],
             "default": "both",
-            "description": "Which command folders to show in Personal Commands view: 'both' for .cursor and .claude, 'cursor' for .cursor only, or 'claude' for .claude only"
+            "description": "Which command folders to show in Personal Commands view: 'both' for all standard folders (.cursor, .claude, .agents), or a single folder name"
           },
           "cursorToys.codeAnchors.enabled": {
             "type": "boolean",
@@ -2702,7 +2706,7 @@
     "test:globalUserAi": "npm run compile && node out/globalUserAiParity.test.js",
     "test:projects": "npm run compile && node out/projects/projectRegistry.test.js && node out/projects/projectPathUtils.test.js",
     "test:inline-annotations": "npm run compile && node out/inlineAnnotations.test.js",
-    "test:cursor-pet": "npm run compile && node out/cursorPet/cursorPetEngine.test.js && node out/cursorPet/cursorPetDebug.test.js && node out/cursorPet/cursorPetStatusBar.test.js",
+    "test:cursor-pet": "npm run compile && node out/cursorPet/cursorPetEngine.test.js && node out/cursorPet/cursorPetDebug.test.js && node out/cursorPet/cursorPetStatusBar.test.js && node out/cursorPet/cursorPetHookEntries.test.js",
     "watch": "tsc -watch -p ./",
     "package": "vsce package",
     "publish": "vsce publish"
