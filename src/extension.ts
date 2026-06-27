@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { generateDeeplink } from './deeplinkGenerator';
 import { importDeeplink } from './deeplinkImporter';
-import { importRemoteSkillFromGitHubFolderUrl, validateGitHubSkillFolderUrl } from './skillRemoteImporter';
+import { runAddSkillRemoteFlow } from './skillRemoteImportFlow';
 import { generateShareable, generateShareableWithPath, generateShareableForHttpFolder, generateShareableForCommandFolder, generateShareableForRuleFolder, generateShareableForPromptFolder, generateShareableForSkillFolder, generateShareableForNotepadFolder, generateShareableForPlanFolder, generateShareableForProject, generateGistShareable, generateGistShareableForBundle, generateShareableForHooks, generateGistShareableForHooks } from './shareableGenerator';
 import { importShareable, importFromGist, createSkillFromStructure } from './shareableImporter';
 import { getFileTypeFromPath, isAllowedExtension, isHttpRequestFile, getUserHomePath, getCommandsPath, getCommandsFolderName, sanitizeFileName, getPersonalCommandsPaths, getPromptsPath, getPersonalPromptsPaths, getNotepadsPath, getKanbanPath, getPlansPath, getPersonalPlansPaths, getBaseFolderName, getHttpPath, getPersonalHttpPaths, getProjectEnvFilePath, getEnvFilePath, getHttpEnvContext, getHooksPath, getPersonalHooksPath, getPersonalSkillsPaths, getSkillsPath, getPersonalAgentsPath, getAgentsPath, createHttpDocsSkill, validateUrlLength, MAX_URL_LENGTH, truncateAnnotationContentToFitUrl } from './utils';
@@ -2604,99 +2604,10 @@ Detailed instructions for the agent.
     }
   );
 
-  // Command to add skill from remote GitHub folder URL
+  // Command to add skill(s) from a remote GitHub repository or folder URL
   const addSkillRemoteCommand = vscode.commands.registerCommand(
     'cursor-toys.addSkillRemote',
-    async () => {
-      const remoteUrl = await vscode.window.showInputBox({
-        prompt: 'Enter GitHub folder URL containing SKILL.md',
-        placeHolder: 'https://github.com/owner/repo/tree/main/path/to/skill-folder',
-        validateInput: (value) => validateGitHubSkillFolderUrl(value)
-      });
-
-      if (!remoteUrl) {
-        return;
-      }
-
-      try {
-        const skill = await vscode.window.withProgress(
-          {
-            location: vscode.ProgressLocation.Notification,
-            title: 'Importing remote skill...',
-            cancellable: false
-          },
-          async () => importRemoteSkillFromGitHubFolderUrl(remoteUrl.trim())
-        );
-
-        const location = await vscode.window.showQuickPick(
-          [
-            {
-              label: 'Personal skill',
-              description: 'Available in all projects (~/.cursor/skills)',
-              value: true
-            },
-            {
-              label: 'Project skill',
-              description: 'Specific to this workspace',
-              value: false
-            }
-          ],
-          { placeHolder: 'Where do you want to save this skill?' }
-        );
-
-        if (location === undefined) {
-          return;
-        }
-
-        const isPersonal = location.value;
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-        if (!workspaceFolder && !isPersonal) {
-          vscode.window.showErrorMessage('No workspace open');
-          return;
-        }
-
-        const workspacePath = workspaceFolder?.uri.fsPath || '';
-        const skillsPath = getSkillsPath(workspacePath, isPersonal);
-        const skillFolderName = sanitizeFileName(skill.skillName);
-        const destinationSkillPath = path.join(skillsPath, skillFolderName);
-        const destinationSkillUri = vscode.Uri.file(destinationSkillPath);
-
-        let exists = false;
-        try {
-          await vscode.workspace.fs.stat(destinationSkillUri);
-          exists = true;
-        } catch {
-          // Destination does not exist yet.
-        }
-
-        if (exists) {
-          const overwrite = await vscode.window.showWarningMessage(
-            `Skill "${skillFolderName}" already exists. Do you want to overwrite it?`,
-            'Yes',
-            'No'
-          );
-          if (overwrite !== 'Yes') {
-            return;
-          }
-
-          await vscode.workspace.fs.delete(destinationSkillUri, { recursive: true, useTrash: false });
-        }
-
-        await createSkillFromStructure(destinationSkillPath, skill.files);
-
-        const skillFileUri = vscode.Uri.file(path.join(destinationSkillPath, 'SKILL.md'));
-        const document = await vscode.workspace.openTextDocument(skillFileUri);
-        await vscode.window.showTextDocument(document);
-
-        vscode.window.showInformationMessage(
-          `Skill "${skillFolderName}" imported successfully with ${skill.files.length} file(s)!`
-        );
-        userSkillsTreeProvider.refresh();
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        vscode.window.showErrorMessage(`Error importing remote skill: ${errorMessage}`);
-      }
-    }
+    () => runAddSkillRemoteFlow(() => userSkillsTreeProvider.refresh())
   );
 
   // FileSystemWatcher for skills

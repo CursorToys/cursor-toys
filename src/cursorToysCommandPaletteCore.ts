@@ -60,7 +60,7 @@ export const CURSOR_TOYS_MENU_ITEMS: readonly CursorToysMenuItem[] = [
   {
     id: 'add-skill-remote',
     label: '$(repo-clone) Add Skill Remote',
-    description: 'Import a skill from a remote GitHub folder URL',
+    description: 'Discover and import skills from a GitHub repository URL',
     detail: 'Skills',
     commandId: 'cursor-toys.addSkillRemote',
   },

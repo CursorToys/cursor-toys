@@ -29,6 +29,7 @@ import { buildUsageToolHandlers } from './services/usageTools';
 import { buildSettingsToolHandlers } from './services/settingsTools';
 import { buildDeepspecToolHandlers } from './services/deepspecTools';
 import { buildMcpSkillToolHandlers } from './services/mcpSkillTools';
+import { buildSkillRemoteToolHandlers } from './services/skillRemoteTools';
 import { buildAgentsToolHandlers } from './services/agentsTools';
 import { buildSyncToolHandlers } from './services/syncTools';
 
@@ -117,6 +118,7 @@ function buildContextualHandlers(ctx: McpHostContext): Record<string, ToolHandle
     ...buildUsageToolHandlers(ctx),
     ...buildSettingsToolHandlers(ctx),
     ...buildMcpSkillToolHandlers(ctx),
+    ...buildSkillRemoteToolHandlers(ctx),
   };
 }
 
