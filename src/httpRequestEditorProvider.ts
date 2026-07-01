@@ -12,6 +12,7 @@ import {
   setBlockEnvInFile,
   setFileGlobalEnv,
   upsertFileVariable,
+  findSectionHeaderLine,
 } from './httpRequestEditorFileMeta';
 import {
   HTTP_REQUEST_EDITOR_VIEW_TYPE,
@@ -150,15 +151,22 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
       );
     };
 
-    const applyEnvToActiveBlock = async (envName: string): Promise<void> => {
+    const applyEnvToActiveBlock = async (
+      envName: string,
+      targetBlockIndex?: number
+    ): Promise<void> => {
       const blocks = getHttpRequestBlocks(document);
-      const block = blocks[state.activeBlockIndex];
+      const idx =
+        targetBlockIndex !== undefined ? targetBlockIndex : state.activeBlockIndex;
+      const block = blocks[idx];
       if (!block) {
         return;
       }
+      const lines = document.getText().split('\n');
+      const sectionLine = findSectionHeaderLine(lines, block.startLine);
       const next =
-        block.kind === 'section'
-          ? setBlockEnvInFile(document.getText(), block.startLine, envName)
+        sectionLine !== null
+          ? setBlockEnvInFile(document.getText(), sectionLine, envName)
           : setFileGlobalEnv(document.getText(), envName);
       await replaceDocument(next);
     };
@@ -306,7 +314,7 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
             const envManager = EnvironmentManager.getInstance();
             envManager.setActiveEnvironment(raw.envName);
             envManager.clearCache();
-            await applyEnvToActiveBlock(raw.envName);
+            await applyEnvToActiveBlock(raw.envName, blockIndex);
             pushState();
             break;
           }
@@ -410,6 +418,66 @@ export class HttpRequestEditorProvider implements vscode.CustomTextEditorProvide
             } else if (raw.envName) {
               const next = setFileGlobalEnv(document.getText(), raw.envName);
               await replaceDocument(next);
+              pushState();
+            }
+            break;
+          }
+          case 'setFileEnv': {
+            const next = setFileGlobalEnv(document.getText(), raw.envName);
+            await replaceDocument(next);
+            if (raw.envName) {
+              const envManager = EnvironmentManager.getInstance();
+              envManager.setActiveEnvironment(raw.envName);
+              envManager.clearCache();
+            }
+            pushState();
+            break;
+          }
+          case 'setSectionEnv': {
+            const block = blocks[raw.blockIndex];
+            if (!block) {
+              break;
+            }
+            const lines = document.getText().split('\n');
+            const sectionLine = findSectionHeaderLine(lines, block.startLine);
+            if (sectionLine === null) {
+              break;
+            }
+            const next = setBlockEnvInFile(
+              document.getText(),
+              sectionLine,
+              raw.envName
+            );
+            await replaceDocument(next);
+            if (raw.envName) {
+              const envManager = EnvironmentManager.getInstance();
+              envManager.setActiveEnvironment(raw.envName);
+              envManager.clearCache();
+            }
+            pushState();
+            break;
+          }
+          case 'updateProjectEnvVar': {
+            const envCtx = getHttpEnvContext(document.uri.fsPath);
+            if (!envCtx) {
+              void vscode.window.showErrorMessage(
+                'Could not resolve environment folder for this request file.'
+              );
+              break;
+            }
+            const envManager = EnvironmentManager.getInstance();
+            const ok = await envManager.upsertEnvVariable(
+              raw.envName,
+              raw.key,
+              raw.value,
+              envCtx.workspacePath,
+              envCtx.envRoot
+            );
+            if (!ok) {
+              void vscode.window.showErrorMessage(
+                `Could not update variable in .env.${raw.envName}`
+              );
+            } else {
               pushState();
             }
             break;

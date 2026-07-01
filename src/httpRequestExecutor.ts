@@ -687,53 +687,43 @@ function extractCurlFromSection(
 }
 
 /**
- * Finds the environment decorator for a specific section
- * Only searches backwards from section header until another ## or non-comment line
- * @param document The document to search
- * @param startLine Start line of the section (0-based)
- * @returns Environment name or null if not found
+ * Finds the section-local `# @env` decorator placed after a `##` header.
+ * Searches forward from the header until the next `##` or HTTP method line.
  */
 function findSectionEnvironment(
   document: vscode.TextDocument,
   startLine: number
 ): string | null {
-  // Find the section header (##) at or before startLine
-  let sectionHeaderLine = startLine;
+  let sectionHeaderLine = -1;
   for (let i = startLine; i >= 0; i--) {
     const line = document.lineAt(i).text.trim();
-    if (line.startsWith('##')) {
+    if (line.startsWith('##') && !line.startsWith('###')) {
       sectionHeaderLine = i;
       break;
     }
   }
-  
-  // Search backwards from section header for # @env decorator
-  // Stop when we find another section header or reach the top
-  for (let i = sectionHeaderLine - 1; i >= 0; i--) {
+
+  if (sectionHeaderLine < 0) {
+    return null;
+  }
+
+  for (let i = sectionHeaderLine + 1; i < document.lineCount; i++) {
     const line = document.lineAt(i).text.trim();
-    
-    // Skip empty lines
-    if (!line) {
-      continue;
+
+    if (line.startsWith('##')) {
+      break;
     }
-    
-    // Match decorator: # @env qa  or  #@env qa
+
     const match = line.match(/^#\s*@env\s+(\w+)/i);
     if (match) {
       return match[1];
     }
-    
-    // Stop if we find another section header (no decorator for this section)
-    if (line.startsWith('##')) {
-      return null;
-    }
-    
-    // Stop if we find a non-comment line (no decorator for this section)
-    if (!line.startsWith('#')) {
-      return null;
+
+    if (/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+/i.test(line)) {
+      break;
     }
   }
-  
+
   return null;
 }
 

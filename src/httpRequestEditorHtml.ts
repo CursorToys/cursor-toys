@@ -574,27 +574,39 @@ export function buildHttpRequestEditorHtml(
     .ac-kind-helper { color: #d2a8ff; }
 
     .env-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+    .env-row-label { font-size: 0.85em; opacity: 0.75; flex-shrink: 0; }
     .env-pill-wrap { display: inline-flex; align-items: center; gap: 2px; }
     .env-pill {
       padding: 4px 10px;
       border-radius: 999px;
       font-size: 0.82em;
       border: 1px solid var(--vscode-panel-border, #555);
-      background: var(--vscode-button-secondaryBackground);
-      color: var(--vscode-button-secondaryForeground);
+      background: transparent;
+      color: var(--vscode-foreground);
+      opacity: 0.75;
       cursor: pointer;
     }
-    .env-pill:hover { background: var(--vscode-list-hoverBackground); }
-    .env-pill.active {
-      border-color: var(--vscode-focusBorder);
+    .env-pill:hover {
+      background: var(--vscode-list-hoverBackground);
+      opacity: 1;
+    }
+    .env-pill.selected {
+      border-color: var(--vscode-button-background);
       background: var(--vscode-button-background);
       color: var(--vscode-button-foreground);
       font-weight: 600;
-      box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+      opacity: 1;
+      box-shadow: none;
     }
-    .env-pill.effective:not(.active) {
-      border-color: var(--vscode-textLink-foreground);
-      color: var(--vscode-textLink-foreground);
+    .env-select {
+      min-width: 120px;
+      max-width: 220px;
+      padding: 4px 8px;
+      font-size: 0.85em;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-panel-border, #555);
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
     }
     .env-open-btn { padding: 2px 6px; font-size: 0.75em; line-height: 1; }
     .collapsible-section { margin-bottom: 10px; }
@@ -655,7 +667,19 @@ export function buildHttpRequestEditorHtml(
       color: inherit;
       padding: 0 2px;
     }
-    .var-key { color: var(--vscode-symbolIcon-variableForeground, #9cdcfe); }
+    .var-tag .var-key { cursor: pointer; color: var(--vscode-symbolIcon-variableForeground, #9cdcfe); }
+    .var-tag.editing { padding: 2px 4px; }
+    .env-var-edit {
+      min-width: 80px;
+      max-width: 200px;
+      padding: 2px 6px;
+      font-size: 0.9em;
+      font-family: var(--vscode-editor-font-family, monospace);
+      border: 1px solid var(--vscode-focusBorder);
+      border-radius: 3px;
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+    }
     .subheading { font-size: 0.78em; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.6; margin: 14px 0 8px; }
     .headers-table { width: 100%; border-collapse: collapse; }
     .headers-table td { padding: 4px; vertical-align: top; }
@@ -827,20 +851,22 @@ export function buildHttpRequestEditorHtml(
           <div class="env-pane-section">
             <p class="subheading" id="envFolderHeading">Workspace / file (.env at project root)</p>
             <div class="env-row">
+              <span class="env-row-label">Block:</span>
               <span id="projectEnvPills"></span>
               <button type="button" class="ghost icon-btn" id="selectEnvBtn" title="Pick environment">⋯</button>
               <button type="button" class="ghost icon-btn" id="createEnvBtn" title="Create .env file">+ env</button>
             </div>
-            <div class="env-row" id="fileEnvRow" hidden>
-              <span style="font-size:0.85em;opacity:0.8;">File # @env:</span>
-              <span id="fileEnvBadge"></span>
-            </div>
-            <div class="env-row" id="blockEnvRow" hidden>
-              <span style="font-size:0.85em;opacity:0.8;">Block # @env:</span>
-              <span id="blockEnvBadge"></span>
+            <div class="env-row" id="fileEnvRow">
+              <span class="env-row-label">File # @env:</span>
+              <select id="fileEnvSelect" class="env-select" title="Environment for the whole file"></select>
             </div>
             <p class="subheading" style="margin-top:12px;">Keys from active .env</p>
             <div class="env-row" id="envVarTags"></div>
+            <div class="inline-form" id="addEnvVarForm">
+              <input type="text" id="newEnvVarKey" placeholder="KEY" />
+              <input type="text" id="newEnvVarVal" placeholder="value" />
+              <button type="button" class="secondary" id="addEnvVarBtn">Add to .env</button>
+            </div>
           </div>
           <div class="env-pane-section">
             <p class="subheading">Local variables (# @var)</p>
@@ -944,6 +970,8 @@ export function buildHttpRequestEditorHtml(
       assertions: INIT.assertions || [],
       resolvedPreview: INIT.resolvedPreview || { effectiveEnv: '', envSource: 'workspace', resolvedUrl: '', bindings: [] },
       globalFileEnv: INIT.globalFileEnv,
+      sectionLocalEnv: INIT.sectionLocalEnv,
+      inSection: !!INIT.inSection,
       blockEnv: INIT.blockEnv,
       helperSuggestions: INIT.helperSuggestions || [],
       editingAssertionIndex: -1,
@@ -968,9 +996,7 @@ export function buildHttpRequestEditorHtml(
       acDropdown: document.getElementById('acDropdown'),
       projectEnvPills: document.getElementById('projectEnvPills'),
       fileEnvRow: document.getElementById('fileEnvRow'),
-      fileEnvBadge: document.getElementById('fileEnvBadge'),
-      blockEnvRow: document.getElementById('blockEnvRow'),
-      blockEnvBadge: document.getElementById('blockEnvBadge'),
+      fileEnvSelect: document.getElementById('fileEnvSelect'),
       envVarTags: document.getElementById('envVarTags'),
       fileVarTags: document.getElementById('fileVarTags'),
       newVarKey: document.getElementById('newVarKey'),
@@ -1013,6 +1039,10 @@ export function buildHttpRequestEditorHtml(
       removeHeaderBtn: document.getElementById('removeHeaderBtn'),
       selectEnvBtn: document.getElementById('selectEnvBtn'),
       createEnvBtn: document.getElementById('createEnvBtn'),
+      addEnvVarForm: document.getElementById('addEnvVarForm'),
+      newEnvVarKey: document.getElementById('newEnvVarKey'),
+      newEnvVarVal: document.getElementById('newEnvVarVal'),
+      addEnvVarBtn: document.getElementById('addEnvVarBtn'),
       addVarBtn: document.getElementById('addVarBtn'),
       detailTabButtons: document.querySelectorAll('.request-pane-bar .detail-tab[data-detail]'),
       detailPanes: document.querySelectorAll('.workspace-card > .detail-body > .detail-pane'),
@@ -1354,10 +1384,12 @@ export function buildHttpRequestEditorHtml(
       els.envBannerSource.textContent = effective ? (srcLabels[p.envSource] || 'workspace') : 'none';
       els.envBannerSource.hidden = !effective;
       let meta = '';
-      if (p.envSource === 'block' && state.blockEnv) {
-        meta = 'Block # @env → .env.' + state.blockEnv + ' — pick another env below to change';
+      if (p.envSource === 'block' && state.sectionLocalEnv) {
+        meta = 'Block uses .env.' + state.sectionLocalEnv + ' — click a pill to change';
       } else if (p.envSource === 'file' && state.globalFileEnv) {
-        meta = 'File # @env → .env.' + state.globalFileEnv + ' — pick another env below to change';
+        meta = 'File default .env.' + state.globalFileEnv + ' — change via File # @env';
+      } else if (p.envSource === 'block' && state.blockEnv) {
+        meta = 'Block inherits .env.' + state.blockEnv + ' from file';
       } else if (!hasWorkspaceEnvs()) {
         meta = state.envScope === 'personal'
           ? 'No .env files in personal HTTP folder — use + to create one'
@@ -1385,14 +1417,14 @@ export function buildHttpRequestEditorHtml(
         wrap.className = 'env-pill-wrap';
         const pill = document.createElement('button');
         pill.type = 'button';
-        const isActive = !!state.activeProjectEnv && name === state.activeProjectEnv;
-        const isEffective = !!effective && name === effective;
+        const isSelected = !!effective && name === effective;
         let cls = 'env-pill';
-        if (isActive) cls += ' active';
-        if (isEffective) cls += ' effective';
+        if (isSelected) cls += ' selected';
         pill.className = cls;
-        pill.textContent = name + (isEffective && !isActive ? ' ✓' : '');
-        pill.title = 'Use .env.' + name + ' for this request (updates # @env in file)';
+        pill.textContent = name;
+        pill.title = isSelected
+          ? 'Active for this block (.env.' + name + ')'
+          : 'Use .env.' + name + ' for this block';
         pill.addEventListener('click', () => post('setProjectEnv', { envName: name, blockIndex: state.activeBlockIndex }));
         const openBtn = document.createElement('button');
         openBtn.type = 'button';
@@ -1408,6 +1440,24 @@ export function buildHttpRequestEditorHtml(
         wrap.appendChild(openBtn);
         container.appendChild(wrap);
       });
+    }
+
+    function fillEnvSelect(select, currentValue, includeInherit, inheritLabel) {
+      if (!select) {
+        return;
+      }
+      select.innerHTML = '';
+      const inheritOpt = document.createElement('option');
+      inheritOpt.value = '';
+      inheritOpt.textContent = includeInherit ? inheritLabel : '(none — workspace default)';
+      select.appendChild(inheritOpt);
+      state.projectEnvs.forEach((name) => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      });
+      select.value = currentValue || '';
     }
 
     function renderHeaders(headers) {
@@ -1460,14 +1510,15 @@ export function buildHttpRequestEditorHtml(
 
     function renderEnvPills() {
       fillProjectEnvPills(els.projectEnvPills);
-      if (state.globalFileEnv) {
-        els.fileEnvRow.hidden = false;
-        els.fileEnvBadge.innerHTML = '<span class="env-pill effective">#' + escHtml(state.globalFileEnv) + '</span>';
-      } else els.fileEnvRow.hidden = true;
-      if (state.blockEnv && state.blockEnv !== state.globalFileEnv) {
-        els.blockEnvRow.hidden = false;
-        els.blockEnvBadge.innerHTML = '<span class="env-pill effective">' + escHtml(state.blockEnv) + '</span>';
-      } else els.blockEnvRow.hidden = true;
+      if (els.fileEnvRow) {
+        els.fileEnvRow.hidden = !hasWorkspaceEnvs();
+      }
+      fillEnvSelect(
+        els.fileEnvSelect,
+        state.globalFileEnv || '',
+        false,
+        '(workspace default)'
+      );
       if (els.selectEnvBtn) {
         els.selectEnvBtn.hidden = !hasWorkspaceEnvs();
       }
@@ -1475,10 +1526,13 @@ export function buildHttpRequestEditorHtml(
 
     function renderEnvVarTags() {
       els.envVarTags.innerHTML = '';
+      const effective = state.resolvedPreview.effectiveEnv;
+      if (els.addEnvVarForm) {
+        els.addEnvVarForm.hidden = !effective;
+      }
       if (!state.envVariables.length) {
-        const effective = state.resolvedPreview.effectiveEnv;
         const msg = effective
-          ? 'No keys in .env.' + escHtml(effective)
+          ? 'No keys in .env.' + escHtml(effective) + ' — add one below or double-click to edit'
           : 'No workspace .env file selected';
         els.envVarTags.innerHTML = '<span class="empty-state">' + msg + '</span>';
         return;
@@ -1486,10 +1540,59 @@ export function buildHttpRequestEditorHtml(
       state.envVariables.forEach((v) => {
         const span = document.createElement('span');
         span.className = 'var-tag';
-        span.title = v.masked ? v.key + '=(hidden)' : v.key + '=' + v.value;
+        span.title = (v.masked ? v.key + '=(hidden)' : v.key + '=' + v.value) + ' — double-click to edit';
         span.innerHTML = '<span class="var-key">{{' + escHtml(v.key) + '}}</span> ' + (v.masked ? '••••' : escHtml(v.value));
+        span.addEventListener('dblclick', (e) => {
+          e.preventDefault();
+          startEditEnvVar(span, v);
+        });
         els.envVarTags.appendChild(span);
       });
+    }
+
+    function startEditEnvVar(span, v) {
+      const effective = state.resolvedPreview.effectiveEnv;
+      if (!effective) {
+        return;
+      }
+      span.className = 'var-tag editing';
+      span.innerHTML = '';
+      const keyLabel = document.createElement('span');
+      keyLabel.className = 'var-key';
+      keyLabel.textContent = '{{' + v.key + '}}';
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.className = 'env-var-edit';
+      inp.value = v.value;
+      inp.autocomplete = 'off';
+      inp.spellcheck = false;
+      let committed = false;
+      const commit = () => {
+        if (committed) {
+          return;
+        }
+        committed = true;
+        const next = inp.value;
+        if (next !== v.value) {
+          post('updateProjectEnvVar', { envName: effective, key: v.key, value: next });
+        } else {
+          renderEnvVarTags();
+        }
+      };
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          inp.blur();
+        } else if (e.key === 'Escape') {
+          committed = true;
+          renderEnvVarTags();
+        }
+      });
+      inp.addEventListener('blur', commit);
+      span.appendChild(keyLabel);
+      span.appendChild(inp);
+      inp.focus();
+      inp.select();
     }
 
     function renderFileVarTags() {
@@ -1786,6 +1889,8 @@ export function buildHttpRequestEditorHtml(
       state.assertions = msg.assertions || [];
       state.resolvedPreview = msg.resolvedPreview || state.resolvedPreview;
       state.globalFileEnv = msg.globalFileEnv;
+      state.sectionLocalEnv = msg.sectionLocalEnv;
+      state.inSection = !!msg.inSection;
       state.blockEnv = msg.blockEnv;
       state.compactMode = msg.compactMode !== false;
       state.envScope = msg.envScope || 'project';
@@ -1877,6 +1982,28 @@ export function buildHttpRequestEditorHtml(
       els.newRequestBtn.addEventListener('click', () => post('newRequest'));
       els.selectEnvBtn.addEventListener('click', () => post('selectEnvironment'));
       els.createEnvBtn.addEventListener('click', () => post('createEnvironment'));
+      if (els.fileEnvSelect) {
+        els.fileEnvSelect.addEventListener('change', () => {
+          const envName = els.fileEnvSelect.value || null;
+          post('setFileEnv', { envName });
+        });
+      }
+      if (els.addEnvVarBtn) {
+        els.addEnvVarBtn.addEventListener('click', () => {
+          const effective = state.resolvedPreview.effectiveEnv;
+          if (!effective) {
+            return;
+          }
+          const key = els.newEnvVarKey.value.trim();
+          const value = els.newEnvVarVal.value;
+          if (!key) {
+            return;
+          }
+          post('updateProjectEnvVar', { envName: effective, key, value });
+          els.newEnvVarKey.value = '';
+          els.newEnvVarVal.value = '';
+        });
+      }
       els.addHeaderBtn.addEventListener('click', () => {
         const f = readForm();
         f.headers.push({ key: '', value: '' });

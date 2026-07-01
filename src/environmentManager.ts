@@ -348,6 +348,60 @@ export class EnvironmentManager {
   }
 
   /**
+   * Updates or appends a variable in a project-root .env file.
+   */
+  public async upsertEnvVariable(
+    envName: string,
+    key: string,
+    value: string,
+    workspacePath: string,
+    envRoot?: string
+  ): Promise<boolean> {
+    const root = this.resolveEnvRoot(workspacePath, envRoot);
+    const filePath = getEnvFilePath(root, envName);
+
+    if (!fs.existsSync(filePath)) {
+      return false;
+    }
+
+    try {
+      const content = fs.readFileSync(filePath, 'utf8');
+      const lines = content.split('\n');
+      const keyLower = key.toLowerCase();
+      let found = false;
+
+      for (let i = 0; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
+        if (!trimmed || trimmed.startsWith('#')) {
+          continue;
+        }
+        const separatorIndex = trimmed.indexOf('=');
+        if (separatorIndex === -1) {
+          continue;
+        }
+        const lineKey = trimmed.substring(0, separatorIndex).trim();
+        if (lineKey.toLowerCase() === keyLower) {
+          lines[i] = `${lineKey}=${value}`;
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        lines.push(`${key}=${value}`);
+      }
+
+      fs.writeFileSync(filePath, lines.join('\n'), 'utf8');
+      this.clearEnvironmentCache(envName, workspacePath, envRoot);
+      this._onDidChangeEnvironment.fire(this.activeEnvironment);
+      return true;
+    } catch (error) {
+      console.error(`Failed to update environment variable in ${filePath}`, error);
+      return false;
+    }
+  }
+
+  /**
    * Creates a new project-root environment file with a template
    */
   public async createEnvironment(

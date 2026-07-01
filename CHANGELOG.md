@@ -2,6 +2,24 @@
 
 ![](https://i.imgur.com/s1yX64Y.jpeg)
 
+## v2026.6.30-3 - HTTP visual editor environment UX
+
+### Added
+
+- **HTTP env editor — file default** — **File # @env** dropdown lists all workspace `.env*` files and writes `# @env` at the top of the request file (file header only; section decorators are preserved).
+- **HTTP env editor — .env variables** — double-click a key in **Keys from active .env** to edit inline (secrets show the real value while editing); **Add to .env** form appends a new `KEY=value` line to the active environment file.
+
+### Fixed
+
+- **Section `# @env` resolution** — `getEnvironmentForSection` now searches forward after the `##` header (decorators below the section title are respected; file-global env is no longer mistaken for block env).
+- **Block env switch** — env pills update the correct section when the active block is a sub-request inside a `##` section (not only top-level section blocks).
+- **`setFileGlobalEnv`** — only reads/writes `# @env` in the file header (before the first `##`); new file-level env is always inserted at line 1.
+
+### Changed
+
+- **HTTP env picker UI** — block environment is selected via labeled pills (**Block:**); removed redundant **Block # @env** dropdown. Selected pill uses filled styling; unselected pills stay muted (no inverted blue/gray highlight).
+- **HTTP env banner** — clearer source hints (block vs file vs inherited).
+
 ## v2026.6.27-1 - Remote skills, `.agents` folder, Cursor Pet hook cleanup
 
 ### Added

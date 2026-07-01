@@ -3,6 +3,10 @@ import { mergeCustomVariables } from './httpRequestVariables';
 import { getEnvironmentForSection } from './httpRequestExecutor';
 import { resolveHttpVariables } from './httpVariableResolver';
 import { EnvironmentManager } from './environmentManager';
+import {
+  parseFileGlobalEnv,
+  parseSectionLocalEnv,
+} from './httpRequestEditorFileMeta';
 import type {
   HttpRequestFormData,
   HttpRequestVariableBinding,
@@ -46,17 +50,22 @@ export function buildVariablePreview(
   bindings: HttpRequestVariableBinding[];
 } {
   const fileVars = mergeCustomVariables(document, blockStartLine);
-  const blockEnv = getEnvironmentForSection(document, blockStartLine);
-  const globalEnv = getEnvironmentForSection(document, 0);
+  const lines = document.getText().split('\n');
+  const sectionLocalEnv = parseSectionLocalEnv(lines, blockStartLine);
+  const fileGlobalEnv = parseFileGlobalEnv(lines);
+  const cascadedEnv = getEnvironmentForSection(document, blockStartLine);
 
   let effectiveEnv = activeProjectEnv || '';
   let envSource: 'block' | 'file' | 'workspace' = 'workspace';
-  if (blockEnv) {
-    effectiveEnv = blockEnv;
+  if (sectionLocalEnv) {
+    effectiveEnv = sectionLocalEnv;
     envSource = 'block';
-  } else if (globalEnv) {
-    effectiveEnv = globalEnv;
+  } else if (fileGlobalEnv) {
+    effectiveEnv = fileGlobalEnv;
     envSource = 'file';
+  } else if (cascadedEnv) {
+    effectiveEnv = cascadedEnv;
+    envSource = 'block';
   } else if (!effectiveEnv) {
     envSource = 'workspace';
   }

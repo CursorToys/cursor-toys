@@ -45,18 +45,28 @@ export function parseFileGlobalEnv(lines: string[]): string | null {
 }
 
 /**
- * Sets or clears global `# @env` in file content.
+ * Index of the first `##` section line, or lines.length when none.
+ */
+function getFirstSectionLine(lines: string[]): number {
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].trim().startsWith('##')) {
+      return i;
+    }
+  }
+  return lines.length;
+}
+
+/**
+ * Sets or clears global `# @env` in the file header (before the first `##`).
+ * New decorators are always inserted at the top of the file.
  */
 export function setFileGlobalEnv(content: string, envName: string | null): string {
   const lines = content.split('\n');
+  const firstSection = getFirstSectionLine(lines);
   let envLine = -1;
-  let firstSection = lines.length;
 
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = 0; i < firstSection; i++) {
     const trimmed = lines[i].trim();
-    if (trimmed.startsWith('##') && firstSection === lines.length) {
-      firstSection = i;
-    }
     if (trimmed.match(/^#\s*@env\s+/i)) {
       envLine = i;
       break;
@@ -74,7 +84,7 @@ export function setFileGlobalEnv(content: string, envName: string | null): strin
   if (envLine >= 0) {
     lines[envLine] = newLine;
   } else {
-    lines.splice(firstSection > 0 ? firstSection : 0, 0, newLine, '');
+    lines.splice(0, 0, newLine, '');
   }
   return lines.join('\n');
 }
@@ -113,6 +123,50 @@ export function upsertFileVariable(
     lines.splice(insertAt, 0, newLine);
   }
   return lines.join('\n');
+}
+
+/**
+ * Returns the `##` section header line at or above `startLine`, if any.
+ */
+export function findSectionHeaderLine(
+  lines: string[],
+  startLine: number
+): number | null {
+  for (let i = startLine; i >= 0; i--) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith('##') && !trimmed.startsWith('###')) {
+      return i;
+    }
+  }
+  return null;
+}
+
+/**
+ * Reads a section-local `# @env` placed after the `##` header (not file-global).
+ */
+export function parseSectionLocalEnv(
+  lines: string[],
+  startLine: number
+): string | null {
+  const headerLine = findSectionHeaderLine(lines, startLine);
+  if (headerLine === null) {
+    return null;
+  }
+
+  for (let i = headerLine + 1; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith('##')) {
+      break;
+    }
+    const match = trimmed.match(/^#\s*@env\s+(\w+)/i);
+    if (match) {
+      return match[1];
+    }
+    if (/^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+/i.test(trimmed)) {
+      break;
+    }
+  }
+  return null;
 }
 
 /**

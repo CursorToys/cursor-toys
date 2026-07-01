@@ -14,6 +14,8 @@ import {
 import {
   parseFileGlobalEnv,
   parseFileHeaderVariables,
+  parseSectionLocalEnv,
+  findSectionHeaderLine,
 } from './httpRequestEditorFileMeta';
 import { EnvironmentManager } from './environmentManager';
 import { buildVariablePreview } from './httpRequestEditorResolve';
@@ -136,8 +138,10 @@ export function buildHttpRequestEditorState(
   const managerActiveEnv = envManager.getActiveEnvironment();
   const activeProjectEnv = resolveActiveProjectEnv(projectEnvs, managerActiveEnv);
   const globalFileEnv = parseFileGlobalEnv(lines);
+  const sectionLocalEnv = parseSectionLocalEnv(lines, block.startLine);
   const blockEnv =
     getEnvironmentForSection(document, block.startLine) ?? globalFileEnv;
+  const inSection = findSectionHeaderLine(lines, block.startLine) !== null;
 
   const envVars: HttpRequestEnvVariableSummary[] = [];
   const sectionEnv = getEnvironmentForSection(document, block.startLine);
@@ -187,6 +191,8 @@ export function buildHttpRequestEditorState(
     activeProjectEnv,
     envScope: envCtx?.scope ?? 'project',
     globalFileEnv: globalFileEnv ?? undefined,
+    sectionLocalEnv: sectionLocalEnv ?? undefined,
+    inSection,
     blockEnv: blockEnv ?? undefined,
     envVariables: envVars,
     fileVariables,

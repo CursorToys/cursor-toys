@@ -66,6 +66,8 @@ export interface HttpRequestEditorInitMessage {
   activeProjectEnv: string;
   envScope: 'personal' | 'project';
   globalFileEnv?: string;
+  sectionLocalEnv?: string;
+  inSection: boolean;
   blockEnv?: string;
   envVariables: HttpRequestEnvVariableSummary[];
   fileVariables: Array<{ key: string; value: string }>;
@@ -98,6 +100,9 @@ export type HttpRequestEditorInboundMessage =
   | { command: 'removeFileVar'; key: string }
   | { command: 'openProjectEnvFile'; envName: string }
   | { command: 'setBlockEnv'; blockIndex: number; envName: string | null }
+  | { command: 'setFileEnv'; envName: string | null }
+  | { command: 'setSectionEnv'; blockIndex: number; envName: string | null }
+  | { command: 'updateProjectEnvVar'; envName: string; key: string; value: string }
   | { command: 'selectEnvironment' }
   | { command: 'createEnvironment' }
   | { command: 'saveAssertions'; blockIndex: number; assertions: HttpRequestAssertionSummary[]; silent?: boolean }
